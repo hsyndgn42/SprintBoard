@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "kind": "sprintboard-pilot-request",
+  "title": "GitHub bağlantı denemesi",
+  "description": "SprintBoard talep ve PR akışının deneme kaydı.",
+  "requestedAt": "2026-09-12T22:30:56.312Z",
+  "requestedBy": "Hüseyin",
+  "note": "Bu dosya bağlantı denemesi içindir; gerçek sprint verisi içermez."
+}
