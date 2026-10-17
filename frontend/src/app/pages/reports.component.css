@@ -1,0 +1,21 @@
+:host{display:block;min-width:0}
+.report-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:8px;margin:20px 0;background:#fff;border:1px solid #dce5f2;border-radius:14px}
+.report-tabs button{border:0;background:transparent;border-radius:9px;padding:12px 16px;min-height:44px;font:inherit;font-size:13px;font-weight:650;color:#536b86;cursor:pointer}
+.report-tabs button:hover{background:#f1f6ff;color:#145db0}
+.report-tabs button[aria-selected=true]{background:#e9f2ff;color:#075bbd;box-shadow:inset 0 0 0 1px #c5dbfb}
+.report-tabs button:focus-visible,.report-tab-panel:focus-visible{outline:3px solid #7fb2f2;outline-offset:3px}
+.report-tab-panel[hidden]{display:none!important}
+.report-tab-panel{min-width:0}
+.report-tab-panel app-capacity-trend,.report-tab-panel app-roadmap-report{margin-top:0}
+.report-tab-panel>.card{margin-top:0}
+@media(max-width:600px){.report-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.report-tabs button{padding:11px 8px;text-align:left;font-size:12px}}
+@media print{
+ .report-tabs{display:none!important}
+ .report-tab-panel[hidden],.report-tab-panel{display:block!important}
+ #report-panel-context{display:none!important}
+ .report-tab-panel{outline:none}
+}
+
+.report-local-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 16px}.report-local-actions>span{color:#60758f;font-size:12px}.report-local-actions>div{display:flex;gap:8px;align-items:flex-start}
+@media(max-width:600px){.report-local-actions{align-items:flex-start;flex-direction:column}}
+@media print{.report-local-actions{display:none!important}}

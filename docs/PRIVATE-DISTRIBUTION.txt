@@ -1,0 +1,26 @@
+SprintBoard - OZEL HAZIR PAKET
+
+Bu paket veritabani, hesaplar, fotograflar ve Slack sifreleme anahtarini icerir.
+GitHub'a, genel Release sayfasina veya paylasilan bir klasore YUKLEMEYIN.
+ZIP sifreli degildir. Paketi ve cikarildigi klasoru guvenli tutun.
+
+1. ZIP'i yerel bir klasore tamamen cikarin. ZIP icinden calistirmayin.
+2. Once eski SprintBoard servisini durdurun. Ayni Slack uygulamasina baglanan
+   iki kopya ayni anda calismasin; verileri otomatik birlestirilmez.
+3. start-sprintboard.cmd dosyasini calistirin. Java runtime pakete dahildir.
+4. http://127.0.0.1:4181/ adresinde mevcut hesabinizla giris yapin.
+5. docs/USER_GUIDE.html dosyasindan kullanim adimlarini inceleyin.
+
+Bu bir zaman noktasi kopyasidir. Paketi aldiktan sonra eski sistemde yapilan
+degisiklikler bu pakete gelmez. Tasima aninda yeni bir tam yedek alin.
+
+Veriler: service/data/sprintboard.mv.db
+Slack anahtari: service/data/slack-token.key
+Yedekler: backups/scheduled (her gun Turkiye saati 00:00, 08:00, 16:00).
+
+Guncelleme: Once Ayarlar'dan tam yedek alin, servisi durdurun, yalniz
+uyumlu yeni JAR'i target altina koyun. service/data ve backups klasorlerini
+degistirmeyin. Eski hazir paketin veritabanini yeni verinin ustune kopyalamayin.
+
+Paket Windows x64 icindir. Runtime icindeki legal klasoru ve NOTICE dosyasi
+Java dagitiminin lisans bildirimlerini icerir; bunlari koruyun.

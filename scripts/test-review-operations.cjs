@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('../frontend/node_modules/typescript');
+require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,f);
+const {reviewOperations,reviewOperationsHtml}=require('../frontend/src/app/pages/review-operations.model.ts');
+const {reportTabHtml}=require('../frontend/src/app/pages/report-tab-html.ts');
+const sprint={id:'s2',name:'Sprint 2',items:[{assignments:[{memberId:'x',supportOnly:true}]},{workKind:'LEAVE',assignments:[{memberId:'x',supportOnly:true}]}]};
+const model=reviewOperations(sprint,[{id:'s1',earned:99},{id:'s2',earned:4}],[{memberId:'core',memberName:'Core',supportMember:false,plannedHours:80},{memberId:'p',memberName:'<Support>',supportMember:true,plannedHours:12},{memberId:'x',memberName:'Architect',supportMember:true,plannedHours:0}]);
+assert.equal(model.earned,4);assert.equal(model.supportHours,12);assert.equal(model.people.length,2);assert.equal(model.people[1].xCount,1);
+const html=reviewOperationsHtml(model);assert(html.includes('&lt;Support&gt;'));assert(!html.includes('Mesaiden izin'));assert(!html.includes('Sprint 1'));assert(!html.includes('99'));
+const row={title:'Project',kind:'PROJECT',assignedHours:8,overtimeHours:3,doneHours:8,undoneHours:0,openHours:0,poolEstimatedHours:0};
+const report=reportTabHtml({kind:'roadmap',scope:'all',rows:[row]});assert(report.includes('Mesai (ayrı)'));assert(report.includes('Roadmap bazlı gerçekleşen mesai'));assert(!report.includes('11 sa'));assert(report.includes('3 sa'));
+console.log('Review operations / Roadmap HTML PASS: sprint isolation, no leave trend, support/X distinction, escaping, overtime separate from plan.');

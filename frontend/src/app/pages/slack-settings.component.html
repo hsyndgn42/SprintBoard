@@ -1,0 +1,69 @@
+<section class="card card-pad slack-settings">
+  <header class="slack-heading">
+    <div><span class="eyebrow">ENTEGRASYON</span><h2>Slack bağlantısı</h2></div>
+    <span class="status" [class.done]="status?.state==='CONNECTED'">{{stateLabel}}</span>
+  </header>
+  @if(status){
+    <form (ngSubmit)="save(false)" autocomplete="off">
+      <section class="settings-block" aria-labelledby="slack-connection-title">
+        <div class="block-heading"><h3 id="slack-connection-title">Bağlantı bilgileri</h3><p>Çalışma alanını ve mesajların alınacağı kanalları belirleyin.</p></div>
+        <div class="channel-grid">
+          <label class="field">Çalışma alanı kimliği<input name="slackTeam" [(ngModel)]="teamId" maxlength="40" placeholder="T…"></label>
+          <label class="field">Defect kanal kimliği<input name="slackChannel" [(ngModel)]="channelId" maxlength="40" placeholder="C… veya G…"></label>
+          <label class="field">Mesai kanal kimliği <span class="optional">İsteğe bağlı</span><input name="slackOvertimeChannel" [(ngModel)]="overtimeChannelId" maxlength="40" placeholder="C… veya G…"></label>
+        </div>
+        <div class="token-grid">
+          <label class="field">Bot token<input type="password" name="slackBotToken" [(ngModel)]="botToken" maxlength="1024" autocomplete="new-password" [placeholder]="status.botTokenConfigured?'Kaydedildi · değiştirmek için girin':'xoxb-…'"></label>
+          <label class="field">App token<input type="password" name="slackAppToken" [(ngModel)]="appToken" maxlength="1024" autocomplete="new-password" [placeholder]="status.appTokenConfigured?'Kaydedildi · değiştirmek için girin':'xapp-…'"></label>
+        </div>
+        <p class="hint">Tokenlar şifreli saklanır. Boş bırakırsanız kayıtlı değerler korunur.</p>
+      </section>
+
+      <section class="settings-block" aria-labelledby="slack-templates-title">
+        <div class="block-heading"><h3 id="slack-templates-title">Mesaj şablonları</h3><p>Kanala gönderilecek mesajların alanları ve formatı.</p></div>
+        <div class="template-grid">
+          <article class="template-card">
+            <header><h4>Defect şablonu</h4><span class="template-badge">Düzenlenebilir</span></header>
+            <label class="sr-only" for="slack-defect-template">Defect mesaj şablonu</label>
+            <textarea id="slack-defect-template" name="slackTemplate" [(ngModel)]="template" rows="8" maxlength="2000" spellcheck="false" aria-describedby="defect-template-hint"></textarea>
+            <p id="defect-template-hint" class="hint">Virgüllü değerler seçeneklerdir; mesajda her alan için yalnız birini kullanın. Değişiklikler yeni mesajlara uygulanır.</p>
+          </article>
+          <article class="template-card">
+            <header><h4>Mesai şablonu</h4><span class="template-badge neutral">Sabit format</span></header>
+            <label class="sr-only" for="slack-overtime-template">Mesai mesaj şablonu</label>
+            <textarea id="slack-overtime-template" [value]="status.overtimeTemplate" rows="8" readonly spellcheck="false" aria-describedby="overtime-template-hint"></textarea>
+            <p id="overtime-template-hint" class="hint">Her mesaj tek günün mesaisidir. Saat: 0,25–24. Gönderen, ilk onayda ekip üyesiyle eşleştirilir.</p>
+          </article>
+        </div>
+      </section>
+      <footer class="save-bar">
+        <p class="hint">Yalnız yeni ana mesajlar alınır; yanıtlar ve mesaj düzenlemeleri alınmaz.</p>
+        <div class="save-actions">
+          <button class="btn" type="submit" [disabled]="busy">Ayarları kaydet</button>
+          <button class="btn primary" type="button" [disabled]="busy" (click)="save(true)">Kaydet ve dinle</button>
+        </div>
+      </footer>
+    </form>
+    @if(status.error){<p class="notice warn" role="alert">{{status.error}}</p>}
+    @if(error){<p class="notice warn" role="alert">{{error}}</p>}
+    @if(message){<p class="inline-success" role="status">{{message}}</p>}
+    <details class="advanced-settings">
+      <summary>Bağlantı yönetimi ve bakım</summary>
+      <div class="maintenance-row">
+        <div><h4>Bildiren adları</h4><p class="hint">Slack profilindeki ad soyadı yeniler. Bot için users:read izni gerekir.</p></div>
+        <button type="button" class="btn" [disabled]="busy||!status.botTokenConfigured" (click)="retryNames()">Bildiren adlarını getir</button>
+      </div>
+      @if(status.reporterError){<p class="notice warn" role="alert">{{status.reporterError}}</p>}
+      <div class="maintenance-row">
+        <div><h4>Dinleme</h4><p class="hint">Bağlantıyı durdurur; kayıtlı tokenlar ve kuyruk korunur.</p></div>
+        <button class="btn" type="button" [disabled]="busy||status.state==='STOPPED'" (click)="stop()">Dinlemeyi durdur</button>
+      </div>
+      <div class="maintenance-row">
+        <div><h4>Kimlik bilgilerini kaldır</h4><p class="hint">Tokenları siler ve bağlantıyı durdurur. İşler ve onay kuyruğu silinmez.</p></div>
+        <button class="btn danger" type="button" [disabled]="busy" (click)="setForget(true)">Tokenları sil</button>
+      </div>
+      @if(confirmForget){<div class="notice warn" role="alert"><p>Kayıtlı tokenlar silinsin mi?</p><div class="confirm-actions"><button type="button" class="btn" [disabled]="busy" (click)="setForget(false)">Vazgeç</button><button type="button" class="btn danger" [disabled]="busy" (click)="forget()">Evet, tokenları sil</button></div></div>}
+    </details>
+  }@else{<p>Slack ayarları yükleniyor…</p>}
+  <app-slack-digest-settings />
+</section>

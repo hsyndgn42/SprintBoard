@@ -1,0 +1,1 @@
+ALTER TABLE sprint_task ADD COLUMN status_note CLOB NOT NULL DEFAULT '';

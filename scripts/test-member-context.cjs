@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('../frontend/node_modules/typescript');
+require.extensions['.ts']=(module,file)=>module._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,file);
+const {memberContexts}=require('../frontend/src/app/pages/member-context.model.ts');
+const row=(extra={})=>({memberId:'a',memberName:'A',sprintId:'s1',sprintNumber:1,capacitySource:'RECALCULATED',availableHours:40,allocatedDays:6,leaveDays:1,effortHours:20,supportTaskCount:2,...extra});
+const full=memberContexts([row(),row({sprintId:'s2',sprintNumber:2,availableHours:80,effortHours:70,capacitySource:'FROZEN'})])[0];
+assert.equal(full.load,75);assert.equal(full.availableHours,120);assert.equal(full.supportTasks,4);assert.equal(full.leaveDays,2);assert.equal(full.frozen,1);assert.equal(full.periods[0].sprintId,'s2');
+const partial=memberContexts([row(),row({sprintId:'s2',availableHours:null,allocatedDays:null,capacitySource:'UNSPECIFIED_SUPPORT',effortHours:0})])[0];
+assert.equal(partial.load,null);assert.equal(partial.known,1);assert.equal(partial.total,2);assert.equal(partial.availableHours,40);assert.equal(partial.allocatedDays,6);
+assert.equal(memberContexts([row({availableHours:0,effortHours:5})])[0].load,null);
+assert.equal(memberContexts([row({availableHours:null,allocatedDays:null})])[0].known,0);
+assert.deepEqual(memberContexts([]),[]);
+console.log('Member context: 14 checks passed (weighted capacity, missing data, zero denominator, X, leave, frozen provenance).');

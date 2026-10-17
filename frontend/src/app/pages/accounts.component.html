@@ -1,0 +1,48 @@
+<section class="card card-pad accounts" aria-labelledby="accounts-title">
+  <div class="section-head"><div><span class="eyebrow">KULLANICI ERİŞİMİ</span><h2 id="accounts-title">Giriş hesapları</h2></div><button class="btn primary" [disabled]="loading || busy || loadFailed" (click)="open('create')">+ Kullanıcı ekle</button></div>
+  <p class="muted">Takım üyesine bağlanan kullanıcı kendi görevlerini ilerletir, günlük notu ve mesai talebi ekler. Bağlantısız hesap salt okunurdur. Adminin izin, mesai ve planlama yetkileri korunur.</p>
+  @if(message){<p class="notice" role="status">{{ message }}</p>}
+  @if(error){<p class="notice warn" role="alert">{{ error }}</p><button class="btn" [disabled]="loading || busy" (click)="load()">Yeniden yükle</button>}
+  @if(loading){<p role="status">Hesaplar yükleniyor…</p>} @else if(!loadFailed){
+    <div class="account-summary"><span><strong>{{ rows.length }}</strong> hesap</span><span><strong>{{ activeCount }}</strong> etkin</span><span><strong>{{ rows.length - activeCount }}</strong> pasif</span></div>
+    <div class="account-filters"><label class="field">Kullanıcı ara<input [(ngModel)]="query" (ngModelChange)="refresh()" placeholder="Kullanıcı adı"></label><label class="field">Hesap durumu<select [(ngModel)]="state" (ngModelChange)="refresh()"><option value="all">Tüm hesaplar</option><option value="active">Etkin</option><option value="inactive">Pasif</option></select></label></div>
+    <app-list-pager #accountPager [items]="filtered" label="Hesaplar" /><div class="account-rows">
+      @for(account of accountPager.rows; track account.username){
+        <article class="account-row" [attr.data-account]="account.username">
+          <div class="account-identity"><span class="avatar" aria-hidden="true">{{ account.username.slice(0,2).toUpperCase() }}</span><div><strong>{{ account.username }}</strong><small>{{ account.role === 'ADMIN' ? 'Yönetici · korumalı hesap' : account.memberId ? 'Takım üyesi · kendi işleri' : 'Salt okunur kullanıcı' }}</small></div></div>
+          <span class="status" [class.done]="account.active">{{ account.active ? 'Etkin' : 'Pasif' }}</span>
+          <div class="account-actions"><button class="btn small" [disabled]="busy" (click)="open('member',account)">Takım üyesine bağla</button>@if(account.role === 'USER'){
+            <button class="btn small" [disabled]="busy" (click)="open('password',account)" [attr.aria-label]="account.username + ' şifresini yenile'">Şifre yenile</button>
+            <button class="btn small" [disabled]="busy" (click)="open(account.active ? 'disable' : 'enable',account)" [attr.aria-label]="account.username + (account.active ? ' hesabını pasifleştir' : ' hesabını etkinleştir')">{{ account.active ? 'Pasifleştir' : 'Etkinleştir' }}</button>
+          } @else {<small>Bu ekrandan değiştirilemez</small>}</div>
+        </article>
+      } @empty {<div class="empty">Filtreye uygun hesap yok.</div>}
+    </div>
+    <details class="account-history"><summary>Hesap işlem geçmişi <span>Son {{ events.length }} kayıt · en fazla 100</span></summary>
+      <p class="data-note">Bu özellikten sonraki hesap işlemleri kaydedilir. Eski işlemler bu listede değildir; giriş denemeleri aşağıdaki ayrı bölümde gösterilir. Şifre ve oturum anahtarları kaydedilmez.</p>
+      <app-list-pager #eventPager [items]="events" label="Hesap geçmişi" />@for(event of eventPager.rows; track event.id){<article class="account-event"><div><strong>{{ actionLabel(event.action) }}</strong><small>{{ event.username }} · İşlemi yapan: {{ event.actor }}</small></div><time [attr.datetime]="event.occurredAt">{{ date(event.occurredAt) }}</time></article>}
+      @empty {<p class="data-note">Henüz hesap işlem kaydı yok.</p>}
+    </details>
+    <app-login-history />
+  }
+</section>
+<dialog #accountDialog class="account-dialog" aria-labelledby="account-dialog-title" (cancel)="onCancel($event)" (close)="clearSecrets()">
+  <form (ngSubmit)="save()">
+    <header><h2 id="account-dialog-title">{{ title }}</h2>@if(action !== 'create'){<p>{{ username }}</p>}</header>
+    <div class="account-dialog-body form-grid">
+      @if(action === 'create'){<label class="field">Kullanıcı adı<input name="newUsername" [(ngModel)]="username" required minlength="3" maxlength="80" pattern="[A-Za-z0-9._-]+" autocomplete="off"></label>}
+      @if(action==='member'){<label class="field">Takım üyesi<select name="accountMember" [(ngModel)]="memberId"><option value="">Bağlantısız · salt okunur</option>@for(member of members;track member.id){@if(member.active||member.id===memberId){<option [value]="member.id">{{member.name}}</option>}}</select></label><p class="notice">Bir üye yalnız bir hesaba bağlanır. Bağlantı değişince bu hesabın açık oturumları kapanır. Yönetici rolü değişmez.</p>}
+      @if(passwordAction){
+        <label class="field">Yeni şifre<input type="password" name="accountPassword" [(ngModel)]="password" required minlength="12" maxlength="72" autocomplete="new-password"><small>En az 12 karakter, UTF-8 olarak en fazla 72 bayt. Türkçe karakterler birden fazla bayt olabilir.</small></label>
+        <label class="field">Yeni şifre tekrar<input type="password" name="accountPasswordRepeat" [(ngModel)]="repeatPassword" required minlength="12" maxlength="72" autocomplete="new-password"></label>
+        <p class="data-note">Şifreyi kullanıcıya güvenli bir kanaldan iletin. Bu adımda zorunlu ilk giriş şifre değişikliği yoktur.</p>
+      }
+      @if(action === 'disable'){<p class="notice warn">Kullanıcı yeniden giriş yapamaz; açık oturumları sonraki istekte reddedilir. Takım üyeliği ve geçmiş iş kayıtları korunur.</p>}
+      @if(action === 'password'){<p class="notice warn">Eski şifre ve açık oturumlar geçersizleşir. Pasif hesap, şifre yenilendiğinde pasif kalır.</p>}
+      @if(action === 'enable'){<p class="notice">Hesap mevcut şifresiyle yeniden giriş yapabilir. Önceki oturumlar yeniden açılmaz.</p>}
+      @if(action !== 'create'){<label class="account-confirm"><input type="checkbox" name="accountConfirmed" [(ngModel)]="confirmed" required><span>{{ username }} hesabı için bu işlemi onaylıyorum.</span></label>}
+      @if(formError){<p class="notice warn" role="alert">{{ formError }}</p>}
+    </div>
+    <footer><button type="button" class="btn" [disabled]="busy" (click)="close()">Vazgeç</button><button type="submit" class="btn primary" [disabled]="busy || (action !== 'create' && !confirmed) || (passwordAction && (!validPassword || password !== repeatPassword))">{{ busy ? 'Kaydediliyor…' : 'Onayla ve kaydet' }}</button></footer>
+  </form>
+</dialog>

@@ -1,0 +1,27 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),ts=require('../frontend/node_modules/typescript');
+const context={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync('frontend/src/app/pages/capacity-trend.model.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,context);
+const {buildCapacityTrend:run,trendSource,trendCsvRows}=context.exports;
+const sprints=Array.from({length:8},(_,i)=>({id:'s'+(i+1),number:i+1,name:'Sprint '+(i+1),end:'2026-10-01'})).reverse();
+const r=(id,sprint,capacity,effort,source='RECALCULATED')=>({memberId:id,sprintId:sprint,availableHours:capacity,effortHours:effort,capacitySource:source});
+const rows=[r('a','s8',40,48,'FROZEN'),r('b','s8',40,0,'FROZEN'),r('c','s8',null,12,'UNSPECIFIED_SUPPORT'),r('d','s8',0,8),r('z','s7',null,10,'UNAVAILABLE')];
+const base={memberId:'',source:'',limit:6};let checks=0;function eq(a,b){assert.deepEqual(JSON.parse(JSON.stringify(a)),b);checks++;}
+const before=JSON.stringify({sprints,rows});let result=run(sprints,rows,base),last=result.at(-1);
+eq(result.map(r=>r.number),[3,4,5,6,7,8]);eq(last.known,3);eq(last.unknown,0);eq(last.capacity,80);eq(last.planned,68);eq(last.over,16);eq(last.free,40);eq(last.unknownHours,0);eq(last.ratio,85);eq(trendSource(last),'Karma kaynak');
+eq(result.at(-2).ratio,null);eq(result.at(-2).unknownHours,10);eq(trendSource(result.at(-2)),'Karşılaştırılabilir kayıt yok');
+last=run(sprints,rows,{...base,source:'FROZEN'}).at(-1);eq(last.planned,48);eq(last.capacity,80);eq(last.people,2);eq(trendSource(last),'Sabit kapanış');
+last=run(sprints,rows,{...base,memberId:'d'}).at(-1);eq(last.capacity,0);eq(last.ratio,null);eq(last.over,8);
+eq(run(sprints,rows,{...base,limit:0}).length,8);eq(run([],rows,base),[]);
+eq(JSON.stringify({sprints,rows}),before);
+let csv=trendCsvRows(result,'test');eq(csv.length,9);eq(csv.at(-2)[5],null);eq(csv.at(-2)[7],null);eq(csv.at(-1)[10],0);
+eq(run(sprints,[r('x','s8',NaN,10)],base).at(-1).unknownHours,10);
+const external=[{...r('core','s8',80,96,'FROZEN'),engagement:'CORE'}, {...r('burak','s8',16,16,'FROZEN'),engagement:'SUPPORT'}, {...r('sakir','s8',40,0,'FROZEN'),teamRole:'ARCHITECT'}];
+last=run(sprints,external,base).at(-1);eq(last.capacity,80);eq(last.planned,112);eq(last.corePlanned,96);eq(last.supportPlanned,16);eq(last.supportPeople,2);eq(last.over,16);eq(last.ratio,140);
+last=run(sprints,external,{...base,memberId:'burak'}).at(-1);eq(last.capacity,0);eq(last.planned,16);eq(last.ratio,null);eq(last.free,0);eq(last.over,0);
+last=run(sprints,[...external,r('unknown','s8',null,8,'UNAVAILABLE')],base).at(-1);eq(last.planned,120);eq(last.unknown,1);eq(last.ratio,null);
+eq(run(sprints,external,base).at(-1).coreRatio,120);
+eq(run(sprints,external,{...base,memberId:'burak'}).at(-1).coreRatio,null);
+eq(last.coreRatio,null);
+const aligned=[{...r('core','s8',936,936,'FROZEN'),engagement:'CORE'},{...r('support','s8',120,64,'FROZEN'),engagement:'SUPPORT'}];
+last=run(sprints,aligned,base).at(-1);eq(last.coreRatio,100);eq(last.ratio,106.84);eq(last.corePlanned+last.supportPlanned,last.planned);
+eq(trendCsvRows([last],'split')[3][14],100);
+console.log(checks+' capacity trend model checks PASS: source/period/person filters, unknown vs zero, non-offsetting overload/free, weighted ratio, CSV blanks and immutability.');

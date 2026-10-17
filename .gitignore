@@ -1,0 +1,71 @@
+# Runtime data, backups and private exports
+/service/data/
+/service/logs/
+/backups/
+/exports/
+/tmp/
+/local-archive/
+/releases/
+/runtime/
+*.mv.db
+*.trace.db
+*.lock.db
+*.sqlite
+*.sqlite-*
+*.h2.db
+*.dump
+*.bak
+*.backup
+*.zip
+
+# Personal photos and historical production seed (never publish these)
+/assets/team-photos/
+/service/src/main/resources/seed/sprintboard.json
+
+# Generated application, dependencies and local toolchain
+/target/
+/service/target/
+/service/src/main/resources/static/
+/frontend/node_modules/
+/frontend/.angular/
+/frontend/dist/
+/frontend/coverage/
+/.m2/
+/tools/
+*.class
+*.jar
+*.war
+*.jar.original
+
+# Credentials and local environment overrides
+.env
+.env.*
+!.env.example
+!.env.sample
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+application-local.properties
+application-local.yml
+application-local.yaml
+.aws/
+.codex/
+.agents/
+
+# IDE, OS and diagnostic output
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+*.err
+*.pid
+*.tsbuildinfo
+*.swp
+*~
+
+# Keep source, Flyway SQL, test fixtures, package-lock.json and .mvn configuration.

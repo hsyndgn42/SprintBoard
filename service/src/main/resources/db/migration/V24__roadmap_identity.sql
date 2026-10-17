@@ -1,0 +1,3 @@
+ALTER TABLE roadmap_item ADD COLUMN item_kind VARCHAR(24) NOT NULL DEFAULT 'UNSPECIFIED';
+ALTER TABLE roadmap_item ADD COLUMN reference_id VARCHAR(100);
+ALTER TABLE roadmap_item ADD CONSTRAINT roadmap_kind_check CHECK (item_kind IN ('PROJECT','FEATURE_SET','UNSPECIFIED'));

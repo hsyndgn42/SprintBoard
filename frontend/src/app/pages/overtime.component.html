@@ -1,0 +1,42 @@
+<div class="page-head"><div><span class="eyebrow">EKİP OPERASYONU</span><h1>Fazla mesai</h1></div>@if(auth.isAdmin()){<button class="btn primary" (click)="setFormOpen(true)">+ Mesai kaydı</button>}</div>
+@if(auth.isAdmin()){@defer (on immediate){<app-slack-overtime-inbox (changed)="load();requests.load()" />}}
+<app-overtime-requests #requests [sprints]="sprints" (approved)="load()" />
+<section class="card overtime-directory">
+  <div class="section-head"><h2>Kişi mesaileri</h2><small>Tüm dönemler</small></div>
+  <label class="field overtime-search">Kişi ara<input type="search" [(ngModel)]="query" placeholder="Ad soyad"></label>
+  <div class="overtime-columns" aria-hidden="true"><span>EKİP ÜYESİ</span><span>KULLANILAN HAKEDİŞ</span><span>TOPLAM MESAİ</span></div>
+  <app-list-pager #peoplePager [items]="personGroups" label="Mesailer" />@if(loading){<div class="loading" role="status">Mesai kayıtları yükleniyor…</div>}
+  @else if(!error){@for(person of peoplePager.rows;track person.memberId){
+    <button class="overtime-person" type="button" (click)="openPerson(person)" aria-haspopup="dialog" [attr.aria-label]="person.memberName+': '+number(person.usedDays)+' gün kullanılan hakediş, '+number(person.earnedHours)+' saat toplam mesai. Sprint dökümünü aç'">
+      <span class="person-identity"><span class="member-avatar">{{initials(person.memberName)}}</span><strong>{{person.memberName}}</strong></span>
+      <span class="person-stat"><small class="mobile-label">Kullanılan hakediş</small>{{number(person.usedDays)}} <small>gün</small></span>
+      <span class="person-stat"><small class="mobile-label">Toplam mesai</small>{{number(person.earnedHours)}} <small>saat</small></span>
+    </button>
+  }@empty{<div class="overtime-empty">Kişi bulunamadı.</div>}}
+</section>
+@if(error){<p class="notice warn" role="alert">{{error}}</p>}
+@if(selected;as person){
+  <div class="modal-layer"><section class="modal overtime-detail">
+    <header><span class="eyebrow">SPRINT BAZLI MESAİ</span><h2>{{person.memberName}}</h2></header>
+    <div class="modal-body">
+      @if(person.rows.length){
+        <app-list-pager #detailPager [items]="person.rows" label="Sprint mesaileri" /><div class="table-wrap"><table><thead><tr><th>Sprint</th><th>Mesai (saat)</th><th>Kullanılan hakediş (gün)</th>@if(hasUnmatchedUsage){<th>İzinle eşleşmeyen kullanım (saat)</th>}</tr></thead><tbody>
+          @for(row of detailPager.rows;track row.key){<tr><td><strong>{{row.name}}</strong></td><td>{{number(row.earnedHours)}}</td><td>{{number(row.usedDays)}}</td>@if(hasUnmatchedUsage){<td>{{number(row.unmatchedUsedHours)}}</td>}</tr>}
+        </tbody></table></div>
+        @if(hasUnmatchedUsage){<p class="data-note">İzinle eşleşmeyen saatler gün sayısına çevrilmez. Negatif değer, eski kullanım ile izin kaydının farklı sprintlerde bulunduğunu gösterebilir.</p>}
+      }@else{<div class="overtime-empty">Bu kişi için mesai kaydı yok.</div>}
+      @if(selectedWarnings.length){<details class="detail-checks"><summary>Sprint kayıt kontrolü ({{selectedWarnings.length}})</summary>@for(warning of selectedWarnings;track $index){<p>{{warning}}</p>}</details>}
+    </div>
+    <footer><button type="button" class="btn" data-modal-dismiss (click)="closePerson()">Kapat</button></footer>
+  </section></div>
+}
+    @if(formOpen){<div class="modal-layer"><form class="modal" (ngSubmit)="create()"><header><h2>Mesai kaydı</h2><p>Kullanılan mesaiyi İzinler sayfasından girin; burada yalnız hakediş ve plan kaydedilir.</p></header><div class="modal-body form-grid">
+      <label class="field">Üye<select name="memberId" [(ngModel)]="draft.memberId" required><option value="">Kişi seçin</option>@for(member of activeMembers; track member.id){<option [value]="member.id">{{member.name}}</option>}</select></label>
+      <label class="field">Sprint<select name="sprintId" [(ngModel)]="draft.sprintId" required><option value="">Sprint seçin</option>@for(sprint of sprints; track sprint.id){<option [value]="sprint.id">{{sprint.name}}</option>}</select></label>
+      <app-overtime-task-picker [sprintId]="draft.sprintId" [(value)]="draft.taskId" />
+      <label class="field">Gerçekleşen hakediş (saat)<input type="number" name="earnedHours" min="0" max="500" step="0.5" [(ngModel)]="draft.earnedHours" required></label>
+      <label class="field">Planlanan mesai (saat)<input type="number" name="plannedHours" min="0" max="500" step="0.5" [(ngModel)]="draft.plannedHours" required></label>
+      <label class="check-label"><input type="checkbox" name="includeInCapacity" [(ngModel)]="draft.includeInCapacity"> Planlanan mesaiyi sprint kapasitesine dahil et</label>
+      <p class="data-note">Eski PDF bakiyelerinde zaten bulunan hakedişi yeniden girmeyin. Bu kayıt son bakiyeye eklenir.</p>
+      <label class="field">Not<input name="note" maxlength="500" [(ngModel)]="draft.note"></label>
+      @if(error){<p class="notice warn" role="alert">{{error}}</p>}</div><footer><button data-modal-dismiss type="button" class="btn" [disabled]="saving" (click)="setFormOpen(false)">Vazgeç</button><button type="submit" class="btn primary" [disabled]="saving">Kaydet</button></footer></form></div>}

@@ -1,0 +1,54 @@
+<div class="page-head overview-heading">
+  <div><span class="eyebrow">ÜRÜN ÖZETİ</span><h1>VIBE Craft <span>Overview</span></h1></div>
+  <a class="btn" routerLink="/reports">Raporları aç <span aria-hidden="true">↗</span></a>
+</div>
+@if (data; as view) {
+  <section class="metric-grid overview-metrics" aria-label="Tüm sprintlerin özeti">
+    <article class="card metric"><small>Toplam sprint</small><strong>{{ view.totalSprints }}</strong><span>Tüm dönemler</span></article>
+    <article class="card metric"><small>Tamamlanan sprint</small><strong>{{ view.completedSprints }}</strong><span>Kapanan dönemler</span></article>
+    <article class="card metric good"><small>Done iş</small><strong>{{ view.deliveredTasks }}</strong><span>Tamamlanan sprintler · BAU hariç</span></article>
+    <article class="card metric"><small>Teslimat oranı</small><strong>{{ view.deliveryRate === null ? '—' : '%' + view.deliveryRate }}</strong><span>Tamamlanan sprintler · BAU hariç</span></article>
+  </section>
+  <div class="overview-focus">
+    <section class="active-panel" aria-label="Aktif sprint">
+      @if (view.activeSprint; as active) {
+        <div class="active-top"><span class="active-label"><i aria-hidden="true"></i>AKTİF SPRINT</span><span>{{ formatDate(active.start) }} – {{ formatDate(active.end) }}</span></div>
+        <h2>{{ active.name }}</h2><p class="sprint-goal">{{ active.goal || 'Sprint hedefi belirtilmemiş.' }}</p>
+        <div class="active-progress"><span><strong>{{ active.deliveryDoneCount }}</strong> / {{ active.deliveryTaskCount }} teslimat işi Done</span><b>{{ progress === null ? '—' : '%' + progress }}</b></div>
+        <div class="progress-track" role="progressbar" aria-label="BAU hariç teslimat oranı" [attr.aria-valuenow]="progress" aria-valuemin="0" aria-valuemax="100"><span [style.width.%]="progress ?? 0"></span></div>
+        <div class="active-bottom"><span>BAU hariç ilerleme · {{ active.taskCount }} toplam kayıt</span><div class="active-actions"><a class="btn" [routerLink]="['/sprints', active.id, 'summary']">Sprint detayı</a><a class="btn board-link" [routerLink]="['/sprints', active.id, 'board']">Panoyu aç →</a></div></div>
+      } @else {
+        <span class="active-label">SPRINT HAZIRLIĞI</span><h2>Aktif sprint yok</h2><p class="sprint-goal">Yeni dönemi Sprintler sayfasından planlayabilirsin.</p><a class="btn" routerLink="/sprints">Sprintleri aç →</a>
+      }
+    </section>
+    <section class="card capacity-panel" aria-label="Ekip kapasitesi">
+      <div class="section-head"><h2>Ekip kapasitesi</h2><span class="unit">SAAT</span></div>
+      <div class="calendar-capacity"><div><small>Bugün <span>· çekirdek</span></small><strong>{{ number(view.todayCapacityHours) }}</strong></div><div><small>Bu ay <span>· çekirdek</span></small><strong>{{ number(view.monthCapacityHours) }}</strong></div></div>
+      @if (view.activeSprint; as active) {
+        <a class="sprint-capacity" [routerLink]="['/sprints', active.id, 'capacity']"><span><strong>{{ active.name }}</strong><small>Çekirdek + Support</small></span><span><b>{{ number(view.activeSprintPlannedHours) }} <small>/ {{ number(view.activeSprintCapacityHours) }} sa</small></b><small>Planlanan / ayrılan kapasite →</small></span></a>
+      } @else { <p class="no-capacity">Sprint kapasitesi, aktif dönem başladığında görünür.</p> }
+      <details class="capacity-method"><summary>Hesaplama kapsamı</summary><p>Günlük ve aylık kapasite yalnız çekirdek ekibi içerir; çalışma takvimi ve tarihli izinler düşülür. Tarihi bilinmeyen izinler yalnız sprint kapasitesinden düşer. Aktif sprint toplamına Support için ayrılan kapasite de dahildir; planlanan efor gerçekleşen süre değildir.</p></details>
+    </section>
+  </div>
+  <nav class="overview-shortcuts" aria-label="Ürün alanları">
+    <a class="card shortcut" routerLink="/roadmap"><span class="shortcut-icon" aria-hidden="true">◇</span><span><small>Roadmap</small><strong>{{ view.roadmapCount }} hedef</strong><span>{{ view.backlogLinkedCount }} bağlı iş</span></span><b aria-hidden="true">↗</b></a>
+    <a class="card shortcut" routerLink="/backlog"><span class="shortcut-icon" aria-hidden="true">≡</span><span><small>Backlog</small><strong>{{ view.backlogReadyCount }} hazır iş</strong><span>{{ view.backlogCount }} toplam kayıt · {{ view.backlogInSprintCount }} sprint bağlantılı</span></span><b aria-hidden="true">↗</b></a>
+    <a class="card shortcut" routerLink="/team"><span class="shortcut-icon" aria-hidden="true">◎</span><span><small>Takım</small><strong>{{ view.activeMemberCount }} aktif üye</strong><span>Çekirdek + Support</span></span><b aria-hidden="true">↗</b></a>
+  </nav>
+  <section class="card history-panel">
+    <div class="section-head"><div><span class="eyebrow">TESLİMAT GEÇMİŞİ</span><h2>Son tamamlanan sprintler</h2></div><a class="btn small" routerLink="/sprints" [queryParams]="{status:'completed'}">Tüm geçmiş →</a></div>
+    @if (view.recentSprints.length) {
+      <div class="history-list">
+        @for (sprint of view.recentSprints; track sprint.id) {
+          <a class="history-row" [routerLink]="['/sprints', sprint.id, 'summary']">
+            <span class="history-name"><strong>{{ sprint.name }}</strong><small>{{ formatDate(sprint.end) }}</small></span>
+            <span class="history-delivery"><span><strong>{{ sprint.deliveryDoneCount }} / {{ sprint.deliveryTaskCount }}</strong> Done</span><span class="history-track" aria-hidden="true"><i [style.width.%]="sprintProgress(sprint.deliveryDoneCount,sprint.deliveryTaskCount)"></i></span></span>
+            <span class="history-undone">{{ sprint.deliveryUndoneCount }} Undone</span><span aria-hidden="true">→</span>
+          </a>
+        }
+      </div>
+      <footer class="history-footer"><span>Teslimat işleri · BAU hariç</span><span>Tüm geçmişte <strong>{{ view.undoneTasks }} Undone</strong></span></footer>
+    } @else { <div class="empty"><strong>Henüz tamamlanan sprint yok</strong>Sprint kapandığında sonuçları burada göreceksin.</div> }
+  </section>
+} @else if (error) { <div class="card empty" role="alert"><strong>Genel bakış yüklenemedi</strong>{{ error }}</div> }
+@else { <div class="loading" role="status">Genel bakış yükleniyor…</div> }

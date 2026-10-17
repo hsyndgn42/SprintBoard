@@ -1,0 +1,24 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),ts=require('../frontend/node_modules/typescript');
+const context={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync('frontend/src/app/planning-insights.model.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,context);
+const {planningInsights:run,assignmentPreview:preview}=context.exports;
+const row=(id,capacity,extra={})=>({memberId:id,memberName:id,availableHours:capacity,...extra});
+const a=(id,hours,x=false)=>({memberId:id,memberName:id,estimatedHours:hours,supportOnly:x});
+const task=(id,assignments=[],extra={})=>({id,name:id,workKind:'DEV',taskCategory:'DEV',type:'FEATURE',assignments,storyPoints:null,...extra});
+let checks=0;const eq=(a,b)=>{assert.deepEqual(JSON.parse(JSON.stringify(a)),b);checks++;};
+let model=run([task('dev',[a('A',48)])],[row('A',40),row('B',40)],'SIZE_AND_HOURS');
+eq(model.overHours,8);eq(model.freeHours,40);eq(model.overloaded,1);eq(model.attention,1);eq(model.checks.length,0);
+model=run([task('bau',[a('A',16)],{taskCategory:'BAU'}),task('leave',[a('A',100)],{workKind:'LEAVE'}),task('dev',[a('A',16),a('B',999,true)])],[row('A',24),row('B',0,{supportMember:true,allocationExplicit:false})],'SIZE_AND_HOURS');
+eq(model.overHours,8);eq(model.xCount,1);eq(model.people.find(p=>p.id==='B').attention,false);eq(model.people.find(p=>p.id==='B').hours,0);
+model=run([task('support',[a('S',8)])],[row('S',0,{supportMember:true,allocationExplicit:false})],'SIZE_AND_HOURS');
+eq(model.people[0].status,'Support için ayrılan gün girilmemiş');
+model=run([task('missing',[a('Z',8)])],[],'SIZE_AND_HOURS');eq(model.unknownHours,8);eq(model.overHours,0);eq(model.attention,1);
+model=run([task('empty'),task('zero',[a('A',0)]),task('x',[a('A',0,true)])],[],'SIZE_AND_HOURS');eq(model.checks.length,2);
+model=run([task('empty'),task('bau',[],{taskCategory:'BAU',storyPoints:99}),task('pointed',[],{storyPoints:5}),task('zero',[],{storyPoints:0}),task('negative',[],{storyPoints:-1})],[],'POINTS_AND_HOURS');
+eq(model.points,5);eq(model.pointed,2);eq(model.checks.find(c=>c.task.id==='empty').messages.length,2);eq(model.checks.find(c=>c.task.id==='bau').messages.length,1);
+const items=[task('a',[a('A',20)]),task('b',[a('A',10)])];const source=JSON.stringify(items);
+model=run(preview(items,'a',[a('A',5)]),[row('A',16)],'SIZE_AND_HOURS');eq(model.people[0].hours,15);eq(model.freeHours,1);eq(JSON.stringify(items),source);
+model=run(preview(items,'a',[a('A',0,true),a('B',8)]),[row('A',16),row('B',8)],'SIZE_AND_HOURS');eq(model.people.find(p=>p.id==='A').hours,10);eq(model.overHours,0);
+model=run([task('decimals',[a('A',.1),a('B',.2)])],[row('A',.1),row('B',.2)],'SIZE_AND_HOURS');eq(model.overHours,0);
+eq(run([],[],'SIZE_AND_HOURS').attention,0);
+console.log(checks+' planning model checks PASS: BAU, leave/X exclusions, separate free/over, unknown/Support capacity, missing estimates, SP mode and non-mutating draft replacement.');
+

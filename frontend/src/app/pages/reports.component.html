@@ -1,0 +1,93 @@
+<div class="page-head"><div><span class="eyebrow">İÇGÖRÜLER</span><h1>Raporlar</h1><p>Teslimat, iş dağılımı ve planlama.</p></div><button class="btn" [disabled]="loading||!!error||!defectReady()||!roadmapReady()||!trendReady()||!scopeReady()||!overtimeReady()" (click)="print()">Tüm raporlar PDF</button></div>
+    <p class="print-only data-note">Görünüm zamanı: {{ viewTime }}. Sprint karşılaştırması tamamlanan sprintleri, iş tipi ve Defect bölümleri kendi filtre kapsamlarını gösterir. Aktif sprint sonuçları kesin değildir. Seçili kişi/sprint kapasite trendi dahildir; hesaplar ve kişisel izin kayıtları bu çıktıda yoktur.</p>
+<div class="report-tabs" role="tablist" aria-label="Rapor türü" (keydown)="tabKey($event)">
+@for(tab of tabs;track tab.id){<button type="button" role="tab" [id]="'report-tab-'+tab.id" [attr.aria-controls]="'report-panel-'+tab.id" [attr.aria-selected]="activeTab===tab.id" [attr.tabindex]="activeTab===tab.id?0:-1" (click)="selectTab(tab.id)">{{tab.label}}</button>}
+</div>
+@if(loading){<p class="notice" role="status">Raporlar yükleniyor…</p>}
+<div class="report-tab-panel" id="report-panel-delivery" role="tabpanel" aria-labelledby="report-tab-delivery" [hidden]="activeTab!=='delivery'" tabindex="0">
+<div class="report-local-actions"><span>Bu sekmenin seçili kapsamını indir</span><div><button class="btn" [disabled]="loading||!!error" (click)="exportCsv('sprints')">CSV indir</button><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'delivery',rows:rows,scope:'Tüm tamamlanan sprintler',settings:settings}" /></div></div>
+    <div class="mini-metrics" style="margin-bottom:20px"><div><small>Tamamlanan sprint</small><strong>{{ rows.length }}</strong></div><div><small>Teslim edilen iş</small><strong>{{ totalDone }}</strong></div><div><small>Undone iş</small><strong>{{ totalUndone }}</strong></div></div>
+    @if (rows.length) { <div class="report-chart-grid">
+      <section class="card report-chart-panel"><div class="chart-heading"><span><span class="eyebrow">TREND</span><h2>Sprint teslimat oranı</h2><p>BAU hariç Done / tüm teslimat işleri</p></span><strong class="chart-kpi">Genel {{ averageDelivery === null ? '—' : averageDelivery + '%' }}</strong></div>
+        <svg class="delivery-chart" viewBox="0 0 720 240" role="img" aria-label="Tamamlanan sprintlerin teslimat oranı trendi">
+          @for (mark of [100,75,50,25]; track mark) { <line x1="48" x2="692" [attr.y1]="chartY(mark)" [attr.y2]="chartY(mark)" class="chart-grid-line"></line><text x="40" [attr.y]="chartY(mark)+3" text-anchor="end" class="chart-axis-label">{{ mark }}%</text> }
+          @if (averageDelivery !== null) { <line x1="48" x2="692" [attr.y1]="chartY(averageDelivery)" [attr.y2]="chartY(averageDelivery)" class="chart-average-line"></line> }
+          <polyline [attr.points]="deliveryTrendPoints" class="delivery-line"></polyline>
+          @for (row of chartRows; track row.id; let index = $index) { <g><circle [attr.cx]="chartX(index)" [attr.cy]="chartY(row.deliveryRate)" r="5" class="delivery-point"><title>{{ row.name }}: %{{ row.deliveryRate }}</title></circle><text [attr.x]="chartX(index)" [attr.y]="chartY(row.deliveryRate)-10" text-anchor="middle" class="chart-value-label">{{ row.deliveryRate }}</text><text [attr.x]="chartX(index)" y="222" text-anchor="middle" class="chart-axis-label">S{{ row.number }}</text></g> }
+        </svg><div class="chart-foot"><span><i class="legend-line"></i>Teslimat oranı</span><span><i class="legend-dash"></i>İş adedi ağırlıklı genel oran</span></div>
+      </section>
+      <section class="card report-chart-panel"><div class="chart-heading"><span><span class="eyebrow">KAPSAM</span><h2>{{ settings.estimationMode === 'SIZE_AND_HOURS' ? 'Size kompozisyonu' : 'Story Point hacmi' }}</h2><p>Son {{ recentChartRows.length }} tamamlanan sprint</p></span></div>
+        @if (settings.estimationMode === 'SIZE_AND_HOURS') { <div class="composition-chart" role="img" aria-label="Son sprintlerin Size kompozisyonu">
+          @for (row of recentChartRows; track row.id) { <div class="composition-row"><strong>S{{ row.number }}</strong><div class="composition-track" [attr.aria-label]="sizeText(row)"><span class="small" [style.width.%]="sizeSegment(row,row.sizeSmall)"></span><span class="medium" [style.width.%]="sizeSegment(row,row.sizeMedium)"></span><span class="large" [style.width.%]="sizeSegment(row,row.sizeLarge)"></span><span class="xlarge" [style.width.%]="sizeSegment(row,row.sizeXLarge)"></span></div><small>{{ row.tasks }} iş</small></div> }
+        </div><div class="chart-foot size-legend"><span><i class="small"></i>Small</span><span><i class="medium"></i>Medium</span><span><i class="large"></i>Large</span><span><i class="xlarge"></i>X-Large</span></div> }
+        @else { <div class="point-volume-chart">@for (row of recentChartRows; track row.id) { <div class="composition-row"><strong>S{{ row.number }}</strong><div class="point-volume-track"><span [style.width.%]="pointVolume(row)"></span></div><small>{{ row.storyPointsTotal }} SP</small></div> }</div> }
+      </section>
+    </div> }
+    <section class="card card-pad sprint-comparison"><div class="section-head"><div><span class="eyebrow">TESLİMAT TARİHİ</span><h2>Sprint karşılaştırması</h2><p class="data-note">Teslimat, Size ve SP değerleri BAU hariçtir. BAU dahil toplam kayıt ayrıca gösterilir; teslimat işi olmayan sprintte oran üretilmez.</p></div></div>
+      <app-list-pager #deliveryPager [items]="rows" label="Sprint karşılaştırması" />@if (rows.length) { <div class="table-wrap"><table class="sprint-report-table"><thead><tr><th>Sprint</th><th>Bitiş</th><th>İş</th><th>Done</th><th>Undone</th><th>Teslimat</th><th>{{ settings.estimationMode === 'SIZE_AND_HOURS' ? 'Size dağılımı' : 'Story Point' }}</th></tr></thead><tbody>
+        @for (row of deliveryPager.rows; track row.number) { <tr><td><a [routerLink]="['/sprints', row.id, 'review']"><strong>{{ row.name }}</strong></a></td><td>{{ formatDate(row.end) }}</td><td>{{ row.tasks }}<small>BAU dahil {{ row.allTasks }}</small></td><td>{{ row.done }}</td><td>{{ row.undone }}</td><td><strong>{{ row.deliveryRate === null ? '—' : row.deliveryRate + '%' }}</strong><div class="report-bar"><span [style.width.%]="row.deliveryRate"></span></div></td><td>@if (settings.estimationMode === 'SIZE_AND_HOURS') { <div class="size-distribution" [attr.aria-label]="sizeText(row)"><span class="size-chip small">S {{ row.sizeSmall }}</span><span class="size-chip medium">M {{ row.sizeMedium }}</span><span class="size-chip large">L {{ row.sizeLarge }}</span><span class="size-chip xlarge">XL {{ row.sizeXLarge }}</span></div> } @else { <strong>{{ row.storyPointsTotal }} SP</strong><small class="report-subtext">{{ row.pointedTasks }} işte kayıtlı</small> }</td></tr> }
+      </tbody></table></div> } @else { <div class="empty">Tamamlanan sprint bulunamadı.</div> }
+    </section>
+
+</div>
+<div class="report-tab-panel" id="report-panel-members" role="tabpanel" aria-labelledby="report-tab-members" [hidden]="activeTab!=='members'" tabindex="0">
+<div class="report-local-actions"><span>Bu sekmenin seçili kapsamını indir</span><div><button class="btn" [disabled]="loading||!!error" (click)="exportCsv('members')">CSV indir</button><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'members',rows:memberSummary,scope:memberScope,settings:settings}" /></div></div>
+    <section class="card card-pad member-report-section"><div class="section-head"><div><span class="eyebrow">EKİP GÖRÜNÜMÜ</span><h2>Kişi bazlı iş yükü ve teslimat</h2><span class="status">BAU dahil · Leave hariç kişi atamaları</span><p class="muted">Tamamlanan sprintlerde iş dağılımını kişinin kapasitesi, izni ve X destek katkısıyla birlikte değerlendirin.</p></div></div>
+      <div class="report-filters"><label class="field">Dönem<select [(ngModel)]="selectedSprint"><option value="">Tüm tamamlanan sprintler</option>@for (sprint of rows; track sprint.id) { <option [value]="sprint.id">{{ sprint.name }}</option> }</select></label>
+        <label class="field">Ekip üyesi ara<input [(ngModel)]="memberQuery" placeholder="İsim veya rol"></label>
+        <label class="field">Sıralama<select [(ngModel)]="memberSort"><option value="tasks">İş sayısı</option><option value="effort">Efor</option><option value="delivery">Done oranı</option><option value="name">İsim</option></select></label></div>
+      <p class="print-only data-note">Kişi dönemi: {{ memberPeriod }} · Arama: {{ memberQuery || 'Tüm kişiler' }} · Sıralama: {{ memberSortLabel }}. Ayrıntılı izin/kapasite geçmişi paylaşılmaz.</p>
+      <div class="member-report-metrics"><div><small>Görünen ekip üyesi</small><strong>{{ memberSummary.length }}</strong></div><div><small>İş ataması</small><strong>{{ memberTaskTotal }}</strong></div><div><small>Planlanan efor</small><strong>{{ memberEffortTotal }} sa</strong></div><div><small>Done oranı</small><strong>{{ memberTaskTotal ? memberDoneRate+'%' : '—' }}</strong></div></div>
+      @if (chartMembers.length) { <div class="team-delivery-chart"><div class="chart-heading compact"><span><h3>Ekip iş hacmi ve sonuç dağılımı</h3><p>Filtreye göre en çok iş ataması bulunan {{ chartMembers.length }} kişi</p></span><div class="chart-foot"><span><i class="done"></i>Done</span><span><i class="undone"></i>Undone</span><span><i class="other"></i>Diğer</span></div></div>
+        <div class="team-chart-rows">@for (member of chartMembers; track member.memberId) { <div class="team-chart-row"><strong>{{ member.memberName }}</strong><div class="team-volume-track"><div class="team-volume" [style.width.%]="memberVolume(member)"><span class="done" [style.width.%]="memberResult(member,member.done)"></span><span class="undone" [style.width.%]="memberResult(member,member.undone)"></span><span class="other" [style.width.%]="memberResult(member,member.other)"></span></div></div><small>{{ member.taskCount }} iş · {{ member.effortHours }} sa · {{ member.taskCount?deliveryRate(member)+'%':'—' }}</small></div> }</div>
+      </div> }
+      <app-list-pager #memberPager [items]="memberSummary" label="Kişi raporu" />@if (memberSummary.length) { <div class="table-wrap"><table class="member-report-table"><thead><tr><th>Ekip üyesi</th><th>İş ve efor</th><th>{{ settings.estimationMode === 'SIZE_AND_HOURS' ? 'Size dağılımı' : 'Story Point' }}</th><th>Sonuç</th><th>Done oranı</th></tr></thead><tbody>
+        @for (member of memberPager.rows; track member.memberId) { <tr><td><div class="report-person"><span class="member-avatar">{{ initials(member.memberName) }}</span><span><strong>{{ member.memberName }}</strong><small>{{ roleLabel(member.teamRole) }} · {{ engagementLabel(member.engagement) }}</small></span></div></td>
+          <td><strong>{{ member.taskCount }} iş</strong><small class="report-subtext">{{ member.effortHours }} saat planlanan efor</small><small class="report-subtext">{{ member.supportTaskCount }} X destek işi</small></td>
+          <td>@if (settings.estimationMode === 'SIZE_AND_HOURS') { <div class="size-distribution" [attr.aria-label]="sizeText(member)"><span class="size-chip small">S {{ member.sizeSmall }}</span><span class="size-chip medium">M {{ member.sizeMedium }}</span><span class="size-chip large">L {{ member.sizeLarge }}</span><span class="size-chip xlarge">XL {{ member.sizeXLarge }}</span></div> } @else { <strong>{{ member.storyPointsTotal }} SP</strong><small class="report-subtext">{{ member.pointedTasks }} işte kayıtlı</small> }</td>
+          <td><div class="result-distribution"><span class="result-done">{{ member.done }} Done</span><span class="result-undone">{{ member.undone }} Undone</span>@if (member.other) { <span>{{ member.other }} diğer</span> }</div></td>
+          <td><strong>{{ member.taskCount?deliveryRate(member)+'%':'—' }}</strong><div class="report-bar"><span [style.width.%]="deliveryRate(member)"></span></div></td></tr> }
+      </tbody></table></div> } @else { <div class="empty">Seçili filtrelerde atama kaydı bulunamadı.</div> }
+      <p class="data-note report-method-note">Bu görünüm bireysel performans puanı değildir; iş dağılımı ve teslimat kanıtıdır. Birden fazla kişiye atanan görev, her kişinin aldığı işlerde bir kez görünür; efor kişiye atanmış saat üzerinden hesaplanır.</p>
+    </section>
+
+</div>
+<div class="report-tab-panel" id="report-panel-context" role="tabpanel" aria-labelledby="report-tab-context" [hidden]="activeTab!=='context'" tabindex="0">
+<section class="card card-pad context-report-section">
+<div class="report-filters"><label class="field">Dönem<select [(ngModel)]="selectedSprint"><option value="">Tüm tamamlanan sprintler</option>@for(sprint of rows;track sprint.id){<option [value]="sprint.id">{{sprint.name}}</option>}</select></label>
+<label class="field">Ekip üyesi ara<input [(ngModel)]="memberQuery" placeholder="İsim veya rol"></label></div>
+@defer(on immediate){<app-member-context [rows]="contextRows" [scope]="memberScope" [loading]="loading||!!error" />}</section>
+</div>
+<div class="report-tab-panel" id="report-panel-types" role="tabpanel" aria-labelledby="report-tab-types" [hidden]="activeTab!=='types'" tabindex="0">
+<div class="report-local-actions"><span>Bu sekmenin seçili kapsamını indir</span><div><button class="btn" [disabled]="loading||!!error" (click)="exportCsv('types')">CSV indir</button><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'types',rows:filteredWorkTypeRows,scope:typePeriod}" /></div></div>
+    <section class="card card-pad taxonomy-report-section"><div class="section-head"><div><span class="eyebrow">İŞ PORTFÖYÜ</span><h2>İş tipi ve alt kırılım analizi</h2><span class="status">BAU dahil tüm işler</span><p class="muted">Teslimat, test, defect ve BAU yükünü aynı sınıflandırma üzerinden karşılaştırın.</p></div><label class="field report-period">Dönem<select [(ngModel)]="selectedTypeSprint"><option value="">Tüm sprintler</option>@for (sprint of typeSprintOptions; track sprint.id) { <option [value]="sprint.id">{{ sprint.name }} · {{ sprint.status }}</option> }</select></label></div>
+      <p class="print-only data-note">İş tipi dönemi: {{ typePeriod }}. BAU dahil; Leave eforu hariç.</p>
+      <div class="taxonomy-metrics"><div><small>Toplam iş</small><strong>{{ taxonomyTaskTotal }}</strong></div><div><small>Planlanan efor</small><strong>{{ taxonomyEffortTotal }} sa</strong></div><div><small>Done oranı</small><strong>{{ taxonomyTaskTotal ? taxonomyDoneRate+'%' : '—' }}</strong></div><div><small>Raporlanan kategori</small><strong>{{ workTypeSummary.length }}</strong></div></div>
+      @if (workTypeSummary.length) { <div class="taxonomy-overview-grid"><div class="taxonomy-donut-panel"><div class="taxonomy-donut" [style.background]="workTypeGradient" role="img" [attr.aria-label]="workTypeAriaLabel"><span><strong>{{ taxonomyTaskTotal }}</strong><small>iş</small></span></div><div class="taxonomy-legend">@for (row of workTypeSummary; track row.taskCategory) { <div><i [style.background]="row.color"></i><span><strong>{{ categoryLabel(row.taskCategory) }}</strong><small>{{ row.taskCount }} iş · {{ row.effortHours }} sa</small></span><b>{{ categoryShare(row) }}%</b></div> }</div></div>
+        <div class="taxonomy-category-bars">@for (row of workTypeSummary; track row.taskCategory) { <article><header><span><i [style.background]="row.color"></i><strong>{{ categoryLabel(row.taskCategory) }}</strong></span><span>{{ row.taskCount }} iş</span></header><div class="taxonomy-bar"><span [style.background]="row.color" [style.width.%]="categoryShare(row)"></span></div><footer><span>{{ row.effortHours }} sa efor</span><span>{{ row.done }} Done · {{ row.undone }} Undone</span></footer></article> }</div></div> }
+      @else { <div class="empty">Seçili dönemde iş tipi kaydı bulunamadı.</div> }
+      <div class="taxonomy-breakdown-grid">@for (category of detailCategories; track category) { <section class="taxonomy-breakdown"><div class="chart-heading compact"><span><span class="eyebrow">{{ categoryLabel(category) }}</span><h3>{{ breakdownTitle(category) }}</h3></span><strong>{{ categoryTaskCount(category) }} iş</strong></div>
+        @for (row of subtypeSummary(category); track row.taskSubtype) { <div class="subtype-row"><div><strong>{{ subtypeLabel(row.taskSubtype) }}</strong><span>{{ row.taskCount }} iş · {{ row.effortHours }} sa</span></div><div class="subtype-track"><span [style.background]="categoryColor(category)" [style.width.%]="subtypeBarWidth(category,row.taskCount)"></span></div><small>%{{ subtypeDoneRate(row) }} Done</small></div> } @empty { <p class="data-note">Bu kırılımda kayıt yok.</p> }
+      </section> }</div>
+      <p class="data-note report-method-note">Geçmiş kayıtlarda açıkça ayrıştırılamayan test işleri “Genel Test” olarak korunur; Test Defect veya Prod Defect tahmini yapılmaz. TEST, DEFECT ve BAU işlerinde alt kırılım zorunlu; DEV, DESIGN ve ANALYZE için isteğe bağlıdır.</p>
+    </section>
+
+</div>
+<div class="report-tab-panel" id="report-panel-roadmap" role="tabpanel" aria-labelledby="report-tab-roadmap" [hidden]="activeTab!=='roadmap'" tabindex="0">
+@defer(on immediate){<app-roadmap-report (readyChange)="roadmapReady.set($event)" />}
+</div>
+<div class="report-tab-panel" id="report-panel-capacity" role="tabpanel" aria-labelledby="report-tab-capacity" [hidden]="activeTab!=='capacity'" tabindex="0">
+@if(!loading&&!error){@defer(on immediate){<app-capacity-trend [members]="memberRows" [sprints]="rows" (readyChange)="trendReady.set($event)" />}}
+</div>
+<div class="report-tab-panel" id="report-panel-defects" role="tabpanel" aria-labelledby="report-tab-defects" [hidden]="activeTab!=='defects'" tabindex="0">
+@defer(on immediate){<app-defect-report (readyChange)="defectReady.set($event)" />}
+</div>
+    <div class="notice" style="margin-top:18px"><strong>Ölçüm notu</strong>{{ settings.estimationMode === 'SIZE_AND_HOURS' ? 'Ekip göreli tahminde Size, kapasite ve atamalarda saat kullanır. Size saatten türetilmez.' : 'Göreli tahmin Story Point ile, kapasite ve kişi atamaları saat ile izlenir. Story Point saatten türetilmez.' }}</div>
+    @if (error) { <p class="notice warn" role="alert">{{ error }}</p> }
+
+<div class="report-tab-panel" id="report-panel-scope" role="tabpanel" aria-labelledby="report-tab-scope" [hidden]="activeTab!=='scope'" tabindex="0">
+@defer(on immediate){<app-scope-report (readyChange)="scopeReady.set($event)" />}
+</div>
+<div class="report-tab-panel" id="report-panel-overtime" role="tabpanel" aria-labelledby="report-tab-overtime" [hidden]="activeTab!=='overtime'" tabindex="0">
+@defer(on immediate){<app-overtime-trend (readyChange)="overtimeReady.set($event)" />}
+</div>
