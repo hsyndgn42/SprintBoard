@@ -11,17 +11,25 @@
           <label class="field">Çalışma alanı kimliği<input name="slackTeam" [(ngModel)]="teamId" maxlength="40" placeholder="T…"></label>
           <label class="field">Defect kanal kimliği<input name="slackChannel" [(ngModel)]="channelId" maxlength="40" placeholder="C… veya G…"></label>
           <label class="field">Mesai kanal kimliği <span class="optional">İsteğe bağlı</span><input name="slackOvertimeChannel" [(ngModel)]="overtimeChannelId" maxlength="40" placeholder="C… veya G…"></label>
+          <label class="field">Backlog kanal kimliği <span class="optional">İsteğe bağlı</span><input name="slackBacklogChannel" [(ngModel)]="backlogChannelId" maxlength="40" placeholder="C… veya G…"></label>
         </div>
         <div class="token-grid">
           <label class="field">Bot token<input type="password" name="slackBotToken" [(ngModel)]="botToken" maxlength="1024" autocomplete="new-password" [placeholder]="status.botTokenConfigured?'Kaydedildi · değiştirmek için girin':'xoxb-…'"></label>
           <label class="field">App token<input type="password" name="slackAppToken" [(ngModel)]="appToken" maxlength="1024" autocomplete="new-password" [placeholder]="status.appTokenConfigured?'Kaydedildi · değiştirmek için girin':'xapp-…'"></label>
         </div>
         <p class="hint">Tokenlar şifreli saklanır. Boş bırakırsanız kayıtlı değerler korunur.</p>
+        <p class="hint">Geçerli backlog, defect ve mesai mesajları onay kuyruğuna kaydedilince Slack’te ✅ eklenir. Bu, yalnız “alındı” işaretidir; admin onayı veya işin tamamlanması değildir. Bot için reactions:write izni gerekir.</p>
       </section>
 
       <section class="settings-block" aria-labelledby="slack-templates-title">
         <div class="block-heading"><h3 id="slack-templates-title">Mesaj şablonları</h3><p>Kanala gönderilecek mesajların alanları ve formatı.</p></div>
         <div class="template-grid">
+          <article class="template-card">
+            <header><h4>Backlog iş isteği şablonu</h4><span class="template-badge">Düzenlenebilir</span></header>
+            <label class="sr-only" for="slack-backlog-template">Backlog mesaj şablonu</label>
+            <textarea id="slack-backlog-template" name="slackBacklogTemplate" [(ngModel)]="backlogTemplate" rows="8" maxlength="2000" spellcheck="false" aria-describedby="backlog-template-hint"></textarea>
+            <p id="backlog-template-hint" class="hint">Tür seçeneklerini ve örnek metinleri düzenleyebilirsiniz. Mesajda tek tür yazın. İstekler Backlog’da admin onayına düşer; sprinte otomatik alınmaz.</p>
+          </article>
           <article class="template-card">
             <header><h4>Defect şablonu</h4><span class="template-badge">Düzenlenebilir</span></header>
             <label class="sr-only" for="slack-defect-template">Defect mesaj şablonu</label>
@@ -45,6 +53,8 @@
       </footer>
     </form>
     @if(status.error){<p class="notice warn" role="alert">{{status.error}}</p>}
+    @if(status.receiptError){<p class="notice warn" role="alert">{{status.receiptError}}</p>}
+    @if(status.receiptPending){<p class="hint" role="status">Slack alındı tiki bekleyen: {{status.receiptPending}} mesaj</p>}
     @if(error){<p class="notice warn" role="alert">{{error}}</p>}
     @if(message){<p class="inline-success" role="status">{{message}}</p>}
     <details class="advanced-settings">

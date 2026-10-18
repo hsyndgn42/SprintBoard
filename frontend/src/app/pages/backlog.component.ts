@@ -1,6 +1,8 @@
 import {WorkItemActionComponent} from './work-item-action.component';
 import {BacklogHistoryComponent} from './backlog-history.component';
 import {SlackInboxComponent} from './slack-inbox.component';
+import {SlackBacklogInboxComponent} from './slack-backlog-inbox.component';
+import {FoldDirective} from '../fold.directive';
 import {BACKLOG_VIEWS,matchesBacklogView} from './backlog-view.model';
 import { ModalAccessibilityDirective } from '../modal-accessibility.directive';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
@@ -15,11 +17,11 @@ import { TASK_CATEGORIES, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, 
 
 @Component({
   standalone: true,
-  imports: [WorkItemActionComponent,SlackInboxComponent, BacklogHistoryComponent, ModalAccessibilityDirective, FormsModule, RouterLink, SprintAddDialogComponent, DefectFieldsComponent],
+  imports: [WorkItemActionComponent,SlackInboxComponent,SlackBacklogInboxComponent,FoldDirective, BacklogHistoryComponent, ModalAccessibilityDirective, FormsModule, RouterLink, SprintAddDialogComponent, DefectFieldsComponent],
   template: `
     <div class="page-head"><div><span class="eyebrow">İŞ HAVUZU</span><h1>Backlog</h1><p>Her backlog işi en fazla bir sprint görevine dönüşür; tekrarlar yeni ilişkili kayıt olur.</p></div>
       @if (auth.isAdmin()) { <div class="page-actions"><button class="btn primary" (click)="openCreate()">+ Yeni iş</button></div> }</div>
-    @if(auth.isAdmin()){@defer(on idle){<app-slack-inbox (changed)="load()" (openItem)="openSlackItem($event)" />}}
+    @if(auth.isAdmin()){@defer(on idle){<app-slack-backlog-inbox (changed)="load()" (openItem)="openSlackItem($event)" /><details appFold class="card card-pad" style="margin-bottom:18px"><summary class="section-head"><div><span class="eyebrow">SLACK · DEFECT</span><h2>Defect bildirimleri</h2></div></summary><app-slack-inbox (changed)="load()" (openItem)="openSlackItem($event)" /></details>}}
     <div class="card card-pad" style="margin-bottom:15px"><div class="form-grid backlog-filters">
       <label class="field">Ara<input type="search" [(ngModel)]="query" (ngModelChange)="resetPage()" placeholder="İş adı veya dış referans"></label>
       <label class="field">Görünüm<select aria-label="Backlog görünümü" [(ngModel)]="filter" (ngModelChange)="resetPage()">@for(view of views;track view.value){<option [value]="view.value">{{view.label}}</option>}</select></label>

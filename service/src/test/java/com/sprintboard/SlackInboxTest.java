@@ -34,11 +34,11 @@ class SlackInboxTest {
  @Test void encryptionPersistenceRestartStopForgetAndNoSecretsInExportOrStatus(){
   var c=config.load("T09TFUVTBQQ","C0C9AFXQB4M");config.save(c,SlackPreviewTest.BOT,SlackPreviewTest.APP);
   var stored=config.load(c.team(),c.channel());assertFalse(stored.bot().contains(SlackPreviewTest.BOT));assertEquals(SlackPreviewTest.BOT,new SlackSecretVault("",folder.resolve("key").toString()).decrypt(stored.bot()));
-  var transport=mock(SlackTransport.class);var service=new SlackPreviewService(transport,mapper,c.team(),c.channel(),"","",config,inbox,mock(SlackOvertimeService.class));
+  var transport=mock(SlackTransport.class);var service=new SlackPreviewService(transport,mapper,c.team(),c.channel(),"","",config,inbox,mock(SlackOvertimeService.class),mock(SlackBacklogService.class));
   try{assertEquals(true,service.status().get("botTokenConfigured"));assertFalse(service.status().toString().contains(SlackPreviewTest.BOT));service.stop(false);assertEquals(SlackPreviewTest.BOT,config.decrypt(config.load(c.team(),c.channel()).bot()));service.stop(true);assertEquals("",config.load(c.team(),c.channel()).bot());}finally{service.close();}
   assertFalse(mapper.valueToTree(backup.exportData()).path("tables").has("slack_config"));
   config.save(config.load(c.team(),c.channel()),SlackPreviewTest.BOT,SlackPreviewTest.APP);config.enabled(true);
-  var reopened=new SlackPreviewService(transport,mapper,c.team(),c.channel(),"","",config,inbox,mock(SlackOvertimeService.class));try{var f=SlackPreviewService.class.getDeclaredField("desired");f.setAccessible(true);assertTrue(f.getBoolean(reopened));}catch(Exception e){fail(e);}finally{reopened.close();}
+  var reopened=new SlackPreviewService(transport,mapper,c.team(),c.channel(),"","",config,inbox,mock(SlackOvertimeService.class),mock(SlackBacklogService.class));try{var f=SlackPreviewService.class.getDeclaredField("desired");f.setAccessible(true);assertTrue(f.getBoolean(reopened));}catch(Exception e){fail(e);}finally{reopened.close();}
   assertThrows(IllegalStateException.class,()->new SlackSecretVault(Base64.getEncoder().encodeToString(new byte[32]),folder.resolve("unused").toString()).decrypt(stored.bot()));
  }
  @Test void approvalOnceAndDurableDuplicateProtectionAndRejectDoNotCreateWork(){

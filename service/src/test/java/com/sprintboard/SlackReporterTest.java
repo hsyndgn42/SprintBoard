@@ -30,8 +30,10 @@ class SlackReporterTest {
   when(transport.call(eq("users.info"),anyString(),anyMap())).thenReturn(mapper.readTree("{\"ok\":true,\"user\":{\"id\":\"UTEST123\",\"profile\":{\"real_name\":\"Elçim Öneç\",\"display_name\":\"nick\"}}}"));
   resolver.tick();assertEquals("Elçim Öneç",db.queryForObject("SELECT reporter_name FROM defect_detail WHERE backlog_id='name-test'",String.class));
   new SlackOvertimeService(db,mapper,null).accept("TTEST123","COT12345","1.3","UTEST123",SlackOvertimeParser.EXAMPLE,1);
+  new SlackBacklogService(db,mapper,null).accept("TTEST123","CBACK123","1.4","UTEST123",SlackBacklogTest.TEXT,SlackBacklogParser.DEFAULT_TEMPLATE,1);
   receive("1.2");resolver.tick();assertEquals("Elçim Öneç",db.queryForObject("SELECT reporter_name FROM slack_overtime_inbox",String.class));assertEquals(2,db.queryForObject("SELECT COUNT(*) FROM slack_inbox WHERE reporter_name='Elçim Öneç'",Integer.class));
   verify(transport,times(1)).call(eq("users.info"),anyString(),anyMap());
+  assertEquals("Elçim Öneç",db.queryForObject("SELECT reporter_name FROM slack_backlog_inbox",String.class));
   var details=new DefectService(db);details.save("name-test",Map.of("severity","LOW","environment","SAT","reporterName","forged"));
   assertEquals("Elçim Öneç",details.all().get("name-test").get("reporterName"));
   var backups=new BackupService(db,mapper.findAndRegisterModules(),folder.resolve("backup").toString());

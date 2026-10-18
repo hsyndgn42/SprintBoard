@@ -10,20 +10,22 @@ import java.util.concurrent.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-/** Receives only into a durable approval inbox. Never creates tasks or sends Slack messages. */
+/** Receives into a durable approval inbox; receipt reactions run separately, after commit. */
 @Service
 public class SlackPreviewService {
   private final SlackTransport transport;private final ObjectMapper mapper;private String team,channel,template,overtimeChannel;private int version;
-  private final SlackConfigStore configs;private final SlackInboxService inbox;private final SlackOvertimeService overtime;
+  private final SlackConfigStore configs;private final SlackInboxService inbox;private final SlackOvertimeService overtime;private final SlackBacklogService backlog;
+  private String backlogChannel,backlogTemplate;
   private final ScheduledExecutorService executor=Executors.newSingleThreadScheduledExecutor(r->{Thread t=new Thread(r,"slack-preview");t.setDaemon(true);return t;});
   private String botToken,appToken,state="STOPPED",error="",lastReceived="",connectedAt="",credentialSource;
   private boolean desired,connecting,closed;private long generation,nextAttempt,lastFrame,lastPing;private WebSocket socket;
   @Value("${sprintboard.slack.worker-enabled:true}") private boolean workerEnabled=true;
   public SlackPreviewService(SlackTransport transport,ObjectMapper mapper,
       @Value("${sprintboard.slack.team-id:}") String team,@Value("${sprintboard.slack.channel-id:}") String channel,
-      @Value("${sprintboard.slack.bot-token:}") String botToken,@Value("${sprintboard.slack.app-token:}") String appToken,SlackConfigStore configs,SlackInboxService inbox,SlackOvertimeService overtime){
-    this.transport=transport;this.mapper=mapper;this.configs=configs;this.inbox=inbox;this.overtime=overtime;
+      @Value("${sprintboard.slack.bot-token:}") String botToken,@Value("${sprintboard.slack.app-token:}") String appToken,SlackConfigStore configs,SlackInboxService inbox,SlackOvertimeService overtime,SlackBacklogService backlog){
+    this.transport=transport;this.mapper=mapper;this.configs=configs;this.inbox=inbox;this.overtime=overtime;this.backlog=backlog;
     var stored=configs.load(team,channel);this.team=stored.team();this.channel=stored.channel();this.template=stored.template();this.version=stored.version();this.overtimeChannel=stored.overtimeChannel();this.botToken="";this.appToken="";
+    this.backlogChannel=stored.backlogChannel();this.backlogTemplate=stored.backlogTemplate();
     if((!this.team.isBlank()&&!this.team.matches("T[A-Z0-9]{5,30}"))||(!this.channel.isBlank()&&!this.channel.matches("[CG][A-Z0-9]{5,30}")))throw new IllegalArgumentException("Slack workspace/kanal kimliği geçersiz.");
     try{this.botToken=version>0?configs.decrypt(stored.bot()):botToken;this.appToken=version>0?configs.decrypt(stored.app()):appToken;desired=stored.enabled()&&!this.botToken.isBlank()&&!this.appToken.isBlank();}catch(IllegalStateException e){error=e.getMessage();}
     credentialSource=version>0?"DATABASE":botToken.isBlank()&&appToken.isBlank()?"NONE":"ENVIRONMENT";
@@ -32,7 +34,8 @@ public class SlackPreviewService {
   @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
   public void ready(){executor.execute(this::tick);}
   public synchronized Map<String,Object> status(){
-    var r=new LinkedHashMap<String,Object>();r.put("mode","ADMIN_APPROVAL");r.put("teamId",team);r.put("channelId",channel);r.put("overtimeChannelId",overtimeChannel);r.put("overtimeTemplate",SlackOvertimeParser.EXAMPLE);r.put("template",template);r.put("version",version);r.put("state",state);r.put("error",error);r.put("botTokenConfigured",!botToken.isBlank());r.put("appTokenConfigured",!appToken.isBlank());r.put("credentialSource",credentialSource);r.put("connectedAt",connectedAt);r.put("lastReceivedAt",lastReceived);return r;
+    // Channel configuration is shared by the single Socket Mode connection.
+    var r=new LinkedHashMap<String,Object>();r.put("mode","ADMIN_APPROVAL");r.put("teamId",team);r.put("channelId",channel);r.put("backlogChannelId",backlogChannel);r.put("backlogTemplate",backlogTemplate);r.put("overtimeChannelId",overtimeChannel);r.put("overtimeTemplate",SlackOvertimeParser.EXAMPLE);r.put("template",template);r.put("version",version);r.put("state",state);r.put("error",error);r.put("botTokenConfigured",!botToken.isBlank());r.put("appTokenConfigured",!appToken.isBlank());r.put("credentialSource",credentialSource);r.put("connectedAt",connectedAt);r.put("lastReceivedAt",lastReceived);return r;
   }
   public synchronized Map<String,Object> save(Map<String,Object> input){return configure(input,false);}
   private Map<String,Object> configure(Map<String,Object> input,boolean enable){
@@ -41,10 +44,14 @@ public class SlackPreviewService {
     String nextOvertime=Objects.toString(input.get("overtimeChannelId"),overtimeChannel).trim();
     if(!nextOvertime.isBlank()&&(!nextOvertime.matches("[CG][A-Z0-9]{5,30}")||nextOvertime.equals(nextChannel)))throw new IllegalArgumentException("Mesai kanalı ayrı bir C… veya G… kimliği olmalı.");
     SlackDefectParser.template(nextTemplate);
+    String nextBacklog=Objects.toString(input.get("backlogChannelId"),backlogChannel).trim(),nextBacklogTemplate=Objects.toString(input.get("backlogTemplate"),backlogTemplate);
+    if(!nextBacklog.isBlank()&&(!nextBacklog.matches("[CG][A-Z0-9]{5,30}")||nextBacklog.equals(nextChannel)||nextBacklog.equals(nextOvertime)))throw new IllegalArgumentException("Backlog kanalı defect ve mesaiden ayrı bir C… veya G… kimliği olmalı.");
+    SlackBacklogParser.template(nextBacklogTemplate);
     if(input.containsKey("version")&&(!(input.get("version") instanceof Number n)||n.intValue()!=version))throw new IllegalArgumentException("Ayarlar değişti; sayfayı yenileyin.");
     String bot=token(input,"botToken",botToken,"xoxb-"),app=token(input,"appToken",appToken,"xapp-");
     if(enable&&(bot.isBlank()||app.isBlank()))throw new IllegalArgumentException("Bot token ve App token gerekli.");
-    int saved=configs.save(new SlackConfigStore.Config(nextTeam,nextChannel,nextTemplate,"","",enable,version,nextOvertime),bot,app);
+    int saved=configs.save(new SlackConfigStore.Config(nextTeam,nextChannel,nextTemplate,"","",enable,version,nextOvertime,nextBacklog,nextBacklogTemplate),bot,app);
+    backlogChannel=nextBacklog;backlogTemplate=nextBacklogTemplate;
     stopInternal();overtimeChannel=nextOvertime;team=nextTeam;channel=nextChannel;template=nextTemplate;version=saved;botToken=bot;appToken=app;credentialSource="DATABASE";state="STOPPED";error="";
     return status();
   }
@@ -62,7 +69,7 @@ public class SlackPreviewService {
   private void stopInternal(){desired=false;connecting=false;generation++;connectedAt="";if(socket!=null){socket.abort();socket=null;}}
   private void tick(){
     if(!workerEnabled)return;
-    long epoch;String bot,app,expectedTeam,expectedChannel,expectedOvertime;
+    long epoch;String bot,app,expectedTeam,expectedChannel,expectedOvertime,expectedBacklog;
     synchronized(this){
       if(!desired||closed)return;
       long now=System.currentTimeMillis();
@@ -72,7 +79,7 @@ public class SlackPreviewService {
         return;
       }
       if(connecting||now<nextAttempt)return;
-      connecting=true;state="CONNECTING";epoch=++generation;bot=botToken;app=appToken;expectedTeam=team;expectedChannel=channel;expectedOvertime=overtimeChannel;
+      connecting=true;state="CONNECTING";epoch=++generation;bot=botToken;app=appToken;expectedTeam=team;expectedChannel=channel;expectedOvertime=overtimeChannel;expectedBacklog=backlogChannel;
     }
     try{
       JsonNode auth=transport.call("auth.test",bot,Map.of());
@@ -80,6 +87,7 @@ public class SlackPreviewService {
       // Verify access without importing historical messages. Do not retain the API result.
       transport.call("conversations.history",bot,Map.of("channel",expectedChannel,"limit","1"));
       if(!expectedOvertime.isBlank())transport.call("conversations.history",bot,Map.of("channel",expectedOvertime,"limit","1"));
+      if(!expectedBacklog.isBlank())transport.call("conversations.history",bot,Map.of("channel",expectedBacklog,"limit","1"));
       String url=transport.call("apps.connections.open",app,Map.of()).path("url").asText();
       synchronized(this){if(epoch!=generation||!desired)return;}
       WebSocket ws=transport.open(url,new Listener(epoch));
@@ -98,12 +106,13 @@ public class SlackPreviewService {
     if(type.equals("disconnect")){fail(epoch,"Slack bağlantıyı yeniliyor; yeniden bağlanılacak.");return;}
     if(!type.equals("events_api"))return;
     JsonNode payload=envelope.path("payload"),event=payload.path("event");
-    if(!team.equals(payload.path("team_id").asText())||(!channel.equals(event.path("channel").asText())&&!overtimeChannel.equals(event.path("channel").asText()))||!"message".equals(event.path("type").asText()))return;
+    if(!team.equals(payload.path("team_id").asText())||(!channel.equals(event.path("channel").asText())&&!overtimeChannel.equals(event.path("channel").asText())&&!backlogChannel.equals(event.path("channel").asText()))||!"message".equals(event.path("type").asText()))return;
     if(event.hasNonNull("bot_id")||event.hasNonNull("subtype")||event.hasNonNull("thread_ts"))return;
     String text=event.path("text").asText(),ts=event.path("ts").asText(),user=event.path("user").asText();
     if(!ts.matches("[0-9]{10,16}\\.[0-9]{1,10}")||!user.matches("[UW][A-Z0-9]{5,30}"))return;
     if(channel.equals(event.path("channel").asText())&&SlackDefectParser.matches(text))inbox.accept(team,channel,ts,user,text,template,version);
     else if(!overtimeChannel.isBlank()&&overtimeChannel.equals(event.path("channel").asText())&&SlackOvertimeParser.matches(text,overtimeChannel))overtime.accept(team,overtimeChannel,ts,user,text,version);
+    else if(!backlogChannel.isBlank()&&backlogChannel.equals(event.path("channel").asText())&&SlackBacklogParser.matches(text,backlogChannel))backlog.accept(team,backlogChannel,ts,user,text,backlogTemplate,version);
     else return;
     lastReceived=Instant.now().toString();
   }

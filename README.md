@@ -46,6 +46,16 @@ Varsayılan testler özel veri gerektirmez ve boş kurulum testini kapsar. Eski 
 
 Windows’ta çalışan JAR paketlemeyi kilitleyebilir. Güncellemede önce yedek alın, servisi kontrollü durdurun, paketi oluşturun ve **aynı DB yolu** ile yeniden açın. Başlatıcı DB varlığını zorunlu tutar. Güncelleme için DB dosyasını, seed’i veya geçmiş migration dosyalarını değiştirmeyin.
 
+### Mevcut kurulumu güncelleme
+
+1. Ayarlar’dan **Şimdi yedek al** ile tam yedek alın ve başarılı olduğunu kontrol edin.
+2. Servisi durdurun. Mevcut kurulumun Git klasöründe `git status` ile yerel değişiklikleri kontrol edin; değişiklik varsa zorla sıfırlamayın.
+3. `git pull --ff-only origin master` ve ardından `mvn package` çalıştırın. Komutlardan biri hata verirse sonraki adıma geçmeyin.
+4. Derleme başarılıysa Windows’ta `start-sprintboard.cmd` ile veya mevcut servis tanımınızla yeniden başlatın. Aynı çalışma dizinini, DB yolunu ve Slack şifreleme anahtarını koruyun.
+5. Yeni veritabanı migration’ları açılışta otomatik uygulanır; JSON’u yeniden import etmek veya ilk kurulumu çalıştırmak gerekmez. Sprintler, hesaplar ve kayıtlı ayarlar korunur. Arayüzü yenileyin ve verileri kontrol edin.
+
+Slack backlog kanal kimliği kurulumun kendi ayarıdır; Git ile taşınmaz. Güncelleme sonrası **Ayarlar → Slack entegrasyonu** bölümünden backlog kanalını ve şablonu kaydedip **Kaydet ve dinle** seçin. Bot bu kanala eklenmiş olmalı; alındı tiki için `reactions:write` izni gerekir. Aynı Slack uygulamasını dinleyen ikinci bir SprintBoard kopyasını açık bırakmayın; mesajlar kopyalar arasında paylaşılabilir.
+
 Ek kontroller:
 
 ```powershell

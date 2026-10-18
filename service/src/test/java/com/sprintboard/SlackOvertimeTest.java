@@ -17,7 +17,7 @@ class SlackOvertimeTest {
  @Autowired SlackOvertimeService service;@Autowired JdbcTemplate db;@Autowired BackupService backup;@Autowired ObjectMapper mapper;@Autowired WorkspaceService workspace;
  String member,sprint;LocalDate date;int serial;
  @BeforeEach void setup(){
-  db.update("DELETE FROM slack_overtime_inbox");db.update("DELETE FROM slack_member_link");
+  db.update("DELETE FROM slack_receipt_reaction");db.update("DELETE FROM slack_overtime_inbox");db.update("DELETE FROM slack_member_link");
   member="ot-member-"+UUID.randomUUID();sprint="ot-sprint-"+UUID.randomUUID();date=LocalDate.now(ZoneId.of("Europe/Istanbul")).minusDays(1);
   db.update("INSERT INTO member(id,name,title,role,team_role,engagement,active) VALUES(?, 'Ada Yılmaz','Tester','TEST_ENGINEER','TESTER','CORE',TRUE)",member);
   db.update("INSERT INTO member_participation(id,member_id,closed) VALUES(?,?,FALSE)",UUID.randomUUID().toString(),member);

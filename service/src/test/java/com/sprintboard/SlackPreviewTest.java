@@ -15,18 +15,19 @@ class SlackPreviewTest {
   final ObjectMapper mapper=new ObjectMapper();
   SlackPreviewService service;FakeSlack transport;
   final SlackOvertimeService overtime=mock(SlackOvertimeService.class);
+  final SlackBacklogService backlog=mock(SlackBacklogService.class);
   final Map<String,Map<String,Object>> received=new LinkedHashMap<>();
   SlackPreviewService create(String bot,String app){
     var config=mock(SlackConfigStore.class);when(config.load(anyString(),anyString())).thenReturn(new SlackConfigStore.Config("T09TFUVTBQQ","C0C9AFXQB4M",SlackDefectParser.DEFAULT_TEMPLATE,"","",false,0));when(config.save(any(),anyString(),anyString())).thenReturn(1);
     var inbox=mock(SlackInboxService.class);doAnswer(a->{String key=a.getArgument(2);received.putIfAbsent(key,SlackDefectParser.parse(a.getArgument(4),a.getArgument(5)));return null;}).when(inbox).accept(anyString(),anyString(),anyString(),anyString(),anyString(),anyString(),anyInt());
-    return new SlackPreviewService(transport,mapper,"T09TFUVTBQQ","C0C9AFXQB4M",bot,app,config,inbox,overtime);
+    return new SlackPreviewService(transport,mapper,"T09TFUVTBQQ","C0C9AFXQB4M",bot,app,config,inbox,overtime,backlog);
   }
   class FakeSlack extends SlackTransport {
     volatile WebSocket.Listener listener;volatile boolean wrongTeam;volatile String failure="";volatile int opened;volatile int acknowledgements;WebSocket ws=mock(WebSocket.class);
     FakeSlack(){super(mapper);when(ws.sendText(anyString(),eq(true))).thenAnswer(a->{acknowledgements++;return CompletableFuture.completedFuture(ws);});when(ws.sendPing(any())).thenReturn(CompletableFuture.completedFuture(ws));}
     @Override public JsonNode call(String method,String token,Map<String,String> input){
       if(!failure.isEmpty())throw new IllegalStateException(failure);
-      return switch(method){case "auth.test"->mapper.valueToTree(Map.of("ok",true,"team_id",wrongTeam?"TOTHER99":"T09TFUVTBQQ","bot_id","B123456"));case "conversations.history"->{assertTrue(Set.of("C0C9AFXQB4M","C0CA3PMA1Q9").contains(input.get("channel")));yield mapper.valueToTree(Map.of("ok",true));}case "apps.connections.open"->mapper.valueToTree(Map.of("ok",true,"url","wss://wss-primary.slack.com/link?ticket=secret"));default->throw new AssertionError("Unexpected API: "+method);};
+      return switch(method){case "auth.test"->mapper.valueToTree(Map.of("ok",true,"team_id",wrongTeam?"TOTHER99":"T09TFUVTBQQ","bot_id","B123456"));case "conversations.history"->{assertTrue(Set.of("C0C9AFXQB4M","C0CA3PMA1Q9","CBACK123").contains(input.get("channel")));yield mapper.valueToTree(Map.of("ok",true));}case "apps.connections.open"->mapper.valueToTree(Map.of("ok",true,"url","wss://wss-primary.slack.com/link?ticket=secret"));default->throw new AssertionError("Unexpected API: "+method);};
     }
     @Override public WebSocket open(String url,WebSocket.Listener l){listener=l;opened++;l.onOpen(ws);l.onText(ws,"{\"type\":\"hello\"}",true);return ws;}
     void send(String text)throws Exception{listener.onText(ws,text,true);}
@@ -84,5 +85,22 @@ class SlackPreviewTest {
     assertEquals("wss",SlackTransport.socketUri("wss://wss-primary.slack.com/link?ticket=x").getScheme());
     for(String u:List.of("ws://wss.slack.com","wss://slack.com.evil.test","wss://localhost","wss://user@wss.slack.com","https://wss.slack.com","wss://wss.slack.com:444"))assertThrows(IllegalStateException.class,()->SlackTransport.socketUri(u));
     assertFalse(SlackTransport.error(BOT).contains(BOT));
+  }
+  @Test void backlogOnlyRoutesNewHumanMessagesFromItsConfiguredChannel()throws Exception{
+    start();service.start(Map.of("backlogChannelId","CBACK123"));waitFor(()->"CONNECTED".equals(service.status().get("state")));
+    String text=SlackBacklogTest.TEXT;
+    transport.send(envelope("T09TFUVTBQQ",event("C0C9AFXQB4M","1792180000.1",text)));
+    transport.send(envelope("TOTHER99",event("CBACK123","1792180000.2",text)));
+    var bot=event("CBACK123","1792180000.3",text);bot.put("bot_id","B123456");transport.send(envelope("T09TFUVTBQQ",bot));
+    var reply=event("CBACK123","1792180000.4",text);reply.put("thread_ts","1792180000.1");transport.send(envelope("T09TFUVTBQQ",reply));
+    var edit=event("CBACK123","1792180000.5",text);edit.put("subtype","message_changed");transport.send(envelope("T09TFUVTBQQ",edit));
+    verifyNoInteractions(backlog);transport.send(envelope("T09TFUVTBQQ",event("CBACK123","1792180000.6",text)));
+    verify(backlog).accept(eq("T09TFUVTBQQ"),eq("CBACK123"),eq("1792180000.6"),eq("U123456"),eq(text),eq(SlackBacklogParser.DEFAULT_TEMPLATE),anyInt());
+    verifyNoInteractions(overtime);assertTrue(previews().isEmpty());
+  }
+  @Test void backlogIntakeFailureDoesNotAcknowledgeMessage()throws Exception{
+    start();service.start(Map.of("backlogChannelId","CBACK123"));waitFor(()->"CONNECTED".equals(service.status().get("state")));
+    doThrow(new IllegalStateException("DB failure")).when(backlog).accept(anyString(),anyString(),anyString(),anyString(),anyString(),anyString(),anyInt());
+    int before=transport.acknowledgements;transport.send(envelope("T09TFUVTBQQ",event("CBACK123","1792180000.7",SlackBacklogTest.TEXT)));assertEquals(before,transport.acknowledgements);assertEquals("RETRYING",service.status().get("state"));
   }
 }

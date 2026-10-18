@@ -25,9 +25,9 @@ public class SlackReporterService {
   var c=configs.load("","");if(c.bot().isBlank()||!c.enabled())return;
   if(c.version()!=version){version=c.version();verifiedTeam="";nextAttempt=0;unavailable.clear();error="";}
   if(System.currentTimeMillis()<nextAttempt)return;
-  var users=db.queryForList("SELECT user_id FROM slack_inbox WHERE team_id=? AND reporter_name IS NULL UNION SELECT reporter_id FROM defect_detail WHERE reporter_team_id=? AND reporter_name IS NULL AND reporter_id IS NOT NULL UNION SELECT user_id FROM slack_overtime_inbox WHERE team_id=? AND reporter_name IS NULL ORDER BY 1 LIMIT 1000",String.class,c.team(),c.team(),c.team());
+  var users=db.queryForList("SELECT user_id FROM slack_inbox WHERE team_id=? AND reporter_name IS NULL UNION SELECT reporter_id FROM defect_detail WHERE reporter_team_id=? AND reporter_name IS NULL AND reporter_id IS NOT NULL UNION SELECT user_id FROM slack_overtime_inbox WHERE team_id=? AND reporter_name IS NULL UNION SELECT user_id FROM slack_backlog_inbox WHERE team_id=? AND reporter_name IS NULL ORDER BY 1 LIMIT 1000",String.class,c.team(),c.team(),c.team(),c.team());
   if(users.isEmpty()){error="";return;}var candidates=users.stream().filter(u->unavailable.getOrDefault(u,0L)<=System.currentTimeMillis()).toList();if(candidates.isEmpty())return;String user=candidates.getFirst();
-  var cached=db.queryForList("SELECT reporter_name FROM slack_inbox WHERE team_id=? AND user_id=? AND reporter_name IS NOT NULL UNION SELECT reporter_name FROM defect_detail WHERE reporter_team_id=? AND reporter_id=? AND reporter_name IS NOT NULL UNION SELECT reporter_name FROM slack_overtime_inbox WHERE team_id=? AND user_id=? AND reporter_name IS NOT NULL LIMIT 1",String.class,c.team(),user,c.team(),user,c.team(),user);
+  var cached=db.queryForList("SELECT reporter_name FROM slack_inbox WHERE team_id=? AND user_id=? AND reporter_name IS NOT NULL UNION SELECT reporter_name FROM defect_detail WHERE reporter_team_id=? AND reporter_id=? AND reporter_name IS NOT NULL UNION SELECT reporter_name FROM slack_overtime_inbox WHERE team_id=? AND user_id=? AND reporter_name IS NOT NULL UNION SELECT reporter_name FROM slack_backlog_inbox WHERE team_id=? AND user_id=? AND reporter_name IS NOT NULL LIMIT 1",String.class,c.team(),user,c.team(),user,c.team(),user,c.team(),user);
   String name;
   if(!cached.isEmpty())name=cached.getFirst();
   else {
@@ -46,6 +46,7 @@ public class SlackReporterService {
   transaction.executeWithoutResult(s->{
    db.update("UPDATE slack_inbox SET reporter_name=? WHERE team_id=? AND user_id=? AND reporter_name IS NULL",resolved,c.team(),user);
    db.update("UPDATE slack_overtime_inbox SET reporter_name=? WHERE team_id=? AND user_id=? AND reporter_name IS NULL",resolved,c.team(),user);
+   db.update("UPDATE slack_backlog_inbox SET reporter_name=? WHERE team_id=? AND user_id=? AND reporter_name IS NULL",resolved,c.team(),user);
    db.update("UPDATE defect_detail SET reporter_name=? WHERE reporter_team_id=? AND reporter_id=? AND reporter_name IS NULL",resolved,c.team(),user);
   });error="";
  }

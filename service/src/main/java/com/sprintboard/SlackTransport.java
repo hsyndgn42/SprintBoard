@@ -17,7 +17,7 @@ public class SlackTransport {
   public SlackTransport(ObjectMapper mapper){this.mapper=mapper;}
   @jakarta.annotation.PreDestroy public void close(){http.shutdownNow();}
   public JsonNode call(String method,String token,Map<String,String> fields){
-    if(!Set.of("auth.test","conversations.history","apps.connections.open","users.info","files.getUploadURLExternal","files.completeUploadExternal").contains(method))throw new IllegalArgumentException("Slack işlemi desteklenmiyor.");
+    if(!Set.of("auth.test","conversations.history","apps.connections.open","users.info","files.getUploadURLExternal","files.completeUploadExternal","reactions.add").contains(method))throw new IllegalArgumentException("Slack işlemi desteklenmiyor.");
     String form=fields.entrySet().stream().map(e->URLEncoder.encode(e.getKey(),StandardCharsets.UTF_8)+"="+URLEncoder.encode(e.getValue(),StandardCharsets.UTF_8)).collect(java.util.stream.Collectors.joining("&"));
     try{
       var request=HttpRequest.newBuilder(URI.create("https://slack.com/api/"+method)).timeout(Duration.ofSeconds(15)).header("Authorization","Bearer "+token).header("Content-Type","application/x-www-form-urlencoded").POST(HttpRequest.BodyPublishers.ofString(form)).build();
@@ -26,15 +26,19 @@ public class SlackTransport {
         if(response.statusCode()==429)throw new IllegalStateException("Slack istek sınırı; en az bir dakika sonra tekrar deneyin.");
         if(response.statusCode()!=200)throw new IllegalStateException("Slack HTTP bağlantısı başarısız.");
         byte[] data=body.readNBytes(262145);if(data.length>262144)throw new IllegalStateException("Slack yanıtı sınırı aştı.");
-        JsonNode json=mapper.readTree(data);if(!json.path("ok").asBoolean())throw new IllegalStateException(error(json.path("error").asText()));return json;
+        return checkedResponse(method,mapper.readTree(data));
       }
     }catch(InterruptedException e){Thread.currentThread().interrupt();throw new IllegalStateException("Slack bağlantısı durduruldu.");}
     catch(IllegalStateException e){throw e;}
     catch(Exception e){throw new IllegalStateException("Slack'e bağlanılamadı. Ağ/proxy, TLS ve token ayarlarını kontrol edin.");}
   }
+  static JsonNode checkedResponse(String method,JsonNode json){
+    if(!json.path("ok").asBoolean()&&!("reactions.add".equals(method)&&"already_reacted".equals(json.path("error").asText())))throw new IllegalStateException(error(json.path("error").asText()));
+    return json;
+  }
   static String error(String code){return switch(code){
     case "invalid_auth","not_authed","token_revoked","account_inactive"->"Slack token geçersiz veya iptal edilmiş.";
-    case "missing_scope","not_allowed_token_type"->"Slack token yetkisi uygun değil. HTML için files:write; okuma için kanal izinleri; Socket Mode için connections:write gerekir. İzin sonrası Reinstall to Workspace yapın.";
+    case "missing_scope","not_allowed_token_type"->"Slack token yetkisi uygun değil. Alındı tiki için reactions:write; HTML için files:write; okuma için kanal izinleri; Socket Mode için connections:write gerekir. İzin sonrası Reinstall to Workspace yapın.";
     case "not_in_channel","channel_not_found"->"Kanal okunamıyor. Botu seçili kanala ekleyin ve kanal iznini kontrol edin.";
     case "not_allowed"->"Slack yönetim politikası bağlantıya izin vermiyor.";
     default->"Slack isteği reddetti; uygulama izinlerini kontrol edin.";};}

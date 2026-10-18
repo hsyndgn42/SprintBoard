@@ -26,8 +26,13 @@ module.exports=async({evaluate,command,navigate,clickButton,setFieldValue,sleep,
  assert.equal((await api('/sprints/'+sprint.id+'/capacity')).find(r=>r.memberId===member.id).workingDays,15);
  const task=await api('/sprints/'+sprint.id+'/tasks/new',{title:'UI delivery task',criteria:'Test acceptance',taskCategory:'DEV',workKind:'DEVELOPMENT',type:'TASK',estimatedHours:8,size:'SMALL',readinessAcknowledged:true,assignments:[{memberId:member.id,estimatedHours:8,supportOnly:false}]});
  await api('/sprints/'+sprint.id+'/start',{});await api('/self/tasks/'+task.id+'/notes',{date:'2026-10-16',message:'Günlük görünürlük testi'});
+ const reserve=await api('/sprints/'+sprint.id+'/tasks/new',{title:'UI Defect Support',taskCategory:'BAU',taskSubtype:'DEFECT_SUPPORT',size:'SMALL',estimatedHours:0,readinessAcknowledged:true,reason:'QA',assignments:[{memberId:member.id,estimatedHours:8,supportOnly:false}]});
+ const defect=await api('/sprints/'+sprint.id+'/tasks/new',{title:'UI one-hour defect',taskCategory:'DEFECT',taskSubtype:'TEST_DEFECT',size:'SMALL',estimatedHours:0,readinessAcknowledged:true,reason:'QA',reserveTaskId:reserve.id,assignments:[{memberId:member.id,estimatedHours:1,supportOnly:false}]});
  await navigate('sprints/'+sprint.id+'/planning','İşler ve atamalar');await waitFor('!!document.querySelector("app-planning-insights details")');
  await disclosures('details.planning-group');await disclosures('app-planning-insights details[appFold]');
+ const defectCell=await evaluate(`document.querySelector('[data-planning-task="${defect.id}"] td:nth-child(3)').innerText`);
+ assert.match(defectCell,/^1 sa/);assert.match(defectCell,/Rezervden karşılanan: 1 sa/);assert.match(defectCell,/Ek plan yükü: 0 sa/);
+ const reserveCell=await evaluate(`document.querySelector('[data-planning-task="${reserve.id}"] td:nth-child(3)').innerText`);assert.match(reserveCell,/^7 sa/);
  assert(await evaluate('document.querySelector(".planning-table").checkVisibility()'));await shot('planning');
  await navigate('sprints/'+sprint.id+'/effort','Görev × kişi görünümü');await disclosures('details.effort-group');await shot('effort');
  await navigate('sprints/'+sprint.id+'/journal','Sprint günlüğü');await waitFor('!!document.querySelector(".journal-day")');
@@ -54,6 +59,13 @@ module.exports=async({evaluate,command,navigate,clickButton,setFieldValue,sleep,
   if(route.endsWith('review'))await shot('review-mobile');
   await command('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
  }
+ await navigate('settings','Ayarlar');await waitFor('!!document.querySelector("app-slack-settings form")');
+ const receiptStatus=await api('/admin/slack');assert.equal(receiptStatus.receiptPending,0);assert.equal(receiptStatus.receiptError,'');
+ await evaluate('document.querySelector("app-slack-settings").closest("details").open=true');
+ assert(await evaluate('document.querySelector("app-slack-settings").innerText.includes("reactions:write")'));
+ assert(await evaluate('document.querySelector("app-slack-settings").innerText.includes("admin onayı veya işin tamamlanması değildir")'));
+ if(process.env.SPRINTBOARD_SMOKE_SLACK_BACKLOG==='1')await require('./test-slack-backlog-ui.cjs')({evaluate,command,navigate,clickButton,setFieldValue,sleep,waitFor,shot,api});
+ await require('./test-board-all-items-ui.cjs')({evaluate,navigate,clickButton,setFieldValue,waitFor,shot,api,sprint,member});
  assert.equal(events.length,0,events.join('\n'));
  console.log('PASS: blank goal creation, edit/cancel/save, 15 inclusive working days, all requested disclosures, keyboard toggle, print expansion/restoration, export readiness, mobile closed/open, no browser errors.');
 };

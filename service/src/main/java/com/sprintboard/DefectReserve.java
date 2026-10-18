@@ -17,7 +17,12 @@ public final class DefectReserve {
  }
  public static List<Map<String,Object>> enrich(List<Map<String,Object>> tasks){
    for(var t:tasks){t.put("planningHours",number(t,"estimatedHours"));for(var a:assignments(t))a.put("planningHours",hours(a));}
-   for(var t:tasks)if("DEFECT".equals(t.get("taskCategory"))){t.put("reserveCoveredHours",0d);t.put("extraPlanHours",assignments(t).isEmpty()?number(t,"estimatedHours"):assignments(t).stream().mapToDouble(DefectReserve::hours).sum());}
+   // Assigned effort is authoritative for defects; their original intake estimate may still be zero.
+   // Keep the estimate intact and deduct covered effort from the reserve, not from the defect.
+   for(var t:tasks)if("DEFECT".equals(t.get("taskCategory"))){
+     double effort=assignments(t).isEmpty()?number(t,"estimatedHours"):assignments(t).stream().mapToDouble(DefectReserve::hours).sum();
+     t.put("planningHours",effort);t.put("reserveCoveredHours",0d);t.put("extraPlanHours",effort);
+   }
    var result=new ArrayList<Map<String,Object>>();
    for(var reserve:tasks)if(isReserve(reserve)){
      var linked=tasks.stream().filter(t->reserve.get("id").equals(t.get("reserveTaskId"))&&"DEFECT".equals(t.get("taskCategory"))).toList();

@@ -15,7 +15,8 @@ public class SlackOvertimeService {
  @Transactional public void accept(String team,String channel,String ts,String user,String text,int version){
   String key=team+":"+channel+":"+ts;if(db.queryForObject("SELECT COUNT(*) FROM slack_overtime_inbox WHERE source_key=?",Integer.class,key)>0)return;
   var p=SlackOvertimeParser.parse(text,channel);
-  try{db.update("INSERT INTO slack_overtime_inbox(id,source_key,team_id,channel_id,message_ts,user_id,source_url,raw_text,parsed_json,config_version,received_at,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)","slack-ot-"+UUID.randomUUID(),key,team,channel,ts,user,"https://app.slack.com/client/"+team+"/"+channel+"/thread/"+channel+"-"+ts,p.get("raw"),json(p),version,Instant.now().toString(),Boolean.TRUE.equals(p.get("valid"))?"PENDING":"INVALID");}catch(org.springframework.dao.DuplicateKeyException duplicate){/* Retry of an already persisted message. */}
+  try{db.update("INSERT INTO slack_overtime_inbox(id,source_key,team_id,channel_id,message_ts,user_id,source_url,raw_text,parsed_json,config_version,received_at,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)","slack-ot-"+UUID.randomUUID(),key,team,channel,ts,user,"https://app.slack.com/client/"+team+"/"+channel+"/thread/"+channel+"-"+ts,p.get("raw"),json(p),version,Instant.now().toString(),Boolean.TRUE.equals(p.get("valid"))?"PENDING":"INVALID");}catch(org.springframework.dao.DuplicateKeyException duplicate){return;/* Retry of an already persisted message. */}
+  if(Boolean.TRUE.equals(p.get("valid")))SlackReceiptService.enqueue(db,team,channel,ts);
  }
  private Map<String,Object> row(java.sql.ResultSet r)throws java.sql.SQLException{
   var p=new LinkedHashMap<String,Object>(parsed(r.getString("parsed_json")));

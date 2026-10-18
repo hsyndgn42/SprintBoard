@@ -11,11 +11,12 @@ Güncelleme: 18 Ekim 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındad
 - [x] Takım, fotoğraflar, kullanıcı eşleştirmesi ve admin yetkileri.
 - [x] İzin ve mesai onayları; planlı ve plansız mesai, hakediş kullanımı.
 - [x] Review, rapor sekmeleri, grafikler ve HTML çıktıları.
-- [x] Slack defect ve mesai alımı; günlük ve manuel sprint özeti paylaşımı.
+- [x] Slack defect, mesai ve backlog iş isteği alımı; admin onayı, alındı tiki ve yapılandırılabilir iş isteği şablonu; günlük ve manuel sprint özeti paylaşımı.
 - [x] Manuel ve otomatik tam yedekleme; 10 günlük saklama ve durum göstergeleri.
 - [x] Proje temizliği, Git ignore kuralları ve ilk kurulum dahil kullanıcı kılavuzu.
 - [x] Özel geçmiş veri olmadan boş kurulum; GitHub kaynakları ve ayrı özel Windows hazır paket.
 - [x] İsteğe bağlı sprint hedefi, açık sprint bilgilerini güvenli düzenleme ve uzun sayfalarda açılır/kapanır ana bölümler.
+- [x] Defect eforunun rezerv/ek plan yükünden ayrı gösterimi; Pano’da sayfalama olmadan tüm görev kartları.
 
 ## Açık takip konuları
 

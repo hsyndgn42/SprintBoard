@@ -1,4 +1,3 @@
-import { ListPagerComponent } from '../list-pager.component';
 import { isBau, effectiveTaskStatus } from '../task-lifecycle';
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, inject } from '@angular/core';
 import { AuthService } from '../auth.service';
@@ -12,7 +11,7 @@ import { defectSummary } from '../defect-model';
 import { BOARD_COLUMNS, boardColor, boardMembers, emptyBoardFilters, filterBoard } from './board.model';
 
 @Component({
-  selector:'app-sprint-board',standalone:true,imports:[ListPagerComponent,SprintJournalComponent,FormsModule,ModalAccessibilityDirective,SprintFlowComponent],
+  selector:'app-sprint-board',standalone:true,imports:[SprintJournalComponent,FormsModule,ModalAccessibilityDirective,SprintFlowComponent],
   templateUrl:'./sprint-board.component.html',styleUrl:'./sprint-board.component.css',
 })
 export class SprintBoardComponent implements OnChanges,OnDestroy {

@@ -75,3 +75,16 @@ const html=editorialSprintHtml({id:'qa',name:'QA',number:1,start:'2026-10-06',en
 assert.ok(html.includes('BAU her zaman otomatik Done'));
 assert.ok(!html.includes('<small>Undone'));
 console.log('Automatic BAU Review: active/frozen, filters, charts, delivery isolation, source immutability and HTML passed.');
+
+// API-derived defect planning effort must survive aggregation and HTML rendering.
+const reserveEffortItems = [
+  task('reserve', { taskCategory: 'BAU', taskSubtype: 'DEFECT_SUPPORT', estimatedHours: 8, planningHours: 7 }),
+  task('defect', { taskCategory: 'DEFECT', taskSubtype: 'TEST_DEFECT', estimatedHours: 0, planningHours: 1,
+    reserveTaskId: 'reserve', reserveCoveredHours: 1, extraPlanHours: 0,
+    assignments: [{ memberId: 'qa', memberName: 'QA', estimatedHours: 1, planningHours: 1, supportOnly: false }] }),
+];
+const reserveReview = buildReview({ items: reserveEffortItems }, settings);
+assert.equal(effort(reserveEffortItems[1]), 1, 'Defect shows assigned effort, not the zero intake estimate');
+assert.equal(reserveReview.categories.find(g => g.key === 'DEFECT').hours, 1);
+assert.equal(reserveEffortItems.reduce((sum, item) => sum + effort(item), 0), 8, 'Remaining reserve plus defect counts once');
+console.log('Defect planning effort: assigned hour is visible and reserve totals are not double counted.');

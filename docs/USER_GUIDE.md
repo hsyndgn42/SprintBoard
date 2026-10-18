@@ -348,9 +348,9 @@ Eski Done sonucu ve geçmiş sprint korunur; eski işi tekrar Yapılacak yapmay�
 ### İlk bağlantı
 
 1. Slack uygulamasında Socket Mode’u etkinleştirin. App token bağlantı iznine, bot da kullanılacak kanalların mesaj olayları ve gerekli okuma/yazma izinlerine sahip olmalıdır.
-2. Açık kanal mesajları için `message.channels` / `channels:history`; ad soyad çözümü için `users:read`; mesaj için `chat:write`, Review HTML yüklemesi için `files:write` izinlerini kontrol edin. Özel kanal kullanılacaksa özel kanal olay/erişim izinlerini de ayrıca yapılandırın.
-3. İzin değişikliğinden sonra uygulamayı çalışma alanına yeniden kurun; botu defect, mesai ve sprint durum kanallarına ekleyin.
-4. **Ayarlar → Slack entegrasyonu** içinde çalışma alanı kimliği, defect kanal kimliği, mesai kanal kimliği ve tokenları girin.
+2. Açık kanal mesajları için `message.channels` / `channels:history`; ad soyad çözümü için `users:read`; mesaj için `chat:write`, Review HTML yüklemesi için `files:write`, alındı tiki için `reactions:write` izinlerini kontrol edin. Özel kanal kullanılacaksa özel kanal olay/erişim izinlerini de ayrıca yapılandırın.
+3. İzin değişikliğinden sonra uygulamayı çalışma alanına yeniden kurun; botu defect, mesai, backlog ve sprint durum kanallarına ekleyin.
+4. **Ayarlar → Slack entegrasyonu** içinde çalışma alanı kimliği, defect, mesai ve backlog kanal kimlikleri ile tokenları girin. Backlog kanalını boş bırakırsanız bu kanal dinlenmez; üç giriş kanalı birbirinden farklı olmalıdır.
 5. **Kaydet ve dinle** seçin ve durumun **Bağlı** olduğunu kontrol edin. Tokenlar şifreli saklanır; sonraki kayıtlarda alanları boş bırakmak mevcut tokenı silmez.
 
 Tokenı belgeye, Git’e veya mesaja yapıştırmayın. Sunucunun Slack’e dış ağ bağlantısı açık olmalıdır. Socket Mode kullanımı uygulamanın ağa güvenli yayımlandığı anlamına gelmez.
@@ -370,6 +370,23 @@ Hedef: BACKLOG
 
 Yeni mesaj **Backlog’daki Slack onay bölümüne** düşer. Admin alanları kontrol ederek onaylar veya reddeder; geçerli onaydan önce iş oluşturulmaz. Hedef SPRINT ise aktif sprint ve efor/rezerv kararını onayda kontrol edin. Bildiren, onaylayan admin değil Slack mesajını gönderen kişidir.
 
+### Backlog iş isteği
+
+Ekip, backlog kanalına yeni bir ana mesaj göndererek iş talep edebilir:
+
+```text
+#backlog
+Tür: DEV
+Başlık: İş listesine CSV indirme eklensin
+Açıklama: Filtrelenmiş işleri dosya olarak indirebilmek istiyoruz.
+```
+
+Tür alanı DEV, DESIGN, ANALYZE, TEST veya BAU olabilir. Ayarlar’daki **Backlog iş isteği şablonu** ile izin verilen türleri daraltabilir ve örnek metinleri değiştirebilirsiniz; Tür, Başlık ve Açıklama alan adları korunur. Şablondaki virgüllü liste seçenekleri tanımlar; gerçek mesajda **tek tür** yazılır. Açıklama birden fazla satır olabilir. Defect ve izinler kendi akışlarından girilir.
+
+Admin, **Backlog → İş istekleri** bölümünü açar. Gönderenin adı ve kaynak Slack mesajını kontrol eder; başlık/açıklamayı düzenler, alt türü, Size veya Story Point’i, tahmini eforu ve varsa Roadmap’i seçer. **Onayla ve backlog’a ekle** yalnız bir havuz işi oluşturur; sprinte kendiliğinden eklemez. **Reddet** iş oluşturmadan isteği sonuçlandırır. Kararlar denetim kaydında saklanır, onaylanan ve reddedilen istekler filtrelenebilir; listeler sayfalıdır. Aynı Slack mesajının yeniden ulaşması ikinci bir iş oluşturmaz.
+
+Hatalı formatta gelen istek onaylanamaz; doğru formatla yeni mesaj gönderin. Onay kuyrukları ve Slack bağlantı ayarları tam sunucu yedeğine dahildir; taşınabilir JSON iş verisi yedeğine dahil değildir.
+
 ### Mesai mesajı
 
 Mesai kanalına, Ayarlar’daki sabit şablona uygun yeni mesaj gönderin:
@@ -385,6 +402,8 @@ Açıklama: Backlog çalışması
 Her mesaj tek gün içindir. **Fazla mesai** sayfasındaki Slack onay bölümünde admin göndericiyi üyeyle, mesaiyi görevle ve varsa planlı mesai kaydıyla eşleştirir. Sonra onaylar. Görev/plan eşleştirmesi mesaj metninden tahmin edilmez.
 
 Yalnız yeni ana mesajlar alınır; yanıt mesajı veya eski mesajı düzenlemek yeni kayıt sayılmaz. Format hatasında kuyruktaki uyarıyı kontrol edip doğru formatla yeni mesaj gönderin; önce eski mesajın işlenip işlenmediğine bakın.
+
+Geçerli defect, mesai ve backlog mesajı onay kuyruğuna kaydedildikten sonra bot, kaynak mesaja **✅** ekler. Bu işaret **“uygulama aldı, admin onayı bekliyor”** anlamındadır; admin onayı veya işin Done olduğu anlamına gelmez. Formatı hatalı mesajlara tik eklenmez. Slack izin/bağlantı hatasında onay kaydı korunur, tik arka planda yeniden denenir; Ayarlar’da bekleyen tik sayısı ve hata görünür. Uygulama yeniden başlasa da bekleyen işlemler korunur. Güncelleme öncesi eski mesajlar geriye dönük işaretlenmez.
 
 ### Günlük sprint paylaşımı
 
