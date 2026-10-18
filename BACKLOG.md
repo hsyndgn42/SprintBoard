@@ -15,6 +15,7 @@ Güncelleme: 18 Ekim 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındad
 - [x] Manuel ve otomatik tam yedekleme; 10 günlük saklama ve durum göstergeleri.
 - [x] Proje temizliği, Git ignore kuralları ve ilk kurulum dahil kullanıcı kılavuzu.
 - [x] Özel geçmiş veri olmadan boş kurulum; GitHub kaynakları ve ayrı özel Windows hazır paket.
+- [x] İsteğe bağlı sprint hedefi, açık sprint bilgilerini güvenli düzenleme ve uzun sayfalarda açılır/kapanır ana bölümler.
 
 ## Açık takip konuları
 

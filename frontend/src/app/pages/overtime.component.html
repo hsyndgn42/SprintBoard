@@ -1,8 +1,8 @@
 <div class="page-head"><div><span class="eyebrow">EKİP OPERASYONU</span><h1>Fazla mesai</h1></div>@if(auth.isAdmin()){<button class="btn primary" (click)="setFormOpen(true)">+ Mesai kaydı</button>}</div>
 @if(auth.isAdmin()){@defer (on immediate){<app-slack-overtime-inbox (changed)="load();requests.load()" />}}
 <app-overtime-requests #requests [sprints]="sprints" (approved)="load()" />
-<section class="card overtime-directory">
-  <div class="section-head"><h2>Kişi mesaileri</h2><small>Tüm dönemler</small></div>
+<details appFold class="card overtime-directory">
+  <summary class="section-head"><h2>Kişi mesaileri</h2><small>Tüm dönemler</small></summary>
   <label class="field overtime-search">Kişi ara<input type="search" [(ngModel)]="query" placeholder="Ad soyad"></label>
   <div class="overtime-columns" aria-hidden="true"><span>EKİP ÜYESİ</span><span>KULLANILAN HAKEDİŞ</span><span>TOPLAM MESAİ</span></div>
   <app-list-pager #peoplePager [items]="personGroups" label="Mesailer" />@if(loading){<div class="loading" role="status">Mesai kayıtları yükleniyor…</div>}
@@ -13,7 +13,7 @@
       <span class="person-stat"><small class="mobile-label">Toplam mesai</small>{{number(person.earnedHours)}} <small>saat</small></span>
     </button>
   }@empty{<div class="overtime-empty">Kişi bulunamadı.</div>}}
-</section>
+</details>
 @if(error){<p class="notice warn" role="alert">{{error}}</p>}
 @if(selected;as person){
   <div class="modal-layer"><section class="modal overtime-detail">

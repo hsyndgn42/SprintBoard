@@ -1,3 +1,4 @@
+import { FoldDirective } from '../fold.directive';
 import {OvertimeTaskPickerComponent} from './overtime-task-picker.component';
 import { ListPagerComponent } from '../list-pager.component';
 import {SlackOvertimeInboxComponent} from './slack-overtime-inbox.component';
@@ -103,12 +104,12 @@ export class TeamComponent implements OnInit {
 const leaveLabel = (kind: string) => ({ ANNUAL: 'Yıllık izin', OVERTIME: 'Mesai hakedişinden izin', COMPANY_GRANTED: 'Şirket izni', UNSPECIFIED: 'Türü belirtilmemiş' }[kind] || kind);
 const emptyLeave = () => ({ memberId: '', sprintId: '', days: 1, start: '', end: '', leaveType: '', overtimeAccounting: 'DEBIT' });
 @Component({
-  standalone: true, imports: [ListPagerComponent, LeaveRequestsComponent, ModalAccessibilityDirective, FormsModule],
+  standalone: true, imports: [FoldDirective,ListPagerComponent, LeaveRequestsComponent, ModalAccessibilityDirective, FormsModule],
   template: `
     <div class="page-head"><div><span class="eyebrow">EKİP OPERASYONU</span><h1>Kişi izinleri</h1><p>İzin türünü, kapasite etkisini ve mesai kullanımını birlikte izleyin.</p></div>@if(auth.isAdmin()){<button class="btn primary" (click)="open()">+ İzin ekle</button>}</div>
     @defer(on immediate){<app-leave-requests [sprints]="sprints" (approved)="load()" />}
     <div class="mini-metrics ops-metrics"><div><small>Filtrede izin</small><strong>{{ totalDays }} gün</strong></div><div><small>Yıllık izin</small><strong>{{ daysFor('ANNUAL') }} gün</strong></div><div><small>Mesai izni</small><strong>{{ daysFor('OVERTIME') }} gün</strong></div><div><small>Türü belirsiz</small><strong>{{ daysFor('UNSPECIFIED') }} gün</strong></div></div>
-    <section class="card card-pad"><div class="section-head"><h2>İzin geçmişi</h2><small>{{filteredRecords.length}} kayıt</small></div>
+    <details appFold class="card card-pad"><summary class="section-head"><h2>İzin geçmişi</h2><small>{{filteredRecords.length}} kayıt</small></summary>
       <p class="data-note">Tüm izin türleri kapasiteyi azaltır. Yalnız mesai hakedişinden izin, mesai bakiyesini düşürür. Yıllık izin toplamı kullanılan gündür; yıllık hakediş bakiyesi değildir. Şirket tatilleri ortak takvimden girilir.</p>
       <div class="filter-toolbar"><label class="field">Kişi<select [(ngModel)]="memberFilter"><option value="all">Tüm kişiler</option>@for(member of activeMembers; track member.id){<option [value]="member.id">{{member.name}}</option>}</select></label>
       <label class="field">Sprint<select [(ngModel)]="sprintFilter"><option value="all">Tüm sprintler</option>@for(sprint of sprints; track sprint.id){<option [value]="sprint.id">{{sprint.name}}</option>}</select></label>
@@ -120,7 +121,7 @@ const emptyLeave = () => ({ memberId: '', sprintId: '', days: 1, start: '', end:
         <small>@if(record.leaveType==='OVERTIME'){ {{record.overtimeHours}} sa · {{record.overtimeAccounting==='IN_SNAPSHOT' ? 'Geçmiş bakiyede zaten düşülmüş; tekrar düşmez' : 'Mesai kullanımına yansıdı'}} }@else if(record.leaveType==='UNSPECIFIED'){ Mesai etkisi bilinmiyor; otomatik düşülmedi }@else{ Mesai hakedişinden düşmez }</small></span>
         <span class="person-values"><strong>{{record.days}} gün</strong>@if(auth.isAdmin()){<button class="btn small" (click)="open(record)">Düzenle</button>}</span></div>}</div></details>
       }@empty{<div class="empty">Bu filtrede izin kaydı yok.</div>}</div>
-    </section>
+    </details>
     @if(error){<p class="notice warn" role="alert">{{error}}</p>}
     @if(formOpen){<div class="modal-layer"><form class="modal" (ngSubmit)="save()"><header><h2>{{editingId ? 'İzni düzenle' : 'İzin kaydı'}}</h2><p>Mesai izni tek kayıtla hem kapasiteye hem kullanıma yansır.</p></header><div class="modal-body form-grid">
       <label class="field">Üye<select name="memberId" [(ngModel)]="draft.memberId" [disabled]="!!editingId" required><option value="">Kişi seçin</option>@for(member of activeMembers; track member.id){<option [value]="member.id">{{member.name}}</option>}</select></label>
@@ -159,7 +160,7 @@ export class LeavesComponent implements OnInit {
   async save(){if(this.saving)return;this.saving=true;this.error='';try{if(this.editingId)await this.api.put('/leaves/'+encodeURIComponent(this.editingId),this.draft);else await this.api.post('/leaves',this.draft);this.formOpen=false;await this.load();}catch(e){this.error=String(e);}finally{this.saving=false;this.cdr.detectChanges();}}
 }
 @Component({
-  standalone:true, imports:[OvertimeTaskPickerComponent,ListPagerComponent,SlackOvertimeInboxComponent,OvertimeRequestsComponent,ModalAccessibilityDirective,FormsModule],
+  standalone:true, imports:[FoldDirective,OvertimeTaskPickerComponent,ListPagerComponent,SlackOvertimeInboxComponent,OvertimeRequestsComponent,ModalAccessibilityDirective,FormsModule],
   templateUrl:'./overtime.component.html',
   styleUrl:'./overtime.component.css',
 })

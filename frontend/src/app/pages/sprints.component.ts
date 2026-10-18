@@ -1,3 +1,5 @@
+import { SprintEditDialogComponent } from './sprint-edit-dialog.component';
+import { FoldDirective } from '../fold.directive';
 import {PlannedOvertimeListComponent} from './planned-overtime-list.component';
 import {PlannedOvertimeDialogComponent} from './planned-overtime-dialog.component';
 import { ListPagerComponent } from '../list-pager.component';
@@ -39,7 +41,7 @@ import { SprintBoardComponent } from './sprint-board.component';
     @if (error) { <p class="notice warn" role="alert">{{ error }}</p> }
     @if (formOpen) { <div class="modal-layer"><form class="modal" (ngSubmit)="create()"><header><h2>Yeni sprint</h2><p>Planlanan sprinti oluşturun; aktif sprinte dokunulmaz.</p></header>
       <div class="modal-body form-grid"><label class="field">Sprint adı<input name="name" [(ngModel)]="draft.name" required maxlength="160"></label>
-        <label class="field">Hedef<textarea name="goal" [(ngModel)]="draft.goal"></textarea></label>
+        <label class="field">Hedef (isteğe bağlı)<textarea name="goal" [(ngModel)]="draft.goal" maxlength="10000" placeholder="Hedefi daha sonra belirleyebilirsiniz."></textarea></label>
         <div class="form-grid two"><label class="field">Başlangıç<input type="date" name="start" [(ngModel)]="draft.start" required></label><label class="field">Bitiş<input type="date" name="end" [(ngModel)]="draft.end" required></label></div>
         <p class="data-note">Etkin BAU şablonları sprint adıyla eklenir: {{ templateSummary }}. Bu işler otomatik olarak Genel türündeki BAU Roadmap’ine bağlanır; hedef yoksa oluşturulur. Otomatik kişi eforu yalnız çekirdek ekibe verilir (Support ve Architect hariç). On Leave izinlerden türetilir; kapasiteden bir kez düşülür. Şablonlar Ayarlar’da düzenlenir.</p>
       @if (error) { <p class="notice warn" role="alert">{{ error }}</p> }</div><footer><button data-modal-dismiss type="button" class="btn" (click)="setFormOpen(false)">Vazgeç</button><button type="submit" class="btn primary" [disabled]="saving">Sprint oluştur</button></footer></form></div> }
@@ -80,11 +82,12 @@ export class SprintsComponent implements OnInit {
 
 @Component({
   standalone: true,
-  imports: [PlannedOvertimeListComponent,PlannedOvertimeDialogComponent,ListPagerComponent, WorkItemActionComponent,DefectReservesComponent,ReserveLinkComponent,ModalAccessibilityDirective, FormsModule, RouterLink, SprintJournalComponent, PlanningInsightsComponent, SprintBoardComponent, SprintReviewComponent, SprintAddDialogComponent, SprintCloseDialogComponent, DefectDialogComponent, RetroComponent],
+  imports: [FoldDirective,SprintEditDialogComponent,PlannedOvertimeListComponent,PlannedOvertimeDialogComponent,ListPagerComponent, WorkItemActionComponent,DefectReservesComponent,ReserveLinkComponent,ModalAccessibilityDirective, FormsModule, RouterLink, SprintJournalComponent, PlanningInsightsComponent, SprintBoardComponent, SprintReviewComponent, SprintAddDialogComponent, SprintCloseDialogComponent, DefectDialogComponent, RetroComponent],
   template: `
     @if (sprint; as current) {
       <div class="page-head"><div><span class="eyebrow">SPRİNT DETAYI</span><h1>{{ current.name }}</h1><p>{{ current.goal || 'Sprint hedefi belirtilmedi.' }}</p></div>
         <div class="page-actions"><a class="btn" routerLink="/sprints" [queryParams]="{status:current.status === 'completed' ? 'completed' : current.status}">← Sprintler</a>
+          @if (auth.isAdmin() && !current.closureFrozen && (current.status === 'active' || current.status === 'planned')) { <button class="btn" (click)="setEditOpen(true)">Sprinti düzenle</button> }
           @if (auth.isAdmin() && (current.status === 'active' || current.status === 'planned')) { <button class="btn" (click)="openAddTask()">+ İş ekle</button> }
           @if (auth.isAdmin() && current.status === 'active') { <button class="btn primary" (click)="openComplete()">Sprinti tamamla</button> }
           @if (auth.isAdmin() && current.status === 'planned') { <button class="btn primary" (click)="start()">Sprinti başlat</button> }
@@ -104,22 +107,22 @@ export class SprintsComponent implements OnInit {
         <div class="section-head effort-heading"><div><span class="eyebrow">EFOR DAĞILIMI</span><h2>Görev × kişi görünümü</h2><p class="data-note">Görev adları tam görünür; kişi eforları her görevin altında listelenir. On Leave yalnız kapasite etkisidir.</p></div></div>
         <section class="card card-pad effort-toolbar" aria-label="Efor görünümü filtreleri"><label class="field">Görev ara<input type="search" [(ngModel)]="effortQuery" placeholder="Görev adında ara"></label><label class="field">Kişi<select [(ngModel)]="effortMemberId"><option value="">Tüm kişiler</option>@for (member of effortMembers; track member.id) { <option [value]="member.id">{{ member.name }}</option> }</select></label></section>
         <div class="effort-metrics"><div class="card"><small>Gösterilen görev</small><strong>{{ effortItems.length }}</strong></div><div class="card"><small>Atanan efor</small><strong>{{ effortAssignedHours }} sa</strong></div><div class="card"><small>İzin kapasite etkisi</small><strong>{{ effortLeaveHours }} sa</strong></div></div>
-        @if (effortGroups.length) { <div class="effort-groups">@for (group of effortGroups; track group.key) { <details class="card effort-group" open><summary><span class="planning-group-mark" [style.background]="group.color"></span><span><strong>{{ group.label }}</strong><small>{{ group.description }}</small></span><span class="effort-group-count">{{ group.items.length }} görev</span><span class="chevron" aria-hidden="true">⌄</span></summary>
+        @if (effortGroups.length) { <div class="effort-groups">@for (group of effortGroups; track group.key) { <details appFold class="card effort-group"><summary><span class="planning-group-mark" [style.background]="group.color"></span><span><strong>{{ group.label }}</strong><small>{{ group.description }}</small></span><span class="effort-group-count">{{ group.items.length }} görev</span><span class="chevron" aria-hidden="true">⌄</span></summary>
           <app-list-pager #effortPager [items]="group.items" [label]="group.label" /><div class="effort-rows">@for (item of effortPager.rows; track item.id) { <article class="effort-row" [style.border-left-color]="taskColor(item)"><div class="effort-task"><strong>{{ item.name }}</strong><span>{{ taxonomyLabel(item) }} · {{ relativeEstimate(item) }} · {{ isBau(item)?'Done · otomatik':statusText(item.status) }}</span></div>
             <div class="effort-allocations">@for (assignment of visibleEffortAssignments(item); track assignment.memberId) { <div class="effort-person"><strong>{{ assignment.memberName }}</strong><span>@if (item.workKind === 'LEAVE') { {{ assignment.leaveDays || 0 }} gün · {{ (assignment.leaveDays || 0) * (assignment.hoursPerDay ?? settings.hoursPerDay) }} sa izin } @else if (assignment.supportOnly) { X · efor yok } @else { {{ assignment.planningHours ?? assignment.estimatedHours }} sa@if(item.taskSubtype==='DEFECT_SUPPORT'){ · kalan rezerv (ayrılan {{assignment.estimatedHours}} sa)} }</span></div> } @empty { <span class="effort-unassigned">{{ effortMemberId ? 'Bu kişiye atanmamış' : 'Atama yok' }}</span> }</div>
             <div class="effort-total"><small>{{ item.workKind === 'LEAVE' ? 'Kapasite etkisi' : 'Atanan efor' }}</small><strong>{{ visibleEffortHours(item) }} sa</strong>@if (item.workKind !== 'LEAVE') { <small>Görev tahmini {{ item.estimatedHours }} sa</small> }</div></article> }</div>
         </details> }</div> } @else { <section class="card empty"><strong>Bu filtrede görev bulunamadı</strong>Aramayı veya kişi filtresini değiştirebilirsiniz.</section> }
       } @else if (tab === 'planning') {
-        @defer(on immediate){<app-defect-reserves [rows]="current.defectReserves||[]" />}<div class="section-head planning-heading"><div><span class="eyebrow">SPRİNT PLANI</span><h2>İşler ve atamalar</h2><p class="data-note">BAU ve teslimat işleri türlerine göre ayrılır. Efor saatleri ile izin kaynaklı kapasite kaybı ayrı izlenir.</p></div><span class="status">{{ current.items.length }} iş</span></div>
+        @if(current.defectReserves?.length){<details appFold class="card card-pad"><summary><h2>Defect Support rezerv planı</h2></summary>@defer(on immediate){<app-defect-reserves [rows]="current.defectReserves||[]" />}</details>}<div class="section-head planning-heading"><div><span class="eyebrow">SPRİNT PLANI</span><h2>İşler ve atamalar</h2><p class="data-note">BAU ve teslimat işleri türlerine göre ayrılır. Efor saatleri ile izin kaynaklı kapasite kaybı ayrı izlenir.</p></div><span class="status">{{ current.items.length }} iş</span></div>
         <div class="planning-groups">@for (group of planningGroups; track group.key) {
-          <section class="card planning-group" [attr.aria-label]="group.label + ' işleri'"><div class="planning-group-head"><div><span class="planning-group-mark" [style.background]="group.color"></span><div><h3>{{ group.label }}</h3><p>{{ group.description }}</p></div></div><span class="planning-group-total">{{ group.items.length }} iş · {{ groupHours(group.items) }} sa efor</span></div>
+          <details appFold class="card planning-group" [attr.aria-label]="group.label + ' işleri'"><summary class="planning-group-head"><div><span class="planning-group-mark" [style.background]="group.color"></span><div><h3>{{ group.label }}</h3><p>{{ group.description }}</p></div></div><span class="planning-group-total">{{ group.items.length }} iş · {{ groupHours(group.items) }} sa efor</span></summary>
             <app-list-pager #planPager [items]="group.items" [label]="group.label" /><div class="table-wrap planning-table-wrap"><table class="planning-table"><thead><tr><th>İş</th><th>Göreli tahmin</th><th>Efor / etki</th><th>Atamalar</th><th>Durum</th><th><span class="sr-only">İşlem</span></th></tr></thead><tbody>
               @for (item of planPager.rows; track item.id) { <tr [attr.data-planning-task]="item.id"><td><span class="task-swatch" [style.background]="taskColor(item)" aria-hidden="true"></span><strong class="task-title">{{ item.name }}</strong><small class="table-subtext">{{ taxonomyLabel(item) }}</small></td>
                 <td><span class="estimate-badge">{{ relativeEstimate(item) }}</span></td><td>@if (item.workKind === 'LEAVE') { <strong>{{ leaveHours(item) }} sa</strong><small class="table-subtext">{{ leaveDays(item) }} gün · kapasiteden düşer</small> } @else { <strong>{{ item.planningHours ?? item.estimatedHours }} sa</strong>@if(item.taskSubtype==='DEFECT_SUPPORT'){<small class="table-subtext">Kalan rezerv · başlangıç {{item.estimatedHours}} sa</small>} }</td>
                 <td class="assignment-cell">{{ assignmentNames(item) }}@if(item.taskCategory==='DEFECT'&&auth.isAdmin()&&current.status!=='completed'){@defer(on immediate){<app-reserve-link [task]="item" [sprint]="current" (updated)="load(current.id)" />}}@if(item.reserveTaskId){<small class="table-subtext">Defect Support rezervine bağlı</small>}</td><td><span class="status" [class.done]="effectiveStatus(item)==='done'" [class.undone]="effectiveStatus(item)==='undone'" [class.doing]="effectiveStatus(item)==='doing'" [class.todo]="effectiveStatus(item)==='todo'">{{ isBau(item)?'Done · otomatik':statusText(item.status) }}</span></td>
                 <td>@if(item.taskCategory==='DEFECT'){<small>{{ defectSummary(item.defect) }}</small>}<div class="table-actions">@if(auth.isAdmin() && current.status!=='completed' && item.taskCategory==='DEFECT'){<button class="btn small" (click)="openDefect(item)">Defect takibi</button>}@if (auth.isAdmin() && !current.closureFrozen) { @if(current.status!=='completed'){<button class="btn small" (click)="openRename(item)">Adı düzenle</button>} <button class="btn small" (click)="openClassification(item)">Türü düzenle</button> } @if (auth.isAdmin() && current.status !== 'completed' && item.workKind !== 'LEAVE') { <button class="btn small" (click)="openAssignments(item)">Atama düzenle</button> }</div></td></tr> }
             </tbody></table></div>
-          </section>
+          </details>
         }</div>
       } @else if (tab === 'retro') {
         <app-retro [sprintId]="current.id" />
@@ -143,6 +146,7 @@ export class SprintsComponent implements OnInit {
     @if (actionMessage && sprint) { <p class="notice" role="status">{{ actionMessage }}</p> }
     @if(renameTask){@defer(on immediate){<app-work-item-action [id]="renameTask.id" [title]="renameTask.name" (cancel)="closeRename()" (saved)="renamed()" />}}
     @if(defectTask){<app-defect-dialog [backlogId]="defectTask.backlogId" [title]="defectTask.name" (cancel)="closeDefect()" (saved)="defectSaved()" />}
+    @if(showEdit && sprint){<app-sprint-edit-dialog [sprint]="sprint" (cancel)="setEditOpen(false)" (saved)="sprintEdited($event)" />}
     @if(showComplete && sprint){<app-sprint-close-dialog [sprintId]="sprint.id" (cancel)="closeComplete()" (completed)="completed()" />}
     @if (showAddTask && sprint) { @defer(on immediate){<app-sprint-add-dialog [sprintId]="sprint.id" (cancel)="closeAddTask()" (added)="taskAdded()" />} }
     @if (assignmentTask) { <div class="modal-layer" role="presentation"><div class="modal assignment-modal" role="dialog" aria-modal="true" aria-labelledby="assignment-title"><header><h2 id="assignment-title">Atamaları düzenle</h2><p>{{ assignmentTask.name }} · kişi başı efor girin veya efor tüketmeyen X desteği seçin.</p></header>
@@ -188,6 +192,9 @@ export class SprintDetailComponent implements OnInit {
   openDefect(t:Task){this.defectTask=t;this.cdr.detectChanges();}
   closeDefect(){this.defectTask=null;this.cdr.detectChanges();}
   async defectSaved(){this.closeDefect();if(this.sprint)await this.load(this.sprint.id);}
+  showEdit = false;
+  setEditOpen(open:boolean){this.showEdit=open;this.cdr.detectChanges();}
+  async sprintEdited(id:string){this.showEdit=false;await this.load(id);this.actionMessage='Sprint bilgileri güncellendi. Kapasite yeni tarihlere göre hesaplandı.';this.cdr.detectChanges();}
   showComplete = false;
   showAddTask = false;
   selectedBacklogId = '';

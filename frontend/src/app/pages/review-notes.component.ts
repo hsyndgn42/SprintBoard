@@ -1,3 +1,4 @@
+import { FoldDirective } from '../fold.directive';
 import {ChangeDetectorRef,Component,EventEmitter,Input,OnChanges,OnDestroy,Output,inject} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {ApiService} from '../api.service';
@@ -6,7 +7,7 @@ import {ModalAccessibilityDirective} from '../modal-accessibility.directive';
 
 type NoteField='demoNotes'|'stakeholderFeedback'|'decisions'|'nextSteps';
 interface ReviewNotes {sprintId:string;demoNotes:string;stakeholderFeedback:string;decisions:string;nextSteps:string;version:number;updatedAt:string|null;updatedBy:string|null}
-@Component({selector:'app-review-notes',standalone:true,imports:[FormsModule,ModalAccessibilityDirective],templateUrl:'./review-notes.component.html',styleUrl:'./review-notes.component.css'})
+@Component({selector:'app-review-notes',standalone:true,imports: [FoldDirective,FormsModule,ModalAccessibilityDirective],templateUrl:'./review-notes.component.html',styleUrl:'./review-notes.component.css'})
 export class ReviewNotesComponent implements OnChanges,OnDestroy {
   @Input({required:true}) sprintId='';
   @Output() readyChange=new EventEmitter<boolean>();

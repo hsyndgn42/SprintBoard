@@ -1,3 +1,4 @@
+import { FoldDirective } from '../fold.directive';
 import {SlackReviewSendComponent} from './slack-digest.component';
 import {ReviewOperationsComponent} from './review-operations.component';
 import {ReviewOperations} from './review-operations.model';
@@ -16,7 +17,7 @@ import {downloadText} from './share-export';
 import {SprintFlowComponent} from './sprint-flow.component';
 
 @Component({
-  selector: 'app-sprint-review', standalone: true, imports: [SlackReviewSendComponent,ReviewOperationsComponent,DefectSupportReviewComponent,ScopeSummaryComponent,FormsModule, RouterLink,ReviewNotesComponent,SprintFlowComponent],
+  selector: 'app-sprint-review', standalone: true, imports: [FoldDirective,SlackReviewSendComponent,ReviewOperationsComponent,DefectSupportReviewComponent,ScopeSummaryComponent,FormsModule, RouterLink,ReviewNotesComponent,SprintFlowComponent],
   templateUrl: './sprint-review.component.html', styleUrl: './sprint-review.component.css',
 })
 export class SprintReviewComponent implements OnChanges {
@@ -27,6 +28,7 @@ export class SprintReviewComponent implements OnChanges {
   defectSummary=defectSummary;
   @Input({ required: true }) sprint!: Sprint;
   @Input({ required: true }) settings!: ProductSettings;
+  get hasReservedDefects(){return this.sprint.items.some(t=>t.taskCategory==='DEFECT'&&!!t.reserveTaskId);}
   model!: ReturnType<typeof buildReview>;
   notesReady=signal(false);private previousSprintId='';
   viewTime=new Intl.DateTimeFormat('tr-TR',{dateStyle:'medium',timeStyle:'short'}).format(new Date());

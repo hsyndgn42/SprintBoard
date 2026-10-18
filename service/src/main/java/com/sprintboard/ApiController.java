@@ -139,6 +139,7 @@ public class ApiController {
     return ResponseEntity.status(201).body(workspace.createSprint(input));
   }
   @PostMapping("/sprints/{id}/start") public ResponseEntity<?> startSprint(@PathVariable String id) { return found(workspace.startSprint(id)); }
+  @PutMapping("/sprints/{id}") public ResponseEntity<?> updateSprint(@PathVariable String id,@RequestBody Map<String,Object> input) { return found(workspace.updateSprint(id,input)); }
   @PostMapping("/sprints/{id}/tasks/new") public ResponseEntity<?> createSprintTask(@PathVariable String id,@RequestBody Map<String,Object> input){return found(workspace.createSprintTask(id,input));}
   @GetMapping("/reports/scope") public Object scopeReport(){return workspace.sprints().stream().map(s->workspace.sprint(s.get("id").toString())).toList();}
   @PostMapping("/sprints/{id}/tasks") public ResponseEntity<?> addTask(@PathVariable String id, @RequestBody Map<String, Object> input) {

@@ -138,6 +138,10 @@ async function main() {
     return;
   }
   console.log('Overview:', output.match(/TOPLAM SPRİNT\s+(\d+)/)?.[1], 'sprints');
+  if(process.env.SPRINTBOARD_SMOKE_SPRINT_EDIT==='1'){
+    if(base!=='http://127.0.0.1:4183'||process.env.SPRINTBOARD_SETUP!=='1')throw Error('Sprint editing QA requires disposable 4183');
+    await require('./test-sprint-edit-ui.cjs')({evaluate,command,navigate,clickButton,setFieldValue,sleep,events});ws.close();return;
+  }
   if(process.env.SPRINTBOARD_SMOKE_PHOTO_SIZE==='1'){
     if(base!=='http://127.0.0.1:4183'||process.env.SPRINTBOARD_SETUP!=='1')throw Error('Photo size QA requires disposable 4183');
     await require('./test-photo-size-ui.cjs')({evaluate,command,navigate,clickButton,sleep});ws.close();return;

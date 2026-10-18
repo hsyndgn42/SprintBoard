@@ -1,16 +1,18 @@
+import { FoldDirective } from '../fold.directive';
 import {Component,Input,Output,EventEmitter,OnChanges,inject,ChangeDetectorRef} from '@angular/core';
 import {ApiService,Sprint,SprintSummary,OvertimeRecord,OvertimeEntry,CapacityRow} from '../api.service';
 import {ListPagerComponent} from '../list-pager.component';
 import {overtimeTrend} from './operational-trends.model';
 import {ReviewOperations,reviewOperations} from './review-operations.model';
-@Component({selector:'app-review-operations',standalone:true,imports:[ListPagerComponent],template:`
-<section class="card card-pad review-operations"><div class="section-head"><div><span class="eyebrow">MESAİ</span><h2>{{sprint.name}} · Gerçekleşen mesai</h2></div></div>
+@Component({selector:'app-review-operations',standalone:true,imports: [FoldDirective,ListPagerComponent],template:`
+<details appFold class="card card-pad review-operations"><summary class="section-head"><div><span class="eyebrow">MESAİ</span><h2>{{sprint.name}} · Gerçekleşen mesai</h2></div></summary>
 @if(loading){<p role="status">Sprint katkıları yükleniyor…</p>}@else if(error){<p class="notice warn" role="alert">{{error}} <button class="btn" (click)="load()">Yeniden dene</button></p>}@else if(model){
 <div class="metrics"><div><small>Bu sprintte kayıtlı toplam mesai</small><strong>{{model.earned}} sa</strong></div></div>
-<section class="external-support"><span class="eyebrow">EKİBE SAĞLANAN DESTEK</span><h2>Ekip dışı destek / Architecture</h2><div class="metrics"><div><small>Atanan destek eforu</small><strong>{{model.supportHours}} sa</strong></div></div><p class="data-note">Dış ekip ve Architecture katkısıdır; Defect Support rezervinden ayrıdır. X destek saat toplamına eklenmez. Saatler planlanan görev eforudur.</p>
+}</details>
+@if(model){<details appFold class="card card-pad external-support"><summary><h2>Ekip dışı destek / Architecture</h2><small>{{model.supportHours}} sa</small></summary><div class="metrics"><div><small>Atanan destek eforu</small><strong>{{model.supportHours}} sa</strong></div></div><p class="data-note">Dış ekip ve Architecture katkısıdır; Defect Support rezervinden ayrıdır. X destek saat toplamına eklenmez. Saatler planlanan görev eforudur.</p>
 <app-list-pager #pager [items]="model.people" label="Support katkıları"/>
 @for(p of pager.rows;track p.id){<div class="support-row"><strong>{{p.name}}</strong><span>{{p.hours}} sa @if(p.xCount){<small>· {{p.xCount}} X destek</small>}</span><div class="track"><span [style.width.%]="100*p.hours/maxHours"></span></div></div>}@empty{<p>Saatli veya X destek ataması yok.</p>}
-</section>}</section>`,styles:[`:host{display:block;margin:24px 0}.external-support{margin-top:28px;padding-top:28px;border-top:2px solid #dce5ef}.metrics{display:grid;grid-template-columns:1fr;gap:16px;margin:20px 0}.metrics>div{padding:20px;background:#f5f8ff;border:1px solid #dce5ef;border-radius:12px}.metrics small,.metrics strong{display:block}.metrics strong{font-size:28px;margin-top:8px}.support-row{display:grid;grid-template-columns:1fr auto;gap:10px;padding:16px 0;border-bottom:1px solid #e4eaf2}.track{grid-column:1/-1;height:8px;background:#e9eff8;border-radius:5px;overflow:hidden}.track span{display:block;height:100%;background:#2563eb}@media(max-width:500px){.metrics{grid-template-columns:1fr}}`]})
+</details>}`,styles:[`:host{display:block;margin:0}.external-support{margin-top:20px}.metrics{display:grid;grid-template-columns:1fr;gap:16px;margin:20px 0}.metrics>div{padding:20px;background:#f5f8ff;border:1px solid #dce5ef;border-radius:12px}.metrics small,.metrics strong{display:block}.metrics strong{font-size:28px;margin-top:8px}.support-row{display:grid;grid-template-columns:1fr auto;gap:10px;padding:16px 0;border-bottom:1px solid #e4eaf2}.track{grid-column:1/-1;height:8px;background:#e9eff8;border-radius:5px;overflow:hidden}.track span{display:block;height:100%;background:#2563eb}@media(max-width:500px){.metrics{grid-template-columns:1fr}}`]})
 export class ReviewOperationsComponent implements OnChanges{
  @Input({required:true})sprint!:Sprint;@Output()readyChange=new EventEmitter<boolean>();@Output()loaded=new EventEmitter<ReviewOperations>();
  private api=inject(ApiService);private cdr=inject(ChangeDetectorRef);private generation=0;

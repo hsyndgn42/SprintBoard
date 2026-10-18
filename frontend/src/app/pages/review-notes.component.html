@@ -1,5 +1,5 @@
-<section class="card card-pad review-notes" aria-label="Review toplantı notları">
-  <div class="section-head"><div><span class="eyebrow">TOPLANTI ÖZETİ</span><h2>Review notları ve kararlar</h2></div>@if(auth.isAdmin()&&notes&&!loading){<button class="btn" (click)="open()">{{ notes.version ? 'Notları düzenle' : 'Review notu ekle' }}</button>}</div>
+<details appFold class="card card-pad review-notes" aria-label="Review toplantı notları">
+  <summary class="section-head"><div><span class="eyebrow">TOPLANTI ÖZETİ</span><h2>Review notları ve kararlar</h2></div>@if(auth.isAdmin()&&notes&&!loading){<button class="btn" (click)="open()">{{ notes.version ? 'Notları düzenle' : 'Review notu ekle' }}</button>}</summary>
   <p class="data-note">Toplantı kaydı teslimat sonuçlarından ayrıdır; sprint kapandıktan sonra da güncellenebilir. Sonraki adımlar otomatik görev veya Retro aksiyonu oluşturmaz.</p>
   @if(loading){<p role="status">Review notları yükleniyor…</p>}
   @if(error){<p class="notice warn" role="alert">{{ error }}</p><button class="btn" (click)="load()">Notları yeniden yükle</button>}
@@ -9,7 +9,7 @@
   }
   @if(message){<p class="inline-success notes-message" role="status">{{ message }}</p>}
   @if(draft){<p class="notes-draft-warning">Açık taslak henüz kaydedilmedi. Yazdırmaya yalnız kayıtlı notlar dahil edilir.</p>}
-</section>
+</details>
 @if(draft;as editing){<div class="modal-layer"><form class="modal notes-modal" (ngSubmit)="save()"><header><span class="eyebrow">REVIEW TOPLANTI KAYDI</span><h2>Notları düzenle</h2><p>Alan başına en fazla 10.000 karakter. Vazgeç taslağı kaydetmeden kapatır.</p></header><div class="modal-body">
   @if(formError){<p class="notice warn" role="alert">{{ formError }}</p><button type="button" class="btn" [disabled]="comparing||saving" (click)="compare()">Güncel kayıtla karşılaştır</button>}
   @if(latest;as current){<section class="notes-conflict"><h3>Güncel kayıt · sürüm {{ current.version }}</h3><p>Taslağınız aşağıdaki alanlarda korunuyor. Farkları kontrol edip hangi içerikle devam edeceğinizi seçin; seçim henüz kayıt yapmaz.</p>@for(field of fields;track field.key){<h4>{{ field.label }}</h4><p>{{ current[field.key] || 'Not yok' }}</p>}<div class="page-actions"><button type="button" class="btn" (click)="useLatest()">Güncel içeriği kullan</button><button type="button" class="btn" (click)="keepDraft()">Taslağımla devam et</button></div></section>}

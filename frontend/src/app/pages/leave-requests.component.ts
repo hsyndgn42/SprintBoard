@@ -1,3 +1,4 @@
+import { FoldDirective } from '../fold.directive';
 import { ListPagerComponent } from '../list-pager.component';
 import {Component,Input,Output,EventEmitter,OnInit,ChangeDetectorRef,inject} from '@angular/core';
 import {FormsModule} from '@angular/forms';
@@ -5,9 +6,9 @@ import {ApiService,SprintSummary,formatDate} from '../api.service';
 import {AuthService} from '../auth.service';
 import {ModalAccessibilityDirective} from '../modal-accessibility.directive';
 interface LeaveRequest {id:string;member_name:string;sprint_name:string;requester:string;start_on:string;end_on:string;days:number;leave_type:string;reason:string;status:string;created_at:string;decided_at:string|null;decided_by:string|null;decision_note:string}
-@Component({standalone:true,selector:'app-leave-requests',imports:[ListPagerComponent,FormsModule,ModalAccessibilityDirective],styleUrl:'./collaboration.css',template:`
-<section class="card card-pad requests">
- <div class="section-head"><div><span class="eyebrow">ONAY AKIŞI</span><h2>{{auth.isAdmin()?'İzin talepleri':'İzin taleplerim'}}</h2></div><div class="page-actions"><button class="btn small" [disabled]="loading||busy" (click)="load()">Yenile</button>@if(!auth.isAdmin()&&auth.state()?.memberId){<button class="btn primary" [disabled]="busy||!eligible.length" (click)="open()">+ İzin talebi</button>}</div></div>
+@Component({standalone:true,selector:'app-leave-requests',imports: [FoldDirective,ListPagerComponent,FormsModule,ModalAccessibilityDirective],styleUrl:'./collaboration.css',template:`
+<details appFold class="card card-pad requests">
+ <summary class="section-head"><div><span class="eyebrow">ONAY AKIŞI</span><h2>{{auth.isAdmin()?'İzin talepleri':'İzin taleplerim'}}</h2></div><div class="page-actions"><button class="btn small" [disabled]="loading||busy" (click)="load()">Yenile</button>@if(!auth.isAdmin()&&auth.state()?.memberId){<button class="btn primary" [disabled]="busy||!eligible.length" (click)="open()">+ İzin talebi</button>}</div></summary>
  <p class="data-note">Yalnız admin onayından sonra izin kaydı oluşur ve kapasite azalır. Mesai hakedişi izni ayrıca mesai kullanımına yansır. Bekleyen veya reddedilen talepler hesaplara katılmaz.</p>
  @if(!auth.isAdmin()&&!auth.state()?.memberId){<p class="notice">Talep göndermek için hesabınız etkin takım üyenize bağlanmalı.</p>}
  @if(!auth.isAdmin()&&!eligible.length){<p class="data-note">İzin talebi için açık aktif sprint gerekiyor.</p>}
@@ -15,7 +16,7 @@ interface LeaveRequest {id:string;member_name:string;sprint_name:string;requeste
  <div class="journal-filters"><label class="field">Durum<select [(ngModel)]="filter"><option value="PENDING">Bekleyen</option><option value="APPROVED">Onaylanan</option><option value="REJECTED">Reddedilen</option><option value="">Tümü</option></select></label>@if(auth.isAdmin()){<label class="field">Kişi ara<input type="search" [(ngModel)]="query" placeholder="Ad veya kullanıcı adı"></label>}</div>
  @if(error){<p class="notice warn" role="alert">{{error}}</p>}@if(success){<p class="notice" role="status">{{success}}</p>}
  <app-list-pager #requestPager [items]="visible" label="İzin talepleri" />@if(loading){<p role="status">Talepler yükleniyor…</p>}@else{@for(r of requestPager.rows;track r.id){<article class="request-row" [attr.data-request-id]="r.id"><header><div><strong>{{r.member_name}} · {{r.days}} gün · {{kind(r.leave_type)}}</strong><small>{{r.sprint_name}} · {{formatDate(r.start_on)}} – {{formatDate(r.end_on)}}</small></div><span class="status" [class.done]="r.status==='APPROVED'" [class.pending]="r.status==='PENDING'" [class.rejected]="r.status==='REJECTED'">{{label(r.status)}}</span></header><p class="journal-text">{{r.reason}}</p><small>{{r.requester}} · {{time(r.created_at)}}</small>@if(r.decided_by){<p class="request-decision">{{r.decided_by}} · {{time(r.decided_at!)}}<br>{{r.decision_note}}</p>}@if(auth.isAdmin()&&r.status==='PENDING'){<footer><button class="btn" [disabled]="busy" (click)="decide(r,'REJECTED')">Reddet</button><button class="btn primary" [disabled]="busy" (click)="decide(r,'APPROVED')">Onayla</button></footer>}</article>}@empty{<div class="empty">Bu kapsamda izin talebi yok.</div>}}
-</section>
+</details>
 @if(formOpen){<div class="modal-layer"><form class="modal" (ngSubmit)="submit()"><header><h2>İzin talebi</h2><p>{{auth.state()?.memberName}} · Admin onayına gönderilir</p></header><div class="modal-body form-grid">
  <label class="field">Sprint<select name="leaveRequestSprint" [(ngModel)]="draft.sprintId" required><option value="">Sprint seçin</option>@for(s of eligible;track s.id){<option [value]="s.id">{{s.name}}</option>}</select></label>
  <label class="field">İzin türü<select name="leaveRequestType" [(ngModel)]="draft.leaveType" required><option value="ANNUAL">Yıllık izin</option><option value="OVERTIME">Mesai hakedişinden izin</option></select></label>

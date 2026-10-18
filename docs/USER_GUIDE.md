@@ -149,13 +149,19 @@ Yalnız havuzdaki ve başka kayıtların bağlı olmadığı işlerde silme kull
 ## Sprint oluşturma ve başlatma
 
 1. Admin olarak **Sprintler → Yeni sprint** seçin.
-2. Sprint adını, hedefini, başlangıç ve bitiş tarihini girin. Bitiş günü hesaplamaya dahildir; kapasitede yalnız çalışma takvimine uyan günler sayılır.
+2. Sprint adını, başlangıç ve bitiş tarihini girin. **Hedef isteğe bağlıdır**, daha sonra ekleyebilirsiniz. Bitiş günü hesaplamaya dahildir; kapasitede yalnız çalışma takvimine uyan günler sayılır.
 3. **Sprint oluştur** düğmesine basın. Sprint **Planlanan** bölümüne gelir, mevcut aktif sprint değişmez.
 4. Otomatik BAU işlerini ve kişi saatlerini kontrol edin. On Leave izinlerden türetilir; normal görev eforu gibi artırılmaz.
 5. Kapasiteyi ve iş atamalarını hazırlayın.
 6. Hazır olduğunda **Sprinti başlat** seçin. Önce mevcut aktif sprintin kapanışını tamamlayın.
 
 Örnek: Pazartesi–cuma çalışan ekipte 6–26 Ekim 2026 aralığı, iki sınır da dahil, tatil ve izin düşülmeden önce 15 çalışma günüdür.
+
+### Sprint bilgilerini düzeltme
+
+Admin, planlanan veya aktif sprintin üstündeki **Sprinti düzenle** düğmesinden ad, hedef ve tarih aralığını değiştirebilir. Kapalı sprintin sabit kapanış kaydı değiştirilemez. Tarih değişikliği kapasiteyi yeniden hesaplar; görev eforları, elle ayrılan günler ve planlı mesai kendiliğinden değiştirilmez. Mevcut izin, mesai talebi veya günlük çalışma notunu dışarıda bırakan tarih aralıkları reddedilir. Düzenlemeden sonra Kapasite ve Planlama sekmelerini kontrol edin.
+
+Fazla mesai, İzin, sprint Planlama, Efor matrisi, Review ve Sprint günlüğündeki ana bölümler başlıklarına tıklanarak açılır/kapanır. Başlığa klavyeyle gelip Enter veya Space de kullanabilirsiniz. Kapalı bölümlerin verileri silinmez; Review yazdırılırken bölümler açılır, yazdırma sonrasında önceki görünüm geri gelir. HTML çıktısının kapsamı değişmez.
 
 <a id="sprinte-is-ekleme-ve-atama"></a>
 ## Sprinte iş ekleme ve atama

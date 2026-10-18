@@ -49,6 +49,17 @@ public class ParticipationService {
    try{j.update("INSERT INTO sprint_member_presence VALUES(?,?,?)",sprint,id,m.writeValueAsString(dates));}catch(Exception e){throw new IllegalStateException(e);}
   }
  }
+ /** Preserve captured participation on overlapping dates; extend only existing captured members. */
+ public void resize(String sprint,LocalDate oldStart,LocalDate oldEnd,LocalDate start,LocalDate end){
+  for(var row:j.query("SELECT member_id,days_json FROM sprint_member_presence WHERE sprint_id=?",(rs,n)->Map.of("MEMBER_ID",rs.getString(1),"DAYS_JSON",rs.getString(2)),sprint)){
+   String member=row.get("MEMBER_ID").toString();var periods=periods(member);var dates=new TreeSet<String>();
+   try{
+    for(var value:m.readTree(row.get("DAYS_JSON").toString())){var day=LocalDate.parse(value.asText());if(!day.isBefore(start)&&!day.isAfter(end))dates.add(day.toString());}
+    start.datesUntil(end.plusDays(1)).filter(d->d.isBefore(oldStart)||d.isAfter(oldEnd)).filter(d->periods.stream().anyMatch(p->includes(p,d))).forEach(d->dates.add(d.toString()));
+    j.update("UPDATE sprint_member_presence SET days_json=? WHERE sprint_id=? AND member_id=?",m.writeValueAsString(dates),sprint,member);
+   }catch(Exception e){throw new IllegalStateException("Sprint katılım günleri güncellenemedi.",e);}
+  }
+ }
  public List<LocalDate> days(String sprint,String member,LocalDate start,LocalDate end,Map<String,Object> legacy){
   var rows=j.queryForList("SELECT days_json FROM sprint_member_presence WHERE sprint_id=? AND member_id=?",String.class,sprint,member);
   if(!rows.isEmpty())try{List<LocalDate> result=new ArrayList<>();for(var n:m.readTree(rows.getFirst()))result.add(LocalDate.parse(n.asText()));return result;}catch(Exception e){throw new IllegalStateException(e);}

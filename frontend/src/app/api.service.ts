@@ -28,7 +28,7 @@ export interface Task {
   assignments: { memberId: string; memberName: string; estimatedHours: number; planningHours?:number; supportOnly: boolean; leaveDays?: number; hoursPerDay?:number }[];
 }
 export interface SprintFlow {origin:'START'|'OBSERVED'|'UNTRACKED';trackedAt:string|null;baseline:Task[];events:{id:string;action:'ADDED'|'REMOVED';at:string;reason:string;task:Task}[];version:number;wipLimit:number|null;wip:number;blocked:number;currentCount:number;added:number;removed:number}
-export interface Sprint extends SprintSummary { defectReserves?:DefectReserveSummary[]; items: Task[]; closureFrozen?:boolean; closedAt?:string; closureSettings?:ProductSettings;workSettings?:ProductSettings;flow?:SprintFlow }
+export interface Sprint extends SprintSummary { editVersion?:string; defectReserves?:DefectReserveSummary[]; items: Task[]; closureFrozen?:boolean; closedAt?:string; closureSettings?:ProductSettings;workSettings?:ProductSettings;flow?:SprintFlow }
 export interface Overview {
   totalSprints: number; completedSprints: number; deliveredTasks: number; undoneTasks: number;
   deliveryRate: number | null; activeSprint: SprintSummary | null; recentSprints: SprintSummary[];

@@ -99,6 +99,7 @@ public class WorkspaceService {
     List<Map<String, Object>> rows = sprints().stream().filter(row -> id.equals(row.get("id"))).toList();
     if (rows.isEmpty()) return null;
     Map<String, Object> result = new LinkedHashMap<>(rows.getFirst());
+    result.put("editVersion", sprintEditVersion(result));
     List<Map<String, Object>> tasks = jdbc.query("SELECT * FROM sprint_task WHERE sprint_id=? ORDER BY id", (rs, row) -> map(
         "id", rs.getString("id"), "sprintId", rs.getString("sprint_id"), "backlogId", rs.getString("backlog_id"),
         "name", rs.getString("title"), "criteria", rs.getString("criteria"), "type", rs.getString("type"),
@@ -828,8 +829,7 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
     String name = text(input, "name");
     String start = text(input, "start");
     String end = text(input, "end");
-    if (name.isBlank() || start.isBlank() || end.isBlank() || end.compareTo(start) < 0)
-      throw new IllegalArgumentException("Sprint adı ve tarih aralığı geçerli olmalı.");
+    validateSprintDetails(input);
     // Serialize sprint numbering and first-time BAU target binding within the same transaction.
     jdbc.queryForObject("SELECT setting_value FROM product_setting WHERE setting_key='estimation_mode' FOR UPDATE",String.class);
     int number = jdbc.queryForObject("SELECT COALESCE(MAX(number),0)+1 FROM sprint", Integer.class);
@@ -842,6 +842,47 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
     addDefaultBauTasks(newId, name, LocalDate.parse(start), LocalDate.parse(end), false, true);
     audit("sprint", newId, "created", map("number", number));
     return map("id", newId, "number", number, "name", name, "status", "planned");
+  }
+
+  private void validateSprintDetails(Map<String,Object> input) {
+    if(text(input,"name").isBlank() || text(input,"name").length()>160 || text(input,"goal").length()>10000)
+      throw new IllegalArgumentException("Sprint adı 1–160, hedef en fazla 10000 karakter olmalı. Hedef boş bırakılabilir.");
+    try {
+      var start=LocalDate.parse(text(input,"start"));var end=LocalDate.parse(text(input,"end"));
+      if(start.getYear()<1900 || end.getYear()>2200 || end.isBefore(start) || java.time.temporal.ChronoUnit.DAYS.between(start,end)>366) throw new IllegalArgumentException();
+    } catch(Exception e) { throw new IllegalArgumentException("Geçerli başlangıç/bitiş tarihleri girin; bitiş başlangıçtan önce olamaz ve dönem en fazla 366 gün olabilir."); }
+  }
+  private String sprintEditVersion(Map<String,Object> sprint) {
+    return closures.fingerprint(map("name",sprint.get("name"),"goal",sprint.get("goal"),"start",sprint.get("start"),"end",sprint.get("end"),"status",sprint.get("status")));
+  }
+  @Transactional(isolation=org.springframework.transaction.annotation.Isolation.SERIALIZABLE)
+  public Map<String,Object> updateSprint(String id,Map<String,Object> input) {
+    if(jdbc.queryForList("SELECT id FROM sprint WHERE id=? FOR UPDATE",id).isEmpty())return null;
+    var before=sprint(id);
+    if(!Set.of("planned","active").contains(before.get("status")) || closures.read(id)!=null)
+      throw new IllegalArgumentException("Yalnız planlanan veya aktif sprint düzenlenebilir; kapanış kaydı korunur.");
+    if(!Objects.equals(before.get("editVersion"),input.get("editVersion")))
+      throw new IllegalArgumentException("Sprint başka bir işlemde değişti. Sayfayı yenileyip düzenlemeyi yeniden açın.");
+    validateSprintDetails(input);
+    var start=LocalDate.parse(text(input,"start"));var end=LocalDate.parse(text(input,"end"));
+    boolean datesChanged=!start.toString().equals(before.get("start")) || !end.toString().equals(before.get("end"));
+    if(datesChanged) {
+      // Never silently move or discard dated leave, overtime requests or authored work notes.
+      for(String table:List.of("leave_record","leave_request")) {
+        String status=table.equals("leave_request")?" AND status<>'REJECTED'":"";
+        if(jdbc.queryForObject("SELECT COUNT(*) FROM "+table+" WHERE sprint_id=?"+status+" AND (start_on<? OR end_on>?)",Integer.class,id,java.sql.Date.valueOf(start),java.sql.Date.valueOf(end))>0)
+          throw new IllegalArgumentException("Yeni tarih aralığı izin kaydını veya bekleyen izin talebini dışarıda bırakıyor. Önce ilgili kaydı kontrol edin.");
+      }
+      if(jdbc.queryForObject("SELECT COUNT(*) FROM overtime_request WHERE sprint_id=? AND status<>'REJECTED' AND (work_date<? OR work_date>?)",Integer.class,id,java.sql.Date.valueOf(start),java.sql.Date.valueOf(end))>0)
+        throw new IllegalArgumentException("Yeni tarih aralığı mesai kaydını veya bekleyen mesai talebini dışarıda bırakıyor.");
+      if(jdbc.queryForObject("SELECT COUNT(*) FROM task_activity WHERE sprint_id=? AND kind='WORK_NOTE' AND (entry_date<? OR entry_date>?)",Integer.class,id,java.sql.Date.valueOf(start),java.sql.Date.valueOf(end))>0)
+        throw new IllegalArgumentException("Yeni tarih aralığı günlük çalışma notlarını dışarıda bırakıyor.");
+      participation.resize(id,LocalDate.parse(before.get("start").toString()),LocalDate.parse(before.get("end").toString()),start,end);
+    }
+    jdbc.update("UPDATE sprint SET name=?,goal=?,start_date=?,end_date=? WHERE id=?",text(input,"name"),text(input,"goal"),java.sql.Date.valueOf(start),java.sql.Date.valueOf(end),id);
+    // Keep task identity, estimates, assignments and captured work/hour policies intact.
+    audit("sprint",id,"details-updated",map("before",map("name",before.get("name"),"goal",before.get("goal"),"start",before.get("start"),"end",before.get("end")),"after",map("name",text(input,"name"),"goal",text(input,"goal"),"start",start.toString(),"end",end.toString())));
+    return sprint(id);
   }
 
   /** One-time, additive backfill; the setting marker prevents deleted historical tasks from reappearing on restart. */
