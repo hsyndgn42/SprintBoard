@@ -1,9 +1,10 @@
 import {SlackDigestSettingsComponent} from './slack-digest.component';
+import {SlackAutomationComponent} from './slack-automation.component';
 import {Component,ChangeDetectorRef,inject,OnInit,OnDestroy} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {ApiService} from '../api.service';
 interface SlackStatus {backlogChannelId:string;backlogTemplate:string;receiptPending?:number;receiptError?:string;overtimeChannelId:string;overtimeTemplate:string;reporterError?:string;teamId:string;channelId:string;template:string;version:number;state:string;error:string;botTokenConfigured:boolean;appTokenConfigured:boolean;lastReceivedAt:string}
-@Component({selector:'app-slack-settings',standalone:true,imports:[FormsModule,SlackDigestSettingsComponent],templateUrl:'./slack-settings.component.html',styleUrl:'./slack-settings.component.css'})
+@Component({selector:'app-slack-settings',standalone:true,imports:[FormsModule,SlackDigestSettingsComponent,SlackAutomationComponent],templateUrl:'./slack-settings.component.html',styleUrl:'./slack-settings.component.css'})
 export class SlackSettingsComponent implements OnInit,OnDestroy {
  private api=inject(ApiService);private cdr=inject(ChangeDetectorRef);private timer?:ReturnType<typeof setInterval>;private destroyed=false;private loading=false;
  overtimeChannelId='';status:SlackStatus|null=null;teamId='';channelId='';template='';botToken='';appToken='';busy=false;error='';message='';confirmForget=false;private version=0;

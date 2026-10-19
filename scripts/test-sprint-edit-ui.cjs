@@ -29,6 +29,7 @@ module.exports=async({evaluate,command,navigate,clickButton,setFieldValue,sleep,
  const reserve=await api('/sprints/'+sprint.id+'/tasks/new',{title:'UI Defect Support',taskCategory:'BAU',taskSubtype:'DEFECT_SUPPORT',size:'SMALL',estimatedHours:0,readinessAcknowledged:true,reason:'QA',assignments:[{memberId:member.id,estimatedHours:8,supportOnly:false}]});
  const defect=await api('/sprints/'+sprint.id+'/tasks/new',{title:'UI one-hour defect',taskCategory:'DEFECT',taskSubtype:'TEST_DEFECT',size:'SMALL',estimatedHours:0,readinessAcknowledged:true,reason:'QA',reserveTaskId:reserve.id,assignments:[{memberId:member.id,estimatedHours:1,supportOnly:false}]});
  await navigate('sprints/'+sprint.id+'/planning','İşler ve atamalar');await waitFor('!!document.querySelector("app-planning-insights details")');
+ await waitFor(`!!document.querySelector('[data-planning-task="${defect.id}"]')`);
  await disclosures('details.planning-group');await disclosures('app-planning-insights details[appFold]');
  const defectCell=await evaluate(`document.querySelector('[data-planning-task="${defect.id}"] td:nth-child(3)').innerText`);
  assert.match(defectCell,/^1 sa/);assert.match(defectCell,/Rezervden karşılanan: 1 sa/);assert.match(defectCell,/Ek plan yükü: 0 sa/);
@@ -69,6 +70,8 @@ module.exports=async({evaluate,command,navigate,clickButton,setFieldValue,sleep,
  if(process.env.SPRINTBOARD_SMOKE_SLACK_BACKLOG==='1')await require('./test-overtime-correction-ui.cjs')({evaluate,command,navigate,clickButton,setFieldValue,waitFor,shot,api,sprint,member,sleep,events});
  if(process.env.SPRINTBOARD_SMOKE_SLACK_BACKLOG==='1')await require('./test-slack-message-correction-ui.cjs')({evaluate,command,navigate,clickButton,setFieldValue,waitFor,shot,api,sleep});
  await require('./test-scope-views-ui.cjs')({evaluate,navigate,setFieldValue,api,waitFor,sprint,member,shot});
+ if(process.env.SPRINTBOARD_SMOKE_AUTOMATION==='1')await require('./test-slack-automation-ui.cjs')({evaluate,command,navigate,clickButton,setFieldValue,api,waitFor,shot,sleep});
+ if(process.env.SPRINTBOARD_SMOKE_UX==='1')await require('./test-ui-system.cjs')({evaluate,command,navigate,clickButton,setFieldValue,api,waitFor,sprint,shot,sleep});
  assert.equal(events.length,0,events.join('\n'));
  console.log('PASS: blank goal creation, edit/cancel/save, 15 inclusive working days, all requested disclosures, keyboard toggle, print expansion/restoration, export readiness, mobile closed/open, no browser errors.');
 };

@@ -28,15 +28,15 @@ import { TASK_CATEGORIES, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, 
     } @else {
       <div class="page-head"><div><span class="eyebrow">ÜRÜN YÖNÜ</span><h1>Roadmap</h1><p>Stratejik hedefleri backlog işlerine, oradan sprint teslimatlarına bağlayın.</p></div>@if (auth.isAdmin()) { <div class="page-actions"><button class="btn primary" (click)="setFormOpen(true)">+ Hedef ekle</button></div> }</div>
       @if (items.length) {
-        <section class="card roadmap-filters" aria-label="Roadmap filtreleri">
+        <section class="card roadmap-filters ui-toolbar" aria-label="Roadmap filtreleri">
           <label class="field">Ara<input type="search" [(ngModel)]="query" placeholder="Başlık veya referans ID"></label>
           <label class="field">Durum<select [(ngModel)]="statusFilter"><option value="">Tüm durumlar</option>@for(s of statuses;track s.value){<option [value]="s.value">{{ s.label }}</option>}</select></label>
           <label class="field">Öncelik<select [(ngModel)]="priorityFilter"><option value="">Tüm öncelikler</option>@for(p of priorities;track p.value){<option [value]="p.value">{{ p.label }}</option>}</select></label>
           <label class="field">Tür<select [(ngModel)]="kindFilter"><option value="">Tüm türler</option><option value="PROJECT">Proje</option><option value="FEATURE_SET">Feature set</option><option value="GENERAL">Genel</option><option value="UNSPECIFIED">Belirtilmemiş</option></select></label>
           <label class="field">Sıralama<select [(ngModel)]="sort"><option value="priority">Öncelik</option><option value="date">Hedef tarihi</option><option value="title">Başlık</option></select></label>
-          <button class="btn" (click)="resetFilters()">Temizle</button>
+          <button class="btn" (click)="resetFilters()">Filtreleri temizle</button>
         </section>
-        <p class="data-note" aria-live="polite">{{ visible.length }} / {{ items.length }} Roadmap · Öncelikte kritik önce, tarihte en yakın önce; tarihsiz hedefler sonda.</p>
+        <p class="data-note" aria-live="polite">{{ visible.length }} / {{ items.length }} hedef gösteriliyor</p>
         @if(!visible.length){<section class="card empty"><strong>Bu filtrelerde hedef bulunamadı</strong><button class="btn" (click)="resetFilters()">Filtreleri temizle</button></section>}
       }
       <app-list-pager #roadmapPager [items]="visible" label="Roadmap" />@if (visible.length) { <section class="roadmap-grid">@for (item of roadmapPager.rows; track item.id) {

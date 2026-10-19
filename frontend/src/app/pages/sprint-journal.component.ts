@@ -7,7 +7,7 @@ import {AuthService} from '../auth.service';
 interface Activity {id:string;taskId:string;taskTitle:string;actor:string;memberName:string;date:string;createdAt:string;kind:string;message:string;details:{from?:string;to?:string;reason?:string;note?:string;assignments?:{memberName:string;estimatedHours:number;supportOnly:boolean}[];previousAssignments?:{memberName:string;estimatedHours:number;supportOnly:boolean}[];taskCategory?:string;taskSubtype?:string}}
 @Component({standalone:true,selector:'app-sprint-journal',imports: [FoldDirective,ListPagerComponent,FormsModule],styleUrl:'./collaboration.css',template:`
 <details appFold class="card card-pad journal">
- <summary class="section-head"><div><span class="eyebrow">EKİBİN ÇALIŞMA GEÇMİŞİ</span><h2>{{focusTask?'Görev günlüğü':'Sprint günlüğü'}}</h2></div><button class="btn small" [disabled]="loading||busy" (click)="load()">Yenile</button></summary>
+ <summary class="section-head"><div><span class="eyebrow">EKİBİN ÇALIŞMA GEÇMİŞİ</span><h2>{{focusTask?'Görev günlüğü':'Sprint günlüğü'}}</h2></div><button class="btn small ui-refresh" [disabled]="loading||busy" (click)="load()">Yenile</button></summary>
  <p class="data-note">Notlar ve görev değişiklikleri giriş yapan tüm kullanıcılar tarafından görülür. Geçmiş kayıtlar değiştirilmez; düzeltme için yeni not ekleyin.</p>
  @if(writable.length){<details class="journal-compose"><summary>+ Günlük çalışma notu</summary><form (ngSubmit)="save()" class="form-grid">
  <label class="field">Görev<select name="journalTask" [(ngModel)]="taskId" required><option value="">Görev seçin</option>@for(t of writable;track t.id){<option [value]="t.id">{{t.name}}</option>}</select></label>

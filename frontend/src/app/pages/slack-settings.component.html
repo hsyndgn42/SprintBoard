@@ -10,8 +10,8 @@
         <div class="channel-grid">
           <label class="field">Çalışma alanı kimliği<input name="slackTeam" [(ngModel)]="teamId" maxlength="40" placeholder="T…"></label>
           <label class="field">Defect kanal kimliği<input name="slackChannel" [(ngModel)]="channelId" maxlength="40" placeholder="C… veya G…"></label>
-          <label class="field">Mesai kanal kimliği <span class="optional">İsteğe bağlı</span><input name="slackOvertimeChannel" [(ngModel)]="overtimeChannelId" maxlength="40" placeholder="C… veya G…"></label>
-          <label class="field">Backlog kanal kimliği <span class="optional">İsteğe bağlı</span><input name="slackBacklogChannel" [(ngModel)]="backlogChannelId" maxlength="40" placeholder="C… veya G…"></label>
+          <label class="field"><span class="field-caption">Mesai kanal kimliği <span class="optional">İsteğe bağlı</span></span><input name="slackOvertimeChannel" [(ngModel)]="overtimeChannelId" maxlength="40" placeholder="C… veya G…"></label>
+          <label class="field"><span class="field-caption">Backlog kanal kimliği <span class="optional">İsteğe bağlı</span></span><input name="slackBacklogChannel" [(ngModel)]="backlogChannelId" maxlength="40" placeholder="C… veya G…"></label>
         </div>
         <div class="token-grid">
           <label class="field">Bot token<input type="password" name="slackBotToken" [(ngModel)]="botToken" maxlength="1024" autocomplete="new-password" [placeholder]="status.botTokenConfigured?'Kaydedildi · değiştirmek için girin':'xoxb-…'"></label>
@@ -45,7 +45,7 @@
         </div>
       </section>
       <footer class="save-bar">
-        <p class="hint">Yalnız yeni ana mesajlar alınır; yanıtlar ve mesaj düzenlemeleri alınmaz.</p>
+        <p class="hint">Ana mesajlar canlı ve geçmiş taramasıyla alınır; yanıtlar alınmaz. Kaydedilmiş mesajların düzeltmeleri uygulamanın onay ekranından yapılır.</p>
         <div class="save-actions">
           <button class="btn" type="submit" [disabled]="busy">Ayarları kaydet</button>
           <button class="btn primary" type="button" [disabled]="busy" (click)="save(true)">Kaydet ve dinle</button>
@@ -76,4 +76,5 @@
     </details>
   }@else{<p>Slack ayarları yükleniyor…</p>}
   <app-slack-digest-settings />
+  <app-slack-automation />
 </section>

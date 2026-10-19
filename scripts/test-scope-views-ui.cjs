@@ -15,7 +15,10 @@ module.exports=async({evaluate,navigate,setFieldValue,api,waitFor,sprint,member,
  await shot('backlog-sprint-locations');
  const overview=await api('/overview');await navigate('overview','VIBE');await waitFor('document.querySelectorAll(".metric").length>0');
  assert(await evaluate('document.querySelector(".metric").innerText.includes('+JSON.stringify(overview.completedSprints+' kapanmış · '+overview.activeSprints+' aktif · '+overview.plannedSprints+' planlanan')+')'));await shot('overview-sprint-statuses');
- const before=await api('/sprints/'+sprint.id),reserve=before.items.find(t=>t.taskSubtype==='DEFECT_SUPPORT');
+ // Sprint templates also contain an unallocated Defect Support task. Use the funded fixture,
+ // never whichever reserve happens to appear first in the API response.
+ const before=await api('/sprints/'+sprint.id),reserve=before.items.find(t=>t.taskSubtype==='DEFECT_SUPPORT'&&t.name==='UI Defect Support');
+ assert(reserve&&reserve.assignments.some(a=>a.memberId===member.id&&a.estimatedHours===8),'Funded reserve fixture exists');
  const defect=await api('/sprints/'+sprint.id+'/tasks/new',{...draft('Rezerv kapsam QA'),taskCategory:'DEFECT',taskSubtype:'TEST_DEFECT',reserveTaskId:reserve.id});
  const after=await api('/sprints/'+sprint.id);assert.equal(after.flow.added,before.flow.added);assert.equal(after.items.find(t=>t.id===defect.id).emergency,false);assert.equal(after.flow.events.find(e=>e.task.id===defect.id).scopeChange,false);
  await navigate('sprints/'+sprint.id+'/board','Düzeltilmiş sprint');await waitFor('!!document.querySelector("app-sprint-flow")');await evaluate('document.querySelector("app-sprint-flow details").open=true');assert(await evaluate('document.querySelector("app-sprint-flow").innerText.includes("Rezerv içi")'));await shot('reserve-scope-flow');

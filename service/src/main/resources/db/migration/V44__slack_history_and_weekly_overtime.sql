@@ -1,0 +1,28 @@
+CREATE TABLE slack_history_checkpoint (
+ scope_key VARCHAR(150) PRIMARY KEY, completed_until VARCHAR(40) NOT NULL
+);
+CREATE TABLE slack_history_job (
+ id VARCHAR(100) PRIMARY KEY, scope_key VARCHAR(150) NOT NULL,
+ team_id VARCHAR(40) NOT NULL, channel_id VARCHAR(40) NOT NULL, kind VARCHAR(20) NOT NULL,
+ source VARCHAR(10) NOT NULL, oldest VARCHAR(40) NOT NULL, latest VARCHAR(40) NOT NULL,
+ page_latest VARCHAR(40) NOT NULL, page_cursor VARCHAR(2000) NOT NULL DEFAULT '',
+ state VARCHAR(20) NOT NULL DEFAULT 'PENDING', scanned INTEGER NOT NULL DEFAULT 0,
+ matched INTEGER NOT NULL DEFAULT 0, message VARCHAR(500) NOT NULL DEFAULT '',
+ created_at VARCHAR(40) NOT NULL, updated_at VARCHAR(40) NOT NULL, next_at VARCHAR(40) NOT NULL,
+ actor VARCHAR(150) NOT NULL
+);
+CREATE INDEX idx_slack_history_queue ON slack_history_job(state,next_at);
+CREATE TABLE slack_weekly_config (
+ id INTEGER PRIMARY KEY CHECK(id=1), enabled BOOLEAN NOT NULL DEFAULT TRUE,
+ weekday INTEGER NOT NULL DEFAULT 1 CHECK(weekday BETWEEN 1 AND 7),
+ send_time VARCHAR(5) NOT NULL DEFAULT '09:00', version INTEGER NOT NULL DEFAULT 0,
+ next_due VARCHAR(40) NOT NULL DEFAULT ''
+);
+INSERT INTO slack_weekly_config(id) VALUES(1);
+CREATE TABLE slack_weekly_run (
+ id VARCHAR(100) PRIMARY KEY, source VARCHAR(10) NOT NULL, team_id VARCHAR(40) NOT NULL,
+ channel_id VARCHAR(40) NOT NULL, period_start VARCHAR(10) NOT NULL, period_end VARCHAR(10) NOT NULL,
+ state VARCHAR(20) NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
+ created_at VARCHAR(40) NOT NULL, updated_at VARCHAR(40) NOT NULL,
+ message VARCHAR(500) NOT NULL DEFAULT '', actor VARCHAR(150) NOT NULL
+);

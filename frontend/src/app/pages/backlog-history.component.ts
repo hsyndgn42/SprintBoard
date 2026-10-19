@@ -5,7 +5,7 @@ interface HistoryEvent {id:string;at:string;date:string;actor:string;kind:string
 interface Attempt {taskId:string;sprintId:string;sprintName:string;start:string;end:string;frozen:boolean;status:string;statusNote:string;hours?:number;events:HistoryEvent[]}
 interface HistoryRecord {id:string;title:string;state:string;repeatOfId:string|null;missingParent:boolean;attempts:Attempt[]}
 @Component({standalone:true,selector:'app-backlog-history',imports:[RouterLink],template:`
-<section class="backlog-history" aria-label="İş geçmişi"><div class="history-heading"><h3>İş geçmişi</h3><button class="btn small" [disabled]="loading" (click)="load()">Yenile</button></div>
+<section class="backlog-history" aria-label="İş geçmişi"><div class="history-heading"><h3>İş geçmişi</h3><button class="btn small ui-refresh" [disabled]="loading" (click)="load()">Yenile</button></div>
 @if(loading){<p role="status">İş geçmişi yükleniyor…</p>}@else if(error){<p class="notice warn" role="alert">{{error}}</p>}@else{
  <p class="data-note">Önceki sprint sonuçları korunur; devam / tekrar işleri bağlantılı ayrı kayıtlardır.</p>
  @for(record of records;track record.id){<article class="history-record" [class.current]="record.id===itemId">

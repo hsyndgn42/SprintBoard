@@ -15,7 +15,7 @@
             "index": "src/index.html",
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
-            "styles": ["src/styles.css", "src/print.css"],
+            "styles": ["src/styles.css", "src/ui-system.css", "src/print.css"],
             "assets": []
           },
           "configurations": {

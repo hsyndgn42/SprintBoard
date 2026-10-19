@@ -389,7 +389,23 @@ Tür alanı DEV, DESIGN, ANALYZE, TEST veya BAU olabilir. Ayarlar’daki **Backl
 
 Admin, **Backlog → İş istekleri** bölümünü açar. Gönderenin adı ve kaynak Slack mesajını kontrol eder; başlık/açıklamayı düzenler, alt türü, Size veya Story Point’i, tahmini eforu ve varsa Roadmap’i seçer. **Onayla ve backlog’a ekle** yalnız bir havuz işi oluşturur; sprinte kendiliğinden eklemez. **Reddet** iş oluşturmadan isteği sonuçlandırır. Kararlar denetim kaydında saklanır, onaylanan ve reddedilen istekler filtrelenebilir; listeler sayfalıdır. Aynı Slack mesajının yeniden ulaşması ikinci bir iş oluşturmaz.
 
-Hatalı formatta gelen istek onaylanamaz; doğru formatla yeni mesaj gönderin. Onay kuyrukları ve Slack bağlantı ayarları tam sunucu yedeğine dahildir; taşınabilir JSON iş verisi yedeğine dahil değildir.
+Hatalı formatta gelen isteği admin onay ekranında **Mesajı düzelt** ile düzeltebilir; ardından ayrıca onaylar. Onay kuyrukları ve Slack bağlantı ayarları tam sunucu yedeğine dahildir; taşınabilir JSON iş verisi yedeğine dahil değildir.
+
+### Haftalık mesai ve hakediş raporu
+
+**Ayarlar → Slack → Haftalık mesai ve hakediş raporu** bölümünden otomatik gönderimi, günü ve saati yönetin. Varsayılan Pazartesi 09:00, Türkiye saatidir; hedef kayıtlı mesai kanalıdır. İlk kurulumda bir sonraki gönderim zamanı planlanır. **HTML önizle** paylaşım yapmadan raporu indirir. **Şimdi gönder** kanal ve kişisel veri onayından sonra mesajı ve HTML dosyasını gönderir; son gönderim durumu aynı bölümde görünür.
+
+Rapor önceki tamamlanmış Pazartesi–Pazar haftasının mesaisini ve mesaiden izin kullanımını, ayrıca aktif kişilerin güncel toplamlarını ve hakediş bakiyelerini gösterir. Planlanan ve bekleyen mesai hakedişe eklenmez; yıllık/şirket izni mesai kullanımı sayılmaz. Tarihi bilinmeyen eski/doğrudan mesailer yalnız genel toplamdadır. Tarihsiz veya haftaları aşan izinler haftaya tahminle dağıtılmaz; HTML’in kayıt kontrolünde açıklanır. Bakiye haftanın kapanış bakiyesi değil, gönderim anındaki güncel bakiyedir.
+
+Servis kapalıysa yeniden açılınca en son zamanı gelmiş haftalık rapor gönderilir; eski haftalar için toplu mesaj yağmuru oluşmaz. Gönderim sonucu belirsizse otomatik tekrar yapılmaz; önce kanalı kontrol edin. Dosya için `files:write`, kanal üyeliği ve kayıtlı Slack bağlantısı gerekir.
+
+### Kaçırılan mesajlar ve geçmiş tarama
+
+Slack dinlemesi açıkken defect, mesai ve backlog kanalları arka planda taranır. İlk tarama son 7 günü kapsar; sonraki taramalar veritabanındaki son tamamlanan noktadan devam eder. Kesintide kalan sayfalar yeniden başlatmada korunur. Aynı çalışma alanı + kanal + mesaj kimliği ikinci kayıt oluşturmaz; alındı tiki kayıt tekilleştirmenin kaynağı değildir.
+
+**Geçmiş mesajları tara** bölümünde başlangıç ve bitiş (dahil) seçip taramayı başlatın. Bir seferde en fazla 91 gün seçilebilir; daha eski dönemler ayrı taranabilir. İşlem Slack hız sınırlarına uyarak sayfa sayfa sürer. Okunan/eşleşen sayıları ve hata/yeniden deneme durumu aynı bölümde görünür; eşleşen sayı önceden alınmış mesajları da içerir.
+
+Şablona uyan ana mesajlar mevcut admin onay kuyruklarına gelir; otomatik onaylanmaz. Geçerli kayıtlar için ✅ sıraya alınır; hatalı format admin düzeltmesini bekler. Yanıtlar ve bot mesajları alınmaz. Zaten alınmış bir mesajın Slack’te düzenlenmesi mevcut kaydı değiştirmez; uygulamadaki düzeltme ekranını kullanın. Slack’te silinen veya saklama süresi dolan mesajlar kurtarılamaz. Kanallar değişirse eski kanala ait bekleyen tarama durdurulur. Tarama ilerlemesi ve gönderim günlüğü tam sunucu yedeğindedir; taşınabilir JSON aktarımına dahil değildir.
 
 ### Mesai mesajı
 

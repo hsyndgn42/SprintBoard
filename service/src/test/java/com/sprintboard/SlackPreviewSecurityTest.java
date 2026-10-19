@@ -14,6 +14,18 @@ import java.util.Map;
 @AutoConfigureMockMvc
 class SlackPreviewSecurityTest {
  @Autowired MockMvc mvc;@Autowired BackupService backup;@Autowired ObjectMapper mapper;
+ @Test void weeklyAndHistoryAreAdminOnlyAndCsrfProtected()throws Exception{
+  for(String path:new String[]{"weekly","weekly/preview","history"}){
+   mvc.perform(get("/api/admin/slack/"+path)).andExpect(status().isUnauthorized());
+   mvc.perform(get("/api/admin/slack/"+path).with(user("member").roles("USER"))).andExpect(status().isForbidden());
+   mvc.perform(get("/api/admin/slack/"+path).with(user("admin").roles("ADMIN"))).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"));
+  }
+  for(String path:new String[]{"weekly/send","history/scan"}){
+   mvc.perform(post("/api/admin/slack/"+path).with(user("admin").roles("ADMIN")).contentType("application/json").content("{}")).andExpect(status().isForbidden());
+   mvc.perform(post("/api/admin/slack/"+path).with(user("member").roles("USER")).with(csrf()).contentType("application/json").content("{}")).andExpect(status().isForbidden());
+  }
+  mvc.perform(put("/api/admin/slack/weekly").with(user("member").roles("USER")).with(csrf()).contentType("application/json").content("{}")).andExpect(status().isForbidden());
+ }
  @Test void digestAdminOnlyAndCsrf()throws Exception{
   mvc.perform(get("/api/admin/slack/digest")).andExpect(status().isUnauthorized());
   for(String endpoint:new String[]{"/api/admin/slack/digest","/api/admin/slack/digest/preview"})mvc.perform(get(endpoint).with(user("member").roles("USER"))).andExpect(status().isForbidden());

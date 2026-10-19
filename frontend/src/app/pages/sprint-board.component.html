@@ -1,5 +1,5 @@
 <app-sprint-flow [sprint]="sprint" [editable]="canEdit" (updated)="updated.emit()" />
-<section class="card card-pad board-filters" aria-label="Pano filtreleri">
+<section class="card card-pad board-filters ui-toolbar" aria-label="Pano filtreleri">
   <div class="section-head"><div><span class="eyebrow">SPRİNT PANOSU</span><h2>İşlerin durumu</h2></div><button class="btn small" [disabled]="!filtered" (click)="reset()">Filtreleri temizle</button></div>
   <div class="board-filter-grid">
     <label class="field">Görev ara<input type="search" name="boardQuery" [(ngModel)]="filters.query" (ngModelChange)="changed()" placeholder="İş adı, referans, kriter veya not"></label>

@@ -1,6 +1,6 @@
 # SprintBoard ürün backlogu
 
-Güncelleme: 19 Ekim 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındadır; V2 planı yoktur. Bu dosya uygulamanın geliştirme backlogudur, ekip işlerinin tutulduğu Backlog ekranı değildir.
+Güncelleme: 20 Ekim 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındadır; V2 planı yoktur. Bu dosya uygulamanın geliştirme backlogudur, ekip işlerinin tutulduğu Backlog ekranı değildir.
 
 ## Tamamlanan kapsam
 
@@ -20,6 +20,8 @@ Güncelleme: 19 Ekim 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındad
 - [x] Slack mesai tarihinde tek haneli gün/ay desteği; mesai, defect ve backlog mesajlarını adminin kaynak ve denetim geçmişini koruyarak düzeltmesi, ardından ayrı onay.
 
 - [x] Rezerv içi defectleri kapsam değişiminden ayırma; ana sayfada sprint durum toplamları; Backlog’da havuz/aktif/planlanan kombinasyonları.
+- [x] Haftalık Slack kişi bazlı mesai/hakediş raporu; Pazartesi 09:00, ayarlardan yönetim, önizleme ve manuel gönderim.
+- [x] Slack kesinti sonrası geçmiş mesaj kurtarma, tarih aralığıyla manuel tarama ve kalıcı mesaj kimliğiyle çift kayıt önleme.
 
 ## Açık takip konuları
 

@@ -12,6 +12,11 @@ import org.springframework.stereotype.Component;
 /** Only fixed Slack API endpoints; never logs request tokens, responses or socket URLs. */
 @Component
 public class SlackTransport {
+  public static class RateLimited extends IllegalStateException {
+    public final long seconds;
+    RateLimited(long seconds){super("Slack istek sınırı; tarama daha sonra devam edecek.");this.seconds=Math.max(60,seconds);}
+  }
+  public static class InvalidCursor extends IllegalStateException { InvalidCursor(){super("Slack sayfalama imleci yenilenecek.");} }
   private final ObjectMapper mapper;
   private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).followRedirects(HttpClient.Redirect.NEVER).build();
   public SlackTransport(ObjectMapper mapper){this.mapper=mapper;}
@@ -23,7 +28,7 @@ public class SlackTransport {
       var request=HttpRequest.newBuilder(URI.create("https://slack.com/api/"+method)).timeout(Duration.ofSeconds(15)).header("Authorization","Bearer "+token).header("Content-Type","application/x-www-form-urlencoded").POST(HttpRequest.BodyPublishers.ofString(form)).build();
       var response=http.send(request,HttpResponse.BodyHandlers.ofInputStream());
       try(var body=response.body()){
-        if(response.statusCode()==429)throw new IllegalStateException("Slack istek sınırı; en az bir dakika sonra tekrar deneyin.");
+        if(response.statusCode()==429)throw new RateLimited(response.headers().firstValueAsLong("Retry-After").orElse(60));
         if(response.statusCode()!=200)throw new IllegalStateException("Slack HTTP bağlantısı başarısız.");
         byte[] data=body.readNBytes(262145);if(data.length>262144)throw new IllegalStateException("Slack yanıtı sınırı aştı.");
         return checkedResponse(method,mapper.readTree(data));
@@ -33,6 +38,7 @@ public class SlackTransport {
     catch(Exception e){throw new IllegalStateException("Slack'e bağlanılamadı. Ağ/proxy, TLS ve token ayarlarını kontrol edin.");}
   }
   static JsonNode checkedResponse(String method,JsonNode json){
+    if("invalid_cursor".equals(json.path("error").asText()))throw new InvalidCursor();
     if(!json.path("ok").asBoolean()&&!("reactions.add".equals(method)&&"already_reacted".equals(json.path("error").asText())))throw new IllegalStateException(error(json.path("error").asText()));
     return json;
   }

@@ -7,10 +7,9 @@
         @if (sprint.status !== 'completed') { <p class="data-note">Canlı görünüm: sprint henüz kapanmadı. Bu değerler kesin kapanış sonucu değildir.</p> }
         @else { <p class="data-note">{{ sprint.closureFrozen ? 'Görev sonuçları sabit kapanış kaydından alınmıştır. Toplantı notları kapanıştan sonra güncellenebilir.' : 'Geçmiş sprint kayıtlarıdır; kapanış anı snapshot kaydı bulunmuyor.' }}</p> }
         <p class="print-only data-note">Görünüm zamanı: {{ viewTime }}. Tüm görevler ve kayıtlı Review notları dahildir; görev listesinin ekran filtreleri uygulanmaz.</p>
-      </div><div class="share-actions"><button class="btn primary" [disabled]="!notesReady()||!overtimeReady" [title]="notesReady()?'Kayıtlı Review içeriğini yazdır':'Notların yüklenmesini bekleyin; açık taslağı kaydedin veya kapatın'" (click)="print()">PDF / Yazdır</button><button class="btn" [disabled]="!teamReady||!overtimeReady||sharing" (click)="share()">Sprint özeti HTML indir</button><small>PDF: kayıtlı toplantı notları ve izin ayrıntıları dahil. HTML: hedef, Done/devreden işler, çekirdek ekip + Architecture ve fotoğrafları; sonuç, göreli tahmin ve acil/kapsam grafikleri (kapsam gerekçeleri dahil), varsa sonraki sprint planı; toplantı notları ve kişisel izin ayrıntıları hariç. Paylaşmadan önce kontrol edin.</small></div>
+      </div><div class="share-actions"><div class="ui-actions"><button class="btn" [disabled]="!notesReady()||!overtimeReady" [title]="notesReady()?'Kayıtlı Review içeriğini yazdır':'Notların yüklenmesini bekleyin; açık taslağı kaydedin veya kapatın'" (click)="print()">PDF / Yazdır</button><button class="btn primary" [disabled]="!teamReady||!overtimeReady||sharing" (click)="share()">Sprint özeti HTML indir</button><app-slack-review-send [sprintId]="sprint.id" [sprintName]="sprint.name" /></div><details class="ui-help"><summary>Paylaşıma hangi bilgiler dahil?</summary><small>PDF: kayıtlı toplantı notları ve izin ayrıntıları dahil. HTML: hedef, Done/devreden işler, çekirdek ekip + Architecture ve fotoğrafları; sonuç, göreli tahmin ve acil/kapsam grafikleri (kapsam gerekçeleri dahil), varsa sonraki sprint planı; toplantı notları ve kişisel izin ayrıntıları hariç. Paylaşmadan önce kontrol edin.</small></details></div>
     </section>
 
-    <app-slack-review-send [sprintId]="sprint.id" [sprintName]="sprint.name" />
     @if(sharing){<p role="status">Review HTML hazırlanıyor…</p>}
     @if(shareError){<p class="notice warn" role="alert">{{shareError}}</p>}
     @if(teamError){<p class="notice warn" role="alert">{{teamError}} <button class="btn small" (click)="loadTeam()">Ekip bilgisini yeniden yükle</button></p>}
@@ -67,7 +66,7 @@
     </div>
 
     <div class="breakdown-grid">@for (group of review.breakdowns; track group.category) {
-      <details appFold class="card card-pad"><summary><span class="eyebrow">{{ group.label }} ALT KIRILIMLARI</span><h2>{{ group.category === 'BAU' ? 'Ekip operasyonu' : group.category === 'TEST' ? 'Test kapsamı' : group.category === 'DEFECT' ? 'Defect kapsamı' : 'İş kırılımı' }}</h2></summary>
+      <details appFold class="card card-pad"><summary><div class="fold-title"><span class="eyebrow">{{ group.label }} ALT KIRILIMLARI</span><h2>{{ group.category === 'BAU' ? 'Ekip operasyonu' : group.category === 'TEST' ? 'Test kapsamı' : group.category === 'DEFECT' ? 'Defect kapsamı' : 'İş kırılımı' }}</h2></div></summary>
         @for (row of group.rows; track row.key) { @if (row.key !== 'UNSPECIFIED' || row.count) { <div class="subtype-row"><div><strong>{{ row.label }}</strong><small>{{ row.done }} Done · {{ row.count - row.done }} tamamlanmayan</small></div><span>{{ row.count }} iş<small>{{ row.key === 'LEAVE' ? number(review.leaveHours) + ' sa izin' : number(row.hours) + ' sa' }}</small></span></div> } }
       </details>
     }</div>

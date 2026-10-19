@@ -1,0 +1,244 @@
+/* Application UI contract. Presentation only; exports retain their own print layout.
+   8px spacing scale · 44px form controls · 40px actions · 36px row actions.
+   Keep page-specific visualizations in their components, not in this foundation. */
+:root {
+  --ui-control-height: 44px;
+  --ui-action-height: 40px;
+  --ui-compact-height: 36px;
+  --ui-panel-padding: 24px;
+  --ui-gap: 16px;
+  --ui-soft: #f7f9fc;
+  --ui-ink: #203c57;
+  --ui-label: #4e637a;
+  --ui-line: #dfe7f0;
+}
+
+@media screen {
+  .main-content { padding-top: 32px; }
+  .main-content .page-head { align-items: center; flex-wrap: wrap; gap: 16px 24px; margin-bottom: 28px; }
+  .page-head > div:first-child { min-width: 0; flex: 1 1 280px; }
+  .page-head h1 { font-size: clamp(26px, 2.4vw, 32px); overflow-wrap: anywhere; }
+  .page-head p { font-size: 13px; line-height: 1.65; max-width: 760px; overflow-wrap: anywhere; }
+  .page-head .page-actions { flex: 0 1 auto; }
+  .main-content .section-head { flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+  .section-head > div:first-child { min-width: 0; }
+  .main-content .section-head > :is(.page-actions, .btn, app-report-html-export) { margin-left: auto; }
+  .section-head h2 { color: var(--ui-ink); font-size: 18px; line-height: 1.4; }
+  .section-head small { font-size: 12px; }
+  .main-content .card { border-color: var(--ui-line); box-shadow: 0 2px 5px #18355004; min-width: 0; }
+  .main-content .card-pad { padding: var(--ui-panel-padding); }
+  .main-content .eyebrow { font-size: 10px; letter-spacing: .09em; line-height: 1.5; }
+  .main-content .data-note { color: #64758a; font-size: 12px; line-height: 1.65; }
+
+  /* Controls align by their baselines, never by label or card height. */
+  :root .btn { min-height: var(--ui-action-height); padding: 9px 16px; line-height: 20px; font-size: 12px; font-weight: 650; border-radius: 9px; max-width: 100%; white-space: normal; text-align: center; flex-shrink: 0; transition: background-color .15s, border-color .15s; }
+  :root .btn.small { min-height: var(--ui-compact-height); padding: 7px 12px; font-size: 12px; line-height: 20px; }
+  :root .btn:disabled { cursor: not-allowed; opacity: .55; }
+  .main-content .page-actions, .ui-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  :root .field { min-width: 0; align-content: start; gap: 7px; color: var(--ui-label); font-size: 12px; font-weight: 650; line-height: 1.5; }
+  :root .field :is(input:not([type=checkbox]):not([type=radio]), select, textarea) { min-width: 0; min-height: var(--ui-control-height); padding: 10px 12px; border: 1px solid #cbd7e5; border-radius: 9px; background-color: #fff; color: #243b53; font-size: 13px; font-weight: 400; line-height: 22px; }
+  :root .field textarea { min-height: 104px; }
+  :root .field small { font-size: 11px; line-height: 1.6; color: #66788c; }
+  :root .field :is(input, select, textarea):focus-visible, :root .compact-select:focus-visible { outline: 3px solid #b2d3f5; outline-offset: 1px; border-color: #397cbd; }
+  :root .field :is(input, select, textarea):disabled { background-color: #f3f5f8; }
+  :root .compact-select { min-height: var(--ui-compact-height); max-width: 100%; font-size: 12px; padding: 7px 28px 7px 10px; line-height: 20px; }
+  :root input:is([type=checkbox], [type=radio]) { accent-color: var(--oc-primary); flex-shrink: 0; }
+  .main-content .form-grid { gap: 16px; align-items: start; }
+  .main-content .form-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .check-label { display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 1.5; }
+  .check-label input { width: 16px; height: 16px; }
+
+  /* Search/filter blocks are visually separate from results and mutations. */
+  .main-content .ui-toolbar { padding: 20px; background: var(--ui-soft); border: 1px solid var(--ui-line); border-radius: 12px; margin-bottom: 24px; }
+  .ui-toolbar-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .ui-toolbar-head h2 { font-size: 14px; color: var(--ui-ink); margin: 0; }
+  .ui-toolbar-head .btn { background: #fff; }
+  .main-content .filter-toolbar { grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); align-items: end; gap: 16px; }
+  .main-content .backlog-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
+  .ui-toolbar-foot { display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--ui-line); }
+  .ui-toolbar-foot .data-note { margin: 0; }
+  .ui-help { margin: 12px 0 20px; color: #61758b; font-size: 12px; line-height: 1.7; }
+  .ui-help > summary { cursor: pointer; color: #466480; width: fit-content; font-weight: 600; }
+  .ui-help p { margin: 10px 0 0; max-width: 960px; }
+
+  /* Shared section headers and predictable disclosure affordance. */
+  /* One header rail: flexible title | right-aligned values/actions | fixed disclosure. */
+  :root .main-content details.section-fold > summary { display: grid; grid-template-columns: minmax(0, 1fr) auto 12px; min-height: 52px; align-items: center; gap: 12px; padding: 0; }
+  :root .main-content details.section-fold > summary > :first-child { grid-column: 1; min-width: 0; }
+  :root .main-content details.section-fold > summary > * { align-self: center; }
+  :root .main-content details.section-fold > summary > :is(h2, h3, .fold-title),
+  :root .main-content details.section-fold > summary > div:first-child { min-width: 0; margin: 0; }
+  :root .main-content details.section-fold > summary :is(h2, h3) { margin: 0; line-height: 1.45; }
+  :root .main-content details.section-fold > summary h2 { font-size: 18px; }
+  :root .main-content details.section-fold > summary .eyebrow { display: block; margin: 0 0 4px; }
+  :root .main-content details.section-fold > summary > :is(small, .muted, .status, .page-actions, .btn, .planning-group-total, .effort-group-count) { grid-column: 2; justify-self: end; text-align: right; margin: 0; font-variant-numeric: tabular-nums; }
+  :root .main-content details.section-fold > summary > .page-actions { justify-content: flex-end; }
+  :root .main-content details.section-fold > summary::after { content: ''; grid-column: 3; grid-row: 1; justify-self: center; align-self: center; width: 8px; height: 8px; margin: 0 0 4px; border-right: 2px solid #597691; border-bottom: 2px solid #597691; border-radius: 0; background: none; transform: rotate(45deg); }
+  :root .main-content details.section-fold[open] > summary::after { transform: rotate(225deg); margin: 4px 0 0; }
+  .main-content details.section-fold[open] > summary { margin-bottom: 20px; }
+  .main-content details.section-fold > summary:hover h2 { color: var(--oc-primary); }
+  .main-content .inbox h2 small { display: inline-block; font-size: 12px; margin-left: 8px; }
+  .main-content details.section-fold.card + .section-head { margin-top: 24px; }
+  .main-content :not(.review):not(.review-grid):not(.breakdown-grid) > details.section-fold.card + details.section-fold.card { margin-top: 20px; }
+  :root .main-content .planning-group[open] > summary, :root .main-content .effort-group[open] > summary { margin-bottom: 0; }
+  :root .main-content :is(.planning-group, .effort-group).section-fold > summary { padding: 16px 20px; min-height: 84px; }
+  :root .main-content .effort-group.section-fold > summary { grid-template-columns: 9px minmax(0, 1fr) auto 12px; }
+  :root .main-content .effort-group.section-fold > summary > .fold-title { grid-column: 2; }
+  :root .main-content .effort-group.section-fold > summary > .effort-group-count { grid-column: 3; }
+  :root .main-content .effort-group.section-fold > summary::after { grid-column: 4; }
+  .main-content .review details.section-fold { padding: var(--ui-panel-padding); }
+  .main-content .review .flow-card { margin-bottom: 0; }
+  .main-content .review :is(.review-grid, .breakdown-grid) { align-items: start; }
+  /* Grid gap owns spacing: sibling stack margins must not offset the next column. */
+  .main-content .review > details.section-fold.card,
+  .main-content .review :is(.review-grid, .breakdown-grid) > details.section-fold.card { margin: 0; }
+  .main-content :is(.effort-total, .planning-group-total, .effort-group-count) { text-align: right; font-variant-numeric: tabular-nums; }
+  .main-content .effort-total { justify-items: end; }
+  .main-content .planning-table :is(th, td):nth-child(3) { text-align: right; font-variant-numeric: tabular-nums; }
+  .main-content .capacity-table :is(th, td):nth-child(n+3):not(:last-child) { text-align: right; font-variant-numeric: tabular-nums; }
+  .main-content .type-progress-head > small { text-align: right; margin-left: auto; }
+  .main-content .result-meta > span:last-child { margin-left: auto; text-align: right; }
+  .main-content .btn.ui-refresh { margin-left: auto; }
+  .main-content .page-actions > .ui-refresh { order: 10; }
+  .main-content app-slack-backlog-inbox .toolbar { justify-content: flex-end; }
+  .main-content .settings-section { border-color: var(--ui-line); border-radius: 12px; margin: 16px 0; }
+  .main-content .settings-section > summary { position: relative; list-style: none; padding: 22px 56px 22px 24px; font-size: 16px; color: var(--ui-ink); }
+  .settings-section > summary::-webkit-details-marker { display: none; }
+  .main-content .settings-section > summary::after { content: ''; position: absolute; right: 26px; top: 27px; width: 8px; height: 8px; border-bottom: 2px solid #597691; border-right: 2px solid #597691; transform: rotate(45deg); }
+  .main-content .settings-section[open] > summary::after { transform: rotate(225deg); top: 31px; }
+  .main-content .settings-section > summary small { margin: 5px 0 0; line-height: 1.6; }
+
+  /* Tabs, row actions and data surfaces share one density. */
+  .main-content .subtabs { width: 100%; gap: 4px; padding: 6px; border-radius: 12px; margin-bottom: 24px; }
+  .main-content .subtabs a { padding: 10px 14px; min-height: 40px; font-size: 12px; font-weight: 650; }
+  .main-content .table-wrap { position: relative; box-shadow: none; border-color: var(--ui-line); }
+  .main-content th { font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 650; color: #526981; background: #f7f9fc; padding: 14px 16px; }
+  .main-content td { padding: 16px; font-size: 12px; line-height: 1.6; }
+  .main-content td strong { font-size: 12px; }
+  .main-content td small { color: #657b91; line-height: 1.6; }
+  .main-content tbody tr:hover { background: #f9fbfe; }
+  .main-content .table-actions { gap: 8px; align-items: center; }
+  .main-content .status { font-size: 11px; font-weight: 650; padding: 4px 10px; align-self: center; }
+  .main-content .pager { padding: 12px 0; gap: 10px; flex-wrap: wrap; }
+  .main-content .pager span { font-variant-numeric: tabular-nums; }
+  .main-content .empty { padding: 32px 20px; font-size: 13px; }
+  .main-content .empty .btn { margin-top: 16px; }
+  .main-content .notice { font-size: 12px; line-height: 1.65; }
+
+  /* Directory cards: content may grow; footer positions and labels stay stable. */
+  .main-content .team-directory { background: transparent; border: 0; box-shadow: none; padding: 0; }
+  .main-content .team-directory .team-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 20px; }
+  .main-content .team-directory .member-profile { background: #fff; padding: 24px; gap: 20px; }
+  .main-content .member-profile-head { min-height: 88px; }
+  .main-content .member-profile-head strong { font-size: 16px; }
+  .main-content .member-tags { align-items: center; }
+  .main-content .member-tags span { font-size: 11px; line-height: 18px; padding: 4px 8px; }
+  .main-content .member-profile-dates { padding-top: 16px; }
+  .main-content .member-profile-dates span { font-size: 11px; }
+  .main-content .member-profile-dates strong { font-size: 12px; }
+  .main-content .member-actions { padding-top: 16px; }
+  .main-content .member-secondary-actions .btn { font-size: 11px; min-height: 32px; padding: 4px 6px; }
+  .main-content .mini-metrics { gap: 16px; }
+  .main-content .mini-metrics > div { background: #fff; padding: 20px; border-color: var(--ui-line); border-radius: 12px; }
+  .main-content .mini-metrics small { color: #62778c; font-size: 11px; }
+  .main-content .mini-metrics strong { font-size: 26px; color: var(--ui-ink); margin-top: 8px; }
+  .main-content .ops-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .main-content .roadmap-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 20px; }
+  .main-content .roadmap-card { padding: 24px; grid-template-rows: 1fr auto auto; gap: 20px; transition: border-color .15s, box-shadow .15s; }
+  .main-content .roadmap-card:hover { border-color: #9cbad9; box-shadow: 0 5px 18px #1835500a; }
+  .main-content .roadmap-card h2 { line-height: 1.4; margin-bottom: 8px; }
+  .main-content .roadmap-card p { font-size: 12px; line-height: 1.7; }
+  .main-content .roadmap-card > .roadmap-bottom { border-top: 1px solid #e8edf4; padding-top: 16px; }
+  .main-content .roadmap-card .progress-track { margin-top: 10px; }
+  .main-content .sprint-row { padding: 22px 24px; gap: 20px; }
+  .main-content .sprint-row .name { font-size: 15px; }
+  .main-content .sprint-row .date, .main-content .sprint-row .goal { font-size: 12px; }
+  .main-content .sprint-row .ratio { font-size: 18px; }
+
+  /* Dialogs keep actions visible; long titles and forms never widen the page. */
+  :root .modal { border: 1px solid #d6e1ed; border-radius: 16px; }
+  :root .modal header { padding: 24px; background: #fafcff; }
+  :root .modal header h2 { font-size: 20px; line-height: 1.4; overflow-wrap: anywhere; }
+  :root .modal header p { font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
+  :root .modal > .modal-body { padding: 24px; }
+  :root .modal > footer { padding: 16px 24px; flex-wrap: wrap; gap: 8px; background: #fafcff; }
+  :root .modal > footer .btn { min-width: 96px; }
+  :root .modal .form-grid { gap: 16px; }
+  .main-content .planning-table .table-actions { min-width: 160px; }
+  .main-content .planning-table td { vertical-align: top; }
+  .main-content .effort-row { padding: 18px 20px; }
+  .main-content .effort-task strong { font-size: 13px; }
+  .main-content .effort-person { font-size: 11px; padding: 7px 10px; }
+  .main-content .backlog-table { min-width: 980px; table-layout: fixed; }
+  .backlog-table th:first-child { width: 28%; }
+  .backlog-table th:nth-child(2) { width: 23%; }
+  .backlog-table th:nth-child(3) { width: 16%; }
+  .backlog-table th:nth-child(4) { width: 13%; }
+  .backlog-table th:last-child { width: 20%; text-align: right; }
+  .main-content .backlog-table td { vertical-align: top; overflow-wrap: anywhere; }
+  .main-content .backlog-table .compact-select { width: 100%; min-width: 0; }
+  .main-content .backlog-title-link { font-size: 13px; line-height: 1.55; margin-bottom: 6px; }
+  .main-content .backlog-table td .btn { margin: 0; }
+  .main-content .backlog-table .table-actions { align-items: stretch; }
+  .main-content .backlog-table .table-actions .btn { flex: 1 1 auto; }
+  .main-content .settings-section :is(app-work-settings, app-accounts, app-subtype-settings) > .card { margin: 0; border: 0; box-shadow: none; }
+  .main-content .settings-primary > .card { border: 0; box-shadow: none; border-radius: 0; }
+  .main-content details.section-fold > app-defect-reserves > .reserve-summary { border: 0; box-shadow: none; padding: 0; margin: 0; }
+  .main-content details.section-fold > app-defect-reserves > .reserve-summary > :is(.eyebrow,h2) { display: none; }
+  .main-content .insight-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .main-content .insight-metrics > div { min-width: 0; overflow-wrap: anywhere; }
+  .main-content .week-options label { padding: 8px 12px; border: 1px solid #dfe7f0; border-radius: 8px; background: #fff; font-size: 12px; }
+  .main-content .week-options label:has(input:checked) { background: #edf5ff; border-color: #b7d3f0; color: #195da8; }
+  .main-content .request-row footer { padding-top: 16px; margin-top: 16px; border-top: 1px solid #e4eaf2; align-items: center; flex-wrap: wrap; }
+  .main-content :is(app-slack-inbox, app-slack-backlog-inbox, app-slack-overtime-inbox) .entry-head { padding: 18px 20px; min-height: 80px; }
+  .main-content :is(app-slack-inbox, app-slack-backlog-inbox, app-slack-overtime-inbox) .entry-head:hover { background: #f7faff; }
+  .main-content :is(app-slack-inbox, app-slack-backlog-inbox, app-slack-overtime-inbox) .entry-body { padding: 0 20px 20px; }
+  .main-content :is(app-slack-inbox, app-slack-backlog-inbox, app-slack-overtime-inbox) .entry-body > .page-actions { justify-content: flex-end; border-top: 1px solid #e4eaf2; padding-top: 16px; margin-top: 16px; }
+  .main-content :is(app-slack-inbox, app-slack-backlog-inbox, app-slack-overtime-inbox) select[aria-label] { min-height: 40px; font-size: 12px; }
+  .main-content details.section-fold > app-slack-inbox > .inbox { border: 0; box-shadow: none; padding: 0; margin: 0; }
+  .main-content .person-record { padding: 16px 4px; }
+  .main-content .person-values { display: flex; align-items: center; gap: 16px; }
+}
+
+@media screen and (max-width: 1100px) {
+  .main-content .page-head { align-items: flex-start; }
+  .main-content .page-head .page-actions { width: 100%; justify-content: flex-start; }
+  .main-content .ops-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media screen and (max-width: 700px) {
+  :root { --ui-panel-padding: 18px; }
+  .main-content .page-head { gap: 16px; margin-bottom: 24px; }
+  .page-head > div:first-child { flex-basis: auto; }
+  .main-content .page-actions .btn { flex: 1 1 auto; }
+  .main-content .page-head > .btn { width: 100%; }
+  .main-content .insight-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .main-content .section-head { align-items: flex-start; }
+  :root .main-content details.section-fold > summary:has(> .btn, > .page-actions) { grid-template-columns: minmax(0, 1fr) 12px; }
+  :root .main-content details.section-fold > summary:has(> .btn, > .page-actions)::after { grid-column: 2; }
+  :root .main-content details.section-fold > summary > :is(.btn, .page-actions) { grid-column: 1; grid-row: 2; max-width: 100%; }
+  :root .main-content details.section-fold > summary > .status { max-width: 120px; white-space: normal; }
+  :root .main-content .planning-group.section-fold > summary > .planning-group-total { white-space: normal; max-width: 110px; }
+  .main-content .ui-toolbar { padding: 16px; }
+  .main-content .backlog-filters, .main-content .filter-toolbar, .main-content .form-grid.two { grid-template-columns: minmax(0, 1fr); }
+  .main-content .subtabs { flex-wrap: wrap; }
+  .main-content .subtabs a { padding: 10px 12px; flex: 1 0 auto; text-align: center; }
+  .main-content .settings-section > summary { padding: 20px 48px 20px 18px; }
+  .main-content .team-directory .member-profile { padding: 20px; }
+  .main-content .sprint-row { padding: 20px; }
+  .main-content .sprint-row .goal { white-space: normal; }
+  .main-content .pager { justify-content: center; }
+  .main-content .table-actions { justify-content: flex-start; }
+  .main-content .planning-table .table-actions { min-width: 0; }
+  :root .modal header, :root .modal > .modal-body { padding: 18px; }
+  :root .modal > footer { padding: 14px 18px; }
+  :root .modal > footer .btn { flex: 1 1 auto; min-width: 0; }
+  .main-content .backlog-table { min-width: 0; table-layout: auto; }
+  .backlog-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .backlog-table tbody { display: block; }
+  .main-content .backlog-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 20px 16px; border-bottom: 1px solid var(--ui-line); }
+  .main-content .backlog-table td { display: block; border: 0; padding: 0; min-width: 0; }
+  .backlog-table td:first-child, .backlog-table td:nth-child(2), .backlog-table td:last-child { grid-column: 1 / -1; }
+  .backlog-table td:not(:first-child)::before { content: attr(data-label); display: block; font-size: 11px; font-weight: 650; color: #657b91; margin-bottom: 6px; }
+  .main-content .backlog-table td:last-child { border-top: 1px solid #edf1f6; padding-top: 12px; }
+  .main-content .person-values { flex-direction: column; align-items: flex-end; gap: 6px; }
+}

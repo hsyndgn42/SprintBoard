@@ -14,7 +14,7 @@ interface BackupPreview { counts: Record<string, { current: number; incoming: nu
           <div><small>Son işlem</small><strong>{{ backupStatus ? resultLabel(backupStatus.result) : 'Yükleniyor…' }}</strong><small>{{ backupTime(backupStatus?.lastAttemptAt) }}</small></div>
           <div><small>Sonraki otomatik yedek</small><strong>{{ backupStatus?.enabled ? backupTime(backupStatus.nextScheduledAt) : 'Kapalı' }}</strong><small>Türkiye saati · 10 gün saklama</small></div>
         </div>
-        @if(statusError){<p class="notice warn" role="alert">Yedek durumu okunamadı. <button class="btn small" (click)="loadBackupStatus()">Yenile</button></p>}
+        @if(statusError){<p class="notice warn" role="alert">Yedek durumu okunamadı. <button class="btn small ui-refresh" (click)="loadBackupStatus()">Yenile</button></p>}
         @if(backupStatus?.result==='FAILED'){<p class="notice warn">Son yedekleme başarısız. Önceki başarılı yedekler korundu.{{backupStatus.retryPending?' Otomatik işlem 5 dakikada bir yeniden denenir.':' Şimdi yedek al ile yeniden deneyebilirsiniz.'}}</p>}
         @if(backupStatus?.cleanupWarning){<p class="notice warn">{{backupStatus.cleanupWarning}}</p>}
         <div class="restore-actions"><button type="button" class="btn primary" data-testid="full-backup" [disabled]="busy" (click)="createFullBackup()">{{ fullBackupBusy ? 'Yedek alınıyor…' : 'Şimdi yedek al' }}</button></div>

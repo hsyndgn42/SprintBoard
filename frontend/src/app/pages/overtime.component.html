@@ -3,7 +3,7 @@
 <app-overtime-requests #requests [sprints]="sprints" (approved)="load()" />
 <details appFold class="card overtime-directory">
   <summary class="section-head"><h2>Kişi mesaileri</h2><small>Tüm dönemler</small></summary>
-  <label class="field overtime-search">Kişi ara<input type="search" [(ngModel)]="query" placeholder="Ad soyad"></label>
+  <div class="ui-toolbar"><label class="field overtime-search">Kişi ara<input type="search" [(ngModel)]="query" placeholder="Ad soyad"></label></div>
   <div class="overtime-columns" aria-hidden="true"><span>EKİP ÜYESİ</span><span>KULLANILAN HAKEDİŞ</span><span>TOPLAM MESAİ</span></div>
   <app-list-pager #peoplePager [items]="personGroups" label="Mesailer" />@if(loading){<div class="loading" role="status">Mesai kayıtları yükleniyor…</div>}
   @else if(!error){@for(person of peoplePager.rows;track person.memberId){
