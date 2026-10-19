@@ -20,7 +20,8 @@ public class SlackInboxService {
   if(Boolean.TRUE.equals(p.get("valid")))SlackReceiptService.enqueue(db,team,channel,ts);
  }
  private Map<String,Object> row(java.sql.ResultSet r)throws java.sql.SQLException{
-  var p=new LinkedHashMap<String,Object>(parsed(r.getString("parsed_json")));p.put("id",r.getString("id"));p.put("status",r.getString("status"));p.put("sourceUrl",r.getString("source_url"));p.put("userId",r.getString("user_id"));p.put("reporterName",r.getString("reporter_name"));p.put("teamId",r.getString("team_id"));p.put("receivedAt",r.getString("received_at"));p.put("decidedBy",r.getString("decided_by"));p.put("decidedAt",r.getString("decided_at"));p.put("decisionNote",r.getString("decision_note"));p.put("backlogId",r.getString("backlog_id"));p.put("taskId",r.getString("task_id"));p.put("sprintId",r.getString("sprint_id"));return p;
+
+  var p=new LinkedHashMap<String,Object>(parsed(r.getString("parsed_json")));p.put("id",r.getString("id"));p.put("status",r.getString("status"));p.put("sourceUrl",r.getString("source_url"));p.put("userId",r.getString("user_id"));p.put("reporterName",r.getString("reporter_name"));p.put("teamId",r.getString("team_id"));p.put("receivedAt",r.getString("received_at"));p.put("decidedBy",r.getString("decided_by"));p.put("decidedAt",r.getString("decided_at"));p.put("decisionNote",r.getString("decision_note"));p.put("backlogId",r.getString("backlog_id"));p.put("taskId",r.getString("task_id"));p.put("sprintId",r.getString("sprint_id"));SlackMessageCorrectionService.metadata(p,r);return p;
  }
  public Map<String,Object> list(String filter,int page){
   if(!Set.of("WAITING","APPROVED","REJECTED","ALL").contains(filter)||page<0||page>100000)throw new IllegalArgumentException("Geçersiz kuyruk filtresi.");
@@ -30,11 +31,12 @@ public class SlackInboxService {
  @Transactional public Map<String,Object> decide(String id,Map<String,Object> input,String actor){
   var rows=db.query("SELECT * FROM slack_inbox WHERE id=? FOR UPDATE",(r,n)->row(r),id);if(rows.isEmpty())throw new IllegalArgumentException("Slack kaydı bulunamadı.");var p=rows.getFirst();
   if(!Set.of("PENDING","INVALID").contains(p.get("status")))throw new IllegalArgumentException("Bu mesaj için daha önce karar verilmiş; listeyi yenileyin.");
+  SlackMessageCorrectionService.checkDecision(p,input);
   String action=Objects.toString(input.get("action"),""),note=SlackDefectParser.safe(Objects.toString(input.get("note"),"")).trim();
   if(note.length()>1000)throw new IllegalArgumentException("Karar notu en fazla 1.000 karakter.");
   String backlog=null,task=null,sprint=null;
   if(action.equals("APPROVE")){
-   if(!Boolean.TRUE.equals(p.get("valid")))throw new IllegalArgumentException("Format hatalı; mesajı Slack'ten düzeltilmiş yeni mesaj olarak gönderin veya reddedin.");
+   if(!Boolean.TRUE.equals(p.get("valid")))throw new IllegalArgumentException("Format hatalı; önce Mesajı düzelt ile alanları düzenleyip kaydedin.");
    String target=Objects.toString(input.get("target"),p.get("target").toString());if(!Set.of("BACKLOG","SPRINT").contains(target))throw new IllegalArgumentException("Hedef BACKLOG veya SPRINT olmalı.");
    var draft=new LinkedHashMap<String,Object>();draft.put("title",p.get("title"));draft.put("taskCategory","DEFECT");draft.put("taskSubtype",p.get("taskSubtype"));draft.put("size",input.get("size"));draft.put("storyPoints",input.get("storyPoints"));draft.put("estimatedHours",0);draft.put("criteria","Slack bildirimi: "+p.get("sourceUrl"));draft.put("defect",Map.of("severity",p.get("severity"),"environment",p.get("environment"),"verification","NOT_CHECKED"));
    if(target.equals("SPRINT")){

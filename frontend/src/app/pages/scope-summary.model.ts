@@ -9,16 +9,21 @@ export const scopeEffort=(t:Task)=>isLeave(t)?0:t.assignments.length?t.assignmen
 const effort=scopeEffort;
 const sum=(tasks:Task[])=>tasks.reduce((s,t)=>s+(isLeave(t)?0:effort(t)),0);
 const state=(s:string)=>({done:'Done',undone:'Undone',doing:'Devam ediyor',todo:'Yapılacak',removed:'Kapsamdan çıkarıldı'}[s]||s);
+export const withinDefectReserve=(t:Task)=>t.taskCategory==='DEFECT'&&!!t.reserveTaskId&&t.extraPlanHours!=null&&t.extraPlanHours<=0.000001;
 export function buildScope(sprint:Sprint){
  const flow=sprint.flow,tracked=!!flow&&flow.origin!=='UNTRACKED';
- const added=flow?.events.filter(e=>e.action==='ADDED')||[],removed=flow?.events.filter(e=>e.action==='REMOVED')||[];
+ const events=flow?.events||[],allRemoved=events.filter(e=>e.action==='REMOVED');
+ const latest=(t:Task)=>sprint.items.find(x=>x.id===t.id)||allRemoved.find(e=>e.task.id===t.id)?.task||t;
+ const reserveEvents=events.filter(e=>withinDefectReserve(latest(e.task)));
+ const added=events.filter(e=>e.action==='ADDED'&&!withinDefectReserve(latest(e.task))),removed=allRemoved.filter(e=>!withinDefectReserve(latest(e.task)));
+ const changeHours=(t:Task)=>{const current=latest(t);return current.taskCategory==='DEFECT'&&current.reserveTaskId&&current.extraPlanHours!=null?current.extraPlanHours:effort(t);};
  const emergencies=added.filter(e=>(sprint.items.find(t=>t.id===e.task.id)||removed.find(r=>r.task.id===e.task.id)?.task||e.task).emergency).map(e=>{
   const out=removed.find(r=>r.task.id===e.task.id),current=sprint.items.find(t=>t.id===e.task.id);
   const task=current||out?.task||e.task;
   return {task,reason:e.reason,at:e.at,result:out?'removed':current?effectiveTaskStatus(current):'unknown',hours:isLeave(task)?0:task.taskCategory==='DEFECT'&&task.extraPlanHours!=null?task.extraPlanHours:effort(task)};
  });
- return {tracked,baseline:flow?.baseline||[],added,removed,emergencies,
-  baselineHours:sum(flow?.baseline||[]),addedHours:sum(added.map(e=>e.task)),removedHours:sum(removed.map(e=>e.task)),
+ return {tracked,baseline:(flow?.baseline||[]).filter(t=>!withinDefectReserve(t)),added,removed,emergencies,reserveEvents,currentCount:sprint.items.filter(t=>!withinDefectReserve(t)).length,
+  baselineHours:sum(flow?.baseline||[]),addedHours:added.reduce((n,e)=>n+changeHours(e.task),0),removedHours:removed.reduce((n,e)=>n+changeHours(e.task),0),
   currentHours:sum(sprint.items),emergencyHours:emergencies.reduce((s,e)=>s+e.hours,0)};
 }
 export const scopeCss=`
@@ -30,8 +35,8 @@ export function scopeSectionHtml(sprint:Sprint):string{
  const list=(rows:string[])=>`<ul class="scope-list">${rows.join('')}</ul>`;
  return `<section class="scope-summary"><h2>Acil işler ve kapsam değişimi</h2><p class="scope-caption">${h(sprint.name)} · ${sprint.status==='completed'?'Kapanmış sprint':'Güncel plan'}</p>
  ${!m.tracked?'<p class="scope-notice">Bu sprint için kapsam değişimi takibi yok. Acil iş veya başlangıç kapsamı geçmişi bilinmiyor; sıfır değişim olarak yorumlanmamalı.</p>':`<p>${flow?.origin==='START'?'Sprint başlangıç planı':'Sprint devam ederken alınan takip başlangıcı; önceki değişiklikler bilinmiyor.'}</p>
- <div class="scope-kpis">${count(flow?.origin==='START'?'Başlangıç planı':'Takip başlangıcı',m.baseline.length+' iş',n(m.baselineHours)+' sa')}${count('Sonradan eklenen','+'+m.added.length+' iş',n(m.addedHours)+' sa · ekleme anında')}${count('Backlog’a dönen','−'+m.removed.length+' iş',n(m.removedHours)+' sa · çıkarma anında')}${count('Güncel kapsam',sprint.items.length+' iş',n(m.currentHours)+' sa')}</div>
- <p>BAU dahil; Leave saat toplamlarına dahil değildir. BAU otomatik Done kabul edilir. Planlanan efor gösterilir, gerçekleşen süre değildir. Atama varsa kişi saatleri, yoksa iş tahmini kullanılır; X destek 0 saattir. Defect Support yalnız kalan rezerviyle sayılır. Rezerv dağıtımı ve atama değişiklikleri nedeniyle başlangıç + eklenen − çıkarılan saat, güncel plana eşit olmayabilir.</p>
+ <div class="scope-kpis">${count(flow?.origin==='START'?'Başlangıç planı':'Takip başlangıcı',m.baseline.length+' iş',n(m.baselineHours)+' sa')}${count('Sonradan eklenen','+'+m.added.length+' iş',n(m.addedHours)+' sa · kapsam etkisi')}${count('Backlog’a dönen','−'+m.removed.length+' iş',n(m.removedHours)+' sa · kapsam etkisi')}${count('Güncel kapsam',m.currentCount+' iş',n(m.currentHours)+' sa')}</div>
+ <p>Rezerv içindeki defectler kapsam artışı/azalışı sayılmaz; ${m.reserveEvents.length} rezerv hareketi geçmişte korunur. Rezervi aşan efor ek plan olarak sayılır.</p><p>BAU dahil; Leave saat toplamlarına dahil değildir. BAU otomatik Done kabul edilir. Planlanan efor gösterilir, gerçekleşen süre değildir. Atama varsa kişi saatleri, yoksa iş tahmini kullanılır; X destek 0 saattir. Defect Support yalnız kalan rezerviyle sayılır. Rezerv dağıtımı ve atama değişiklikleri nedeniyle başlangıç + eklenen − çıkarılan saat, güncel plana eşit olmayabilir.</p>
  <h3>Acil / plansız işler · ${m.emergencies.length} iş · ${n(m.emergencyHours)} sa</h3><p>Defectlerde yalnız rezerv dışı ek plan saatleri gösterilir; rezervden karşılanan bölüm acil toplama eklenmez. Kişi rezervi sprint giriş sırasıyla paylaşılır.</p>
  <div class="scope-bars">${['done','undone','doing','todo','removed'].map(s=>{const c=m.emergencies.filter(e=>e.result===s).length;return `<div class="scope-bar"><span>${state(s)}</span><span class="scope-track ${s}" role="img" aria-label="${state(s)}: ${c} iş">${Array.from({length:20},(_,i)=>`<i class="${i<Math.round(20*c/Math.max(1,m.emergencies.length))?'filled':''}"></i>`).join('')}</span><b>${c}</b></div>`;}).join('')}</div>
  ${m.emergencies.length?list(m.emergencies.map(e=>`<li><strong>${h(e.task.name)}</strong> <span class="scope-tag">${h(state(e.result))}</span><span>${n(e.hours)} sa · ${h(date(e.at))}</span><p>Geliş gerekçesi: ${h(e.reason)}</p></li>`)):'<p>Takip edilen kapsamda acil olarak işaretlenmiş iş yok.</p>'}

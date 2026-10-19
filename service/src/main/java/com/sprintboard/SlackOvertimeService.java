@@ -20,8 +20,24 @@ public class SlackOvertimeService {
  }
  private Map<String,Object> row(java.sql.ResultSet r)throws java.sql.SQLException{
   var p=new LinkedHashMap<String,Object>(parsed(r.getString("parsed_json")));
+  p.put("originalRaw",r.getString("raw_text"));p.put("fingerprint",fingerprint(r.getString("parsed_json")));p.put("channelId",r.getString("channel_id"));p.put("messageTs",r.getString("message_ts"));
   for(String[] names:new String[][]{{"id","id"},{"status","status"},{"reporterName","reporter_name"},{"sourceUrl","source_url"},{"userId","user_id"},{"teamId","team_id"},{"receivedAt","received_at"},{"decidedBy","decided_by"},{"decisionNote","decision_note"},{"memberId","member_id"},{"sprintId","sprint_id"},{"requestId","request_id"}})p.put(names[0],r.getString(names[1]));
   return p;
+ }
+ private String fingerprint(String value){try{return HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException("Mesai sürümü okunamadı.");}}
+ private void admin(){var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();if(auth==null||auth.getAuthorities().stream().noneMatch(a->a.getAuthority().equals("ROLE_ADMIN")))throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"Yönetici yetkisi gerekli.");}
+ @Transactional public Map<String,Object> correct(String id,Map<String,Object> input,String actor){
+  admin();var rows=db.query("SELECT * FROM slack_overtime_inbox WHERE id=? FOR UPDATE",(r,n)->row(r),id);if(rows.isEmpty())throw new IllegalArgumentException("Mesai mesajı bulunamadı.");var current=rows.getFirst();
+  if(!Set.of("PENDING","INVALID").contains(current.get("status")))throw new IllegalArgumentException("Sonuçlanmış mesaj düzenlenemez.");
+  if(!Objects.equals(current.get("fingerprint"),input.get("fingerprint")))throw new IllegalArgumentException("Mesaj başka bir işlemde değişti; listeyi yenileyin.");
+  if(!(input.get("text") instanceof String text))throw new IllegalArgumentException("Düzeltilmiş mesaj metni gerekli.");
+  var correction=SlackOvertimeParser.parse(text,current.get("channelId").toString());if(!Boolean.TRUE.equals(correction.get("valid")))throw new IllegalArgumentException(String.join(" ",(List<String>)correction.get("errors")));
+  correction.put("correctedBy",actor);correction.put("correctedAt",Instant.now().toString());
+  db.update("UPDATE slack_overtime_inbox SET parsed_json=?,status='PENDING' WHERE id=?",json(correction),id);
+  db.update("INSERT INTO audit_event(occurred_at,entity_type,entity_id,action,detail_json) VALUES(CURRENT_TIMESTAMP,'slack-overtime',?,'CORRECTED',?)",id,json(Map.of("actor",actor,"sourceUrl",current.get("sourceUrl"),"senderId",current.get("userId"),"before",Map.of("date",current.get("date"),"hours",current.get("hours"),"sprintNumber",current.get("sprintNumber"),"reason",current.get("reason"),"raw",current.get("raw")),"after",correction)));
+  String sourceKey=current.get("teamId")+":"+current.get("channelId")+":"+current.get("messageTs");
+  if(db.queryForObject("SELECT COUNT(*) FROM slack_receipt_reaction WHERE source_key=?",Integer.class,sourceKey)==0)SlackReceiptService.enqueue(db,current.get("teamId").toString(),current.get("channelId").toString(),current.get("messageTs").toString());
+  return Map.of("status","PENDING");
  }
  public Map<String,Object> list(String filter,int page){
   if(!Set.of("WAITING","APPROVED","REJECTED","ALL").contains(filter)||page<0||page>100000)throw new IllegalArgumentException("Geçersiz kuyruk filtresi.");
@@ -39,11 +55,12 @@ public class SlackOvertimeService {
   if(auth==null||auth.getAuthorities().stream().noneMatch(a->a.getAuthority().equals("ROLE_ADMIN")))throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"Yönetici yetkisi gerekli.");
   var rows=db.query("SELECT * FROM slack_overtime_inbox WHERE id=? FOR UPDATE",(r,n)->row(r),id);if(rows.isEmpty())throw new IllegalArgumentException("Mesai mesajı bulunamadı.");var p=rows.getFirst();
   if(!Set.of("PENDING","INVALID").contains(p.get("status")))throw new IllegalArgumentException("Mesaj zaten sonuçlandırılmış; listeyi yenileyin.");
+  if((input.containsKey("fingerprint")||p.containsKey("correctedAt"))&&!Objects.equals(p.get("fingerprint"),input.get("fingerprint")))throw new IllegalArgumentException("Mesaj değişti; güncel bilgileri kontrol etmek için listeyi yenileyin.");
   String action=Objects.toString(input.get("action"),""),note=SlackDefectParser.safe(Objects.toString(input.get("note"),"")).strip();
   if(!Set.of("APPROVE","REJECT").contains(action)||note.isBlank()||note.length()>1000)throw new IllegalArgumentException("Onay/red ve 1–1.000 karakter karar notu gerekli.");
   String member=null,sprint=null,request=null;
   if(action.equals("APPROVE")){
-   if(!Boolean.TRUE.equals(p.get("valid")))throw new IllegalArgumentException("Format hatalı; düzeltilmiş yeni bir #mesai mesajı gönderin.");
+   if(!Boolean.TRUE.equals(p.get("valid")))throw new IllegalArgumentException("Format hatalı; önce Mesajı düzelt ile alanları düzenleyip kaydedin.");
    if(!Boolean.TRUE.equals(input.get("confirmed")))throw new IllegalArgumentException("Gönderenin ekip üyesi eşleştirmesini ve mesaiyi onaylayın.");
    member=Objects.toString(input.get("memberId"),"");sprint=Objects.toString(input.get("sprintId"),"");
    var sprints=db.queryForList("SELECT * FROM sprint WHERE id=? FOR UPDATE",sprint);

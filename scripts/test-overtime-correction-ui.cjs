@@ -1,0 +1,23 @@
+const assert=require('node:assert/strict');
+module.exports=async({evaluate,command,navigate,clickButton,setFieldValue,waitFor,shot,api,sprint,member,sleep,events})=>{
+ const field=label=>'document.querySelector('+JSON.stringify('[aria-label="'+label+'"]')+')';
+ const before=await api('/overtime/entries');
+ await navigate('overtime','Fazla mesai');await waitFor('document.querySelectorAll("app-slack-overtime-inbox article").length===1');
+ await evaluate('document.querySelector("app-slack-overtime-inbox > details").open=true;document.querySelector("app-slack-overtime-inbox .entry-head").click()');
+ await clickButton('Mesajı düzelt','app-slack-overtime-inbox button');
+ assert.match(await evaluate(field('Düzeltilmiş mesai mesajı')+'.value'),/2026-10-5/);
+ await clickButton('Düzeltmeden vazgeç','app-slack-overtime-inbox button');assert.equal((await api('/admin/slack/overtime-inbox')).items[0].status,'INVALID');
+ await clickButton('Mesajı düzelt','app-slack-overtime-inbox button');await setFieldValue('[aria-label="Düzeltilmiş mesai mesajı"]','#mesai\nSprint: 1\nTarih: 2026-02-30\nSaat: 2\nAçıklama: QA');
+ const errorStart=events.length;
+ await clickButton('Doğrula ve kaydet','app-slack-overtime-inbox button');await waitFor('!!document.querySelector("app-slack-overtime-inbox [role=alert]")');assert.equal((await api('/admin/slack/overtime-inbox')).items[0].status,'INVALID');await sleep(100);
+ assert.deepEqual(events.slice(errorStart).sort(),['400 http://127.0.0.1:4183/api/admin/slack/overtime-inbox/qa-invalid-ot/correction','Failed to load resource: the server responded with a status of 400 ()'].sort());events.splice(errorStart,2);
+ const correction='#mesai\nSprint: '+sprint.number+'\nTarih: 2026-10-17\nSaat: 3,5\nAçıklama: Düzeltilmiş mesai QA';
+ await setFieldValue('[aria-label="Düzeltilmiş mesai mesajı"]',correction);
+ await command('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});await sleep(100);assert(await evaluate('document.documentElement.scrollWidth<=innerWidth+1'));await shot('overtime-correction-mobile');await command('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+ await clickButton('Doğrula ve kaydet','app-slack-overtime-inbox button');await waitFor('!!'+field('Mesai ekip üyesi'));
+ const pending=(await api('/admin/slack/overtime-inbox')).items[0];assert.equal(pending.status,'PENDING');assert.equal(pending.hours,3.5);assert.match(pending.originalRaw,/2026-10-5/);assert.equal(pending.raw,correction);assert.equal((await api('/overtime/entries')).length,before.length);
+ await setFieldValue('[aria-label="Mesai ekip üyesi"]',member.id);await setFieldValue('[aria-label="Mesai sprinti"]',sprint.id);await waitFor('!'+field('Mesai plan durumu')+'.disabled');await setFieldValue('[aria-label="Mesai plan durumu"]','UNPLANNED');await setFieldValue('[aria-label="Mesai karar notu"]','Düzeltilen çalışma doğrulandı');await evaluate(field('Mesai eşleştirme onayı')+'.click()');
+ await shot('overtime-correction-approved-preview');await clickButton('Onayla ve hakedişe ekle','app-slack-overtime-inbox button');await waitFor('document.querySelectorAll("app-slack-overtime-inbox article").length===0');
+ const after=await api('/overtime/entries'),added=after.filter(e=>!before.some(b=>b.id===e.id));assert.equal(added.length,1);assert.equal(added[0].earnedHours,3.5);assert.equal(added[0].plannedHours,0);assert.equal(added[0].includeInCapacity,false);
+ console.log('PASS: invalid Slack overtime correction/cancel/validation, original retained, mobile, separate approval and single ledger entry.');
+};

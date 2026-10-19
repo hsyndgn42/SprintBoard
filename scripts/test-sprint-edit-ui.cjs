@@ -66,6 +66,9 @@ module.exports=async({evaluate,command,navigate,clickButton,setFieldValue,sleep,
  assert(await evaluate('document.querySelector("app-slack-settings").innerText.includes("admin onayı veya işin tamamlanması değildir")'));
  if(process.env.SPRINTBOARD_SMOKE_SLACK_BACKLOG==='1')await require('./test-slack-backlog-ui.cjs')({evaluate,command,navigate,clickButton,setFieldValue,sleep,waitFor,shot,api});
  await require('./test-board-all-items-ui.cjs')({evaluate,navigate,clickButton,setFieldValue,waitFor,shot,api,sprint,member});
+ if(process.env.SPRINTBOARD_SMOKE_SLACK_BACKLOG==='1')await require('./test-overtime-correction-ui.cjs')({evaluate,command,navigate,clickButton,setFieldValue,waitFor,shot,api,sprint,member,sleep,events});
+ if(process.env.SPRINTBOARD_SMOKE_SLACK_BACKLOG==='1')await require('./test-slack-message-correction-ui.cjs')({evaluate,command,navigate,clickButton,setFieldValue,waitFor,shot,api,sleep});
+ await require('./test-scope-views-ui.cjs')({evaluate,navigate,setFieldValue,api,waitFor,sprint,member,shot});
  assert.equal(events.length,0,events.join('\n'));
  console.log('PASS: blank goal creation, edit/cancel/save, 15 inclusive working days, all requested disclosures, keyboard toggle, print expansion/restoration, export readiness, mobile closed/open, no browser errors.');
 };

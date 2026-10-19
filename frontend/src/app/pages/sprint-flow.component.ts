@@ -1,4 +1,5 @@
 import { FoldDirective } from '../fold.directive';
+import {buildScope} from './scope-summary.model';
 import {isBau} from '../task-lifecycle';
 import {ChangeDetectorRef,Component,EventEmitter,Input,Output,inject,OnChanges,OnDestroy} from '@angular/core';
 import {FormsModule} from '@angular/forms';
@@ -7,14 +8,14 @@ import {ModalAccessibilityDirective} from '../modal-accessibility.directive';
 @Component({selector:'app-sprint-flow',standalone:true,imports: [FoldDirective,FormsModule,ModalAccessibilityDirective],template:`
 <details appFold class="card card-pad flow-card" aria-label="Sprint akışı ve kapsam">
  <summary class="section-head"><div><span class="eyebrow">AKIŞ VE KAPSAM</span><h2>Plan nasıl değişti?</h2></div>@if(editable&&sprint.status==='active'){<button class="btn small screen-only" (click)="open()">{{ sprint.flow?.origin==='UNTRACKED'?'Takibi başlat / WIP':'WIP limitini düzenle' }}</button>}</summary>
- <div class="flow-metrics"><div><small>Devam eden · WIP</small><strong>{{ wip }}{{ sprint.flow?.wipLimit ? ' / '+sprint.flow?.wipLimit : '' }}</strong><span>{{ sprint.flow?.wipLimit?'Uyarı limiti':'Limit tanımlanmadı' }}</span></div><div><small>{{ sprint.status==='completed'&&sprint.closureFrozen&&sprint.flow?'Kapanışta engelli':'Kayıtlı engel' }}</small><strong>{{ sprint.status==='completed'&&!sprint.flow ? '—' : blocked }}</strong><span>Görev durumundan ayrı</span></div><div><small>{{ sprint.flow?.origin==='START'?'Başlangıç kapsamı':'Takip başlangıcı' }}</small><strong>{{ tracked ? sprint.flow?.baseline?.length : '—' }}</strong><span>BAU dahil iş</span></div><div><small>Eklenen / çıkarılan</small><strong>{{ tracked ? '+'+sprint.flow?.added+' / −'+sprint.flow?.removed : '—' }}</strong><span>{{ sprint.items.length }} güncel iş</span></div></div>
+ <div class="flow-metrics"><div><small>Devam eden · WIP</small><strong>{{ wip }}{{ sprint.flow?.wipLimit ? ' / '+sprint.flow?.wipLimit : '' }}</strong><span>{{ sprint.flow?.wipLimit?'Uyarı limiti':'Limit tanımlanmadı' }}</span></div><div><small>{{ sprint.status==='completed'&&sprint.closureFrozen&&sprint.flow?'Kapanışta engelli':'Kayıtlı engel' }}</small><strong>{{ sprint.status==='completed'&&!sprint.flow ? '—' : blocked }}</strong><span>Görev durumundan ayrı</span></div><div><small>{{ sprint.flow?.origin==='START'?'Başlangıç kapsamı':'Takip başlangıcı' }}</small><strong>{{ tracked ? scope.baseline.length : '—' }}</strong><span>BAU dahil iş</span></div><div><small>Eklenen / çıkarılan</small><strong>{{ tracked ? '+'+scope.added.length+' / −'+scope.removed.length : '—' }}</strong><span>{{ scope.currentCount }} kapsam işi</span></div></div>
  @if(sprint.flow?.wipLimit && wip > sprint.flow!.wipLimit!){<p class="notice warn" role="status">WIP limiti {{ wip-sprint.flow!.wipLimit! }} iş aşıldı. Yeni işe başlamadan önce devam eden işleri değerlendirin; bu uyarı geçişi engellemez.</p>}
  <p class="data-note">WIP: BAU hariç Devam ediyor işleri; engelli devam eden işler de sayılır. Sayaçlar Pano filtrelerinden bağımsızdır.</p>
  @if(!tracked){<p class="data-note">Bu sprint için kapsam başlangıç kaydı yok. Geçmiş değişiklikler bilinmiyor; sıfır değişiklik olduğu anlamına gelmez. Yeni sprintte takip başlatılırken, mevcut aktif sprintte ilk kapsam işleminden itibaren kayıt tutulur.</p>}
- @else{<p class="data-note">{{ sprint.flow?.origin==='START'?'Sprint başlatılırken kaydedildi.':'Sprint devam ederken takip başladı; önceki değişiklikler bilinmiyor.' }} {{ date(sprint.flow?.trackedAt) }}. Durum, kişi ve efor değişiklikleri kapsam ekleme/çıkarma sayılmaz.</p>
+ @else{<p class="data-note">{{ sprint.flow?.origin==='START'?'Sprint başlatılırken kaydedildi.':'Sprint devam ederken takip başladı; önceki değişiklikler bilinmiyor.' }} {{ date(sprint.flow?.trackedAt) }}. Durum, kişi ve efor değişiklikleri kapsam ekleme/çıkarma sayılmaz. Defect Support rezervi içindeki işler ayrı kapsam artışı sayılmaz; geçmişte Rezerv içi olarak gösterilir.</p>
  <details class="flow-history"><summary>Kapsam geçmişi · {{ sprint.flow?.events?.length }} hareket</summary>
   <details><summary>Takip başlangıcındaki işler · {{ sprint.flow?.baseline?.length }}</summary><ul>@for(task of sprint.flow?.baseline;track task.id){<li>{{ task.name }}</li>}</ul></details>
-  @for(event of sprint.flow?.events;track event.id){<article class="flow-event"><div><span class="status" [class.done]="event.action==='ADDED'" [class.undone]="event.action==='REMOVED'">{{ event.action==='ADDED'?'Eklendi':'Çıkarıldı' }}</span><time>{{ date(event.at) }}</time></div><strong>{{ event.task.name }}</strong><p>{{ event.reason }}</p><small>O andaki tahmin: {{ event.task.estimatedHours }} sa · {{ event.task.assignments.length }} kişi ataması</small>@if(event.action==='REMOVED'){<small>Backlog havuzuna döndü; sonraki ataması bu geçmişi değiştirmez.</small>}</article>}
+  @for(event of sprint.flow?.events;track event.id){<article class="flow-event"><div><span class="status" [class.done]="event.action==='ADDED'" [class.undone]="event.action==='REMOVED'">{{ scope.reserveEvents.includes(event)?'Rezerv içi · ':'' }}{{ event.action==='ADDED'?'Eklendi':'Çıkarıldı' }}</span><time>{{ date(event.at) }}</time></div><strong>{{ event.task.name }}</strong><p>{{ event.reason }}</p><small>O andaki tahmin: {{ event.task.estimatedHours }} sa · {{ event.task.assignments.length }} kişi ataması</small>@if(event.action==='REMOVED'){<small>Backlog havuzuna döndü; sonraki ataması bu geçmişi değiştirmez.</small>}</article>}
   @empty{<p class="data-note">Takip başladıktan sonra kapsam hareketi yok.</p>}
  </details>}
 </details>
@@ -23,6 +24,7 @@ import {ModalAccessibilityDirective} from '../modal-accessibility.directive';
 export class SprintFlowComponent implements OnChanges,OnDestroy{
  @Input({required:true}) sprint!:Sprint;@Input() editable=false;@Output() updated=new EventEmitter<void>();
  private api=inject(ApiService);private cdr=inject(ChangeDetectorRef);private id='';private destroyed=false;editing=false;saving=false;error='';limit:number|null=null;
+ get scope(){return buildScope(this.sprint);}
  get tracked(){return !!this.sprint.flow&&this.sprint.flow.origin!=='UNTRACKED';}
  get wip(){return this.sprint.items.filter(t=>!isBau(t)&&t.status==='doing').length;}
  get blocked(){return this.sprint.items.filter(t=>!isBau(t)&&t.blocker?.blocked).length;}

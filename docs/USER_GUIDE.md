@@ -133,9 +133,13 @@ Kabul kriteri, göreli tahmin veya bağımlılık eksiklikleri hazırlık uyarı
 
 | Seçenek | Gösterdiği kayıtlar |
 | --- | --- |
-| Havuz + sprint | Havuzdaki ve sprintte işlem gören işler. |
+| Havuz + aktif + planlanan | Havuz ve açık sprintlerin tüm işleri; kapanmış sprint sonuçları hariç. |
 | Yalnız havuz | Yeni planlanabilecek işler ve oluşturulmuş devam kayıtları. |
-| Sprintte | Sprintte işlem gören işler. |
+| Yalnız aktif sprint | Devam eden sprintin işleri; o sprintte Done olan işler dahil. |
+| Yalnız planlanan sprint | Henüz başlamayan sprintlere alınmış işler. |
+| Havuz + aktif sprint | Havuz ve aktif sprint işleri. |
+| Havuz + planlanan sprint | Havuz ve başlamayan sprintlerin işleri. |
+| Aktif + planlanan sprint | Havuz hariç tüm açık sprint işleri. |
 | Tüm işler | Havuz, sprint ve geçmiş Done/Undone kayıtları. |
 | Done işler | Tamamlanmış işler. |
 
@@ -278,7 +282,7 @@ Mesai kaydında görev seçildiğinde görevin o andaki Roadmap bağlantısı sa
 1. Planlamada **BAU → Defect Support** işine ilgili kişilerin rezerv saatlerini ayırın. Team Support’tan pay ayırıyorsanız oradaki saatleri aynı miktarda azaltın.
 2. Gelen hatayı **DEFECT → TEST DEFECT** veya **PROD DEFECT** olarak açın; ortamı, önem derecesini ve bildiren bilgisini kontrol edin.
 3. Sprinte alırken **Efor kaynağı** olarak o sprintin Defect Support rezervini seçin ve kişi eforlarını planlayın.
-4. Aynı kişinin rezervinden karşılanan efor ikinci kez plan yükü oluşturmaz. Rezerv dışındaki veya rezervi aşan ek efor, aktif sprintte acil/plansız yük olarak ayrılır.
+4. Aynı kişinin rezervinden karşılanan efor ikinci kez plan yükü oluşturmaz. Tamamen rezerv içinde kalan defect, acil iş veya kapsam artışı sayılmaz; geri çıkarılması da kapsam azalışı sayılmaz. Hareketi silinmez, akış geçmişinde **Rezerv içi** olarak görünür. Review, kapsam raporu ve HTML çıktıları aynı ayrımı kullanır. Rezerv dışındaki veya rezervi aşan ek efor, aktif sprintte acil/plansız yük olarak ayrılır.
 5. Defecti normal pano durumlarıyla takip edin. Done olduğunda çözülmüş/kapanmış kabul edilir; ayrı doğrulayan kişi adımı yoktur.
 
 Örnek: 16 saat rezerv ve bunun içinde 6 saat defect, toplamda 22 saat plan değildir. 16 saatlik planın 6 saati defectlere ayrılmıştır. Defect sayıları ve TEST/PROD çözüm durumu Review ve raporlarda ayrıca görünür.
@@ -401,9 +405,13 @@ Açıklama: Backlog çalışması
 
 Her mesaj tek gün içindir. **Fazla mesai** sayfasındaki Slack onay bölümünde admin göndericiyi üyeyle, mesaiyi görevle ve varsa planlı mesai kaydıyla eşleştirir. Sonra onaylar. Görev/plan eşleştirmesi mesaj metninden tahmin edilmez.
 
-Yalnız yeni ana mesajlar alınır; yanıt mesajı veya eski mesajı düzenlemek yeni kayıt sayılmaz. Format hatasında kuyruktaki uyarıyı kontrol edip doğru formatla yeni mesaj gönderin; önce eski mesajın işlenip işlenmediğine bakın.
+Mesai tarihi `2026-10-5` veya `2026-1-5` gibi tek haneli gün/ay içerebilir; uygulama bunları sırasıyla `2026-10-05` ve `2026-01-05` olarak kaydeder. Takvimde olmayan günler kabul edilmez.
 
-Geçerli defect, mesai ve backlog mesajı onay kuyruğuna kaydedildikten sonra bot, kaynak mesaja **✅** ekler. Bu işaret **“uygulama aldı, admin onayı bekliyor”** anlamındadır; admin onayı veya işin Done olduğu anlamına gelmez. Formatı hatalı mesajlara tik eklenmez. Slack izin/bağlantı hatasında onay kaydı korunur, tik arka planda yeniden denenir; Ayarlar’da bekleyen tik sayısı ve hata görünür. Uygulama yeniden başlasa da bekleyen işlemler korunur. Güncelleme öncesi eski mesajlar geriye dönük işaretlenmez.
+Hatalı veya henüz onaylanmamış mesai bildirimini açıp **Mesajı düzelt** seçin. Sprint, tarih, saat veya açıklamayı düzenleyip **Doğrula ve kaydet** düğmesine basın. Orijinal Slack mesajı ve gönderen kimliği değişmez; düzeltme admin adıyla denetim günlüğüne kaydedilir. Bu adım hakediş oluşturmaz. Ardından kişi/sprint, görev ve planlı/plansız eşleştirmesini kontrol edip **Onayla ve hakedişe ekle** seçin. Mesai tarihi seçilen sprintin içinde ve en geç bugün olmalıdır. Sonuçlanmış bildirimler bu ekrandan düzenlenemez.
+
+Yalnız yeni ana mesajlar alınır; Slack’te yanıt yazmak veya eski mesajı düzenlemek yeni kayıt sayılmaz. Mesai, defect ve backlog format hatalarını admin uygulamadaki **Mesajı düzelt** ile giderebilir. Backlog sayfasında defect için **Onay kuyruğu**, iş istekleri için **İş istekleri** bölümünden bildirimi açın. **Doğrula ve kaydet**, içeriği güncel kanal şablonuna göre doğrular ve onay bekleyen duruma getirir; henüz iş oluşturmaz. Ardından tahmin/hedef alanlarını kontrol edip ayrıca onaylayın. Orijinal mesaj, gönderen ve Slack bağlantısı korunur; değişiklik, admin ve zaman bilgisiyle denetim günlüğüne yazılır. Onaylanan/reddedilen mesaj düzenlenemez. Başka admin mesajı değiştirmişse listeyi yenileyip güncel içeriği kontrol edin.
+
+Geçerli defect, mesai ve backlog mesajı onay kuyruğuna kaydedildikten sonra bot, kaynak mesaja **✅** ekler. Bu işaret **“uygulama aldı, admin onayı bekliyor”** anlamındadır; admin onayı veya işin Done olduğu anlamına gelmez. Formatı hatalı mesajlara tik eklenmez; admin düzeltmesi geçerli olarak kaydedildiğinde alındı tiki sıraya konur. Slack izin/bağlantı hatasında onay kaydı korunur, tik arka planda yeniden denenir; Ayarlar’da bekleyen tik sayısı ve hata görünür. Uygulama yeniden başlasa da bekleyen işlemler korunur. Güncelleme öncesi eski mesajlar geriye dönük işaretlenmez.
 
 ### Günlük sprint paylaşımı
 

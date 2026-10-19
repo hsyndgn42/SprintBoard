@@ -3,10 +3,10 @@
  <div class="toolbar"><select aria-label="Slack iş isteği görünümü" [(ngModel)]="filter" (ngModelChange)="changeFilter()" [disabled]="busy"><option value="WAITING">Onay bekleyen / format hatalı</option><option value="APPROVED">Onaylanan</option><option value="REJECTED">Reddedilen</option><option value="ALL">Tümü</option></select><button class="btn small" [disabled]="busy||loading" (click)="load()">Yenile</button></div>
  <p class="data-note">✅ mesajın alındığını gösterir. İş yalnız admin onayıyla backlog’a eklenir; sprinte otomatik alınmaz.</p>
  @for(p of data.items;track p.id){<article><button class="entry-head" [disabled]="busy" (click)="toggle(p)" [attr.aria-expanded]="selected?.id===p.id"><span><strong>{{p.title||'Başlık eksik'}}</strong><small>{{p.taskCategory}} · {{p.reporterName||'Ad soyad bekleniyor'}} · {{time(p.receivedAt)}}</small></span><span class="status" [class.done]="p.status==='APPROVED'">{{label(p.status)}}</span></button>
- @if(selected?.id===p.id){<div class="entry-body"><a [href]="p.sourceUrl" target="_blank" rel="noopener noreferrer">Slack mesajını aç ↗</a><details class="source"><summary>Kaynak mesaj</summary><pre>{{p.raw}}</pre></details>
+ @if(selected?.id===p.id){<div class="entry-body"><a [href]="p.sourceUrl" target="_blank" rel="noopener noreferrer">Slack mesajını aç ↗</a><app-slack-message-correction [entry]="p" endpoint="/admin/slack/backlog-inbox" [disabled]="busy" (editingChange)="editing=$event;refresh()" (saved)="corrected($event)" />
  @for(e of p.errors;track $index){<p class="notice warn">{{e}}</p>}
  @if(p.status==='PENDING'||p.status==='INVALID'){
- @if(p.valid){<div class="form-grid">
+ @if(!editing){@if(p.valid){<div class="form-grid">
  <label class="field">Başlık<input aria-label="İstek başlığı" [(ngModel)]="title" maxlength="300" [disabled]="busy" (ngModelChange)="refresh()"></label>
  <label class="field">Açıklama / beklenen sonuç<textarea aria-label="İstek açıklaması" [(ngModel)]="description" maxlength="8000" rows="4" [disabled]="busy" (ngModelChange)="refresh()"></textarea></label>
  <div class="form-grid two"><label class="field">İş tipi<select [(ngModel)]="category" [disabled]="busy" (ngModelChange)="categoryChanged()">@for(c of categories;track c){<option [value]="c">{{c}}</option>}</select></label>
@@ -17,7 +17,7 @@
  </div>}
  <label class="field">Karar notu<textarea [(ngModel)]="note" rows="2" maxlength="1000" [disabled]="busy"></textarea></label>
  <div class="toolbar">@if(p.valid){<button class="btn primary" [disabled]="busy||!ready" (click)="decide('APPROVE')">Onayla ve backlog’a ekle</button>}<button class="btn" [disabled]="busy" (click)="decide('REJECT')">Reddet</button><button class="btn" [disabled]="busy" (click)="selected=null;refresh()">Vazgeç</button></div>
- }@else{<p>Karar veren: {{p.decidedBy}} · {{p.decisionNote}}</p>@if(p.backlogId){<button class="btn small" (click)="openItem.emit(p.backlogId)">Oluşturulan işe git →</button>}}
+ }}@else{<p>Karar veren: {{p.decidedBy}} · {{p.decisionNote}}</p>@if(p.backlogId){<button class="btn small" (click)="openItem.emit(p.backlogId)">Oluşturulan işe git →</button>}}
  </div>}
  </article>}@empty{<p class="muted">Bu görünümde iş isteği yok.</p>}
  @if(data.total>20){<nav class="toolbar" aria-label="İş istekleri sayfaları"><button class="btn small" [disabled]="page===0||busy||loading" (click)="page=page-1;selected=null;load()">Önceki</button><span>{{page+1}} / {{pages}}</span><button class="btn small" [disabled]="(page+1)*20>=data.total||busy||loading" (click)="page=page+1;selected=null;load()">Sonraki</button></nav>}

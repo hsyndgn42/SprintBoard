@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 public final class DefectReserve {
  private DefectReserve(){}
  public static boolean isReserve(Map<String,Object> t){return "BAU".equals(t.get("taskCategory"))&&"DEFECT_SUPPORT".equals(t.get("taskSubtype"));}
+ public static boolean withinReserve(Map<String,Object> t){return "DEFECT".equals(t.get("taskCategory"))&&!Objects.toString(t.get("reserveTaskId"),"").isBlank()&&t.containsKey("extraPlanHours")&&number(t,"extraPlanHours")<=0.000001;}
  public static double number(Map<String,Object> m,String key){return m.get(key) instanceof Number n?n.doubleValue():0;}
  public static double hours(Map<String,Object> a){return Boolean.TRUE.equals(a.get("supportOnly"))?0:number(a,"estimatedHours");}
  public static double planned(Map<String,Object> a){return a.containsKey("planningHours")?number(a,"planningHours"):hours(a);}

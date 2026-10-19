@@ -143,7 +143,7 @@ public class WorkspaceService {
     LocalDate today = LocalDate.now(java.time.ZoneId.of("Europe/Istanbul"));
     long[] backlogCounts = jdbc.queryForObject("SELECT COUNT(*),COUNT(roadmap_id),COUNT(CASE WHEN state='Ready' THEN 1 END),COUNT(CASE WHEN state='IN_SPRINT' THEN 1 END) FROM backlog_item",
         (rs, row) -> new long[] { rs.getLong(1), rs.getLong(2), rs.getLong(3), rs.getLong(4) });
-    return map("totalSprints", all.size(), "completedSprints", completed.size(), "deliveredTasks", done, "undoneTasks", undone,
+    return map("totalSprints", all.size(), "completedSprints", completed.size(), "activeSprints", all.stream().filter(s->"active".equals(s.get("status"))).count(), "plannedSprints", all.stream().filter(s->"planned".equals(s.get("status"))).count(), "deliveredTasks", done, "undoneTasks", undone,
         "deliveryRate", deliveryTotal == 0 ? null : Math.round(100.0 * done / deliveryTotal),
         "activeSprint", all.stream().filter(row -> "active".equals(row.get("status"))).findFirst().orElse(null),
         "recentSprints", completed.stream().limit(5).toList(),
@@ -278,8 +278,9 @@ public class WorkspaceService {
   }
   public List<Map<String, Object>> backlog() {
     var result = jdbc.query("""
-      SELECT b.*,t.id task_id,t.sprint_id,t.status task_status,r.title roadmap_title,m.name owner_name,m.active owner_active
+      SELECT b.*,t.id task_id,t.sprint_id,t.status task_status,s.status sprint_status,s.name sprint_name,r.title roadmap_title,m.name owner_name,m.active owner_active
       FROM backlog_item b LEFT JOIN sprint_task t ON t.backlog_id=b.id
+      LEFT JOIN sprint s ON s.id=t.sprint_id
       LEFT JOIN member m ON m.id=b.owner_id
       LEFT JOIN roadmap_item r ON r.id=b.roadmap_id ORDER BY b.created_at DESC,b.id DESC
       """, (rs, row) -> map("id", rs.getString("id"), "roadmapId", rs.getString("roadmap_id"),
@@ -288,7 +289,7 @@ public class WorkspaceService {
         "state", rs.getString("state"), "estimatedHours", rs.getDouble("estimated_hours"),
         "storyPoints", nullableDouble(rs, "story_points"), "size", rs.getString("size_code"), "externalId", rs.getString("external_id"),
         "repeatOfId", rs.getString("repeat_of_id"), "taskId", rs.getString("task_id"), "sprintId", rs.getString("sprint_id"),
-        "taskStatus", rs.getString("task_status"), "roadmapTitle", rs.getString("roadmap_title"),
+        "sprintStatus",rs.getString("sprint_status"),"sprintName",rs.getString("sprint_name"),"taskStatus", rs.getString("task_status"), "roadmapTitle", rs.getString("roadmap_title"),
         "priority",rs.getString("priority"),"ownerId",rs.getString("owner_id"),"ownerName",rs.getString("owner_name"),"ownerActive",rs.getBoolean("owner_active")));
     defects.enrich(result,"id");
     planning.enrich(result);

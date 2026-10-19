@@ -1,6 +1,6 @@
 # SprintBoard ürün backlogu
 
-Güncelleme: 18 Ekim 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındadır; V2 planı yoktur. Bu dosya uygulamanın geliştirme backlogudur, ekip işlerinin tutulduğu Backlog ekranı değildir.
+Güncelleme: 19 Ekim 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındadır; V2 planı yoktur. Bu dosya uygulamanın geliştirme backlogudur, ekip işlerinin tutulduğu Backlog ekranı değildir.
 
 ## Tamamlanan kapsam
 
@@ -17,6 +17,9 @@ Güncelleme: 18 Ekim 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındad
 - [x] Özel geçmiş veri olmadan boş kurulum; GitHub kaynakları ve ayrı özel Windows hazır paket.
 - [x] İsteğe bağlı sprint hedefi, açık sprint bilgilerini güvenli düzenleme ve uzun sayfalarda açılır/kapanır ana bölümler.
 - [x] Defect eforunun rezerv/ek plan yükünden ayrı gösterimi; Pano’da sayfalama olmadan tüm görev kartları.
+- [x] Slack mesai tarihinde tek haneli gün/ay desteği; mesai, defect ve backlog mesajlarını adminin kaynak ve denetim geçmişini koruyarak düzeltmesi, ardından ayrı onay.
+
+- [x] Rezerv içi defectleri kapsam değişiminden ayırma; ana sayfada sprint durum toplamları; Backlog’da havuz/aktif/planlanan kombinasyonları.
 
 ## Açık takip konuları
 

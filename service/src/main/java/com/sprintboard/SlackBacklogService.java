@@ -21,6 +21,7 @@ public class SlackBacklogService {
  }
  private Map<String,Object> row(java.sql.ResultSet r)throws java.sql.SQLException{
   var p=new LinkedHashMap<>(parsed(r.getString("parsed_json")));
+  SlackMessageCorrectionService.metadata(p,r);
   for(String[] keys:new String[][]{{"id","id"},{"status","status"},{"reporterName","reporter_name"},{"userId","user_id"},{"teamId","team_id"},{"sourceUrl","source_url"},{"receivedAt","received_at"},{"decidedAt","decided_at"},{"decidedBy","decided_by"},{"decisionNote","decision_note"},{"backlogId","backlog_id"}})p.put(keys[0],r.getString(keys[1]));return p;
  }
  public Map<String,Object> list(String filter,int page){
@@ -33,10 +34,11 @@ public class SlackBacklogService {
   if(auth==null||auth.getAuthorities().stream().noneMatch(a->a.getAuthority().equals("ROLE_ADMIN")))throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"Yönetici yetkisi gerekli.");
   var rows=db.query("SELECT * FROM slack_backlog_inbox WHERE id=? FOR UPDATE",(r,n)->row(r),id);if(rows.isEmpty())throw new IllegalArgumentException("İş isteği bulunamadı.");var p=rows.getFirst();
   if(!Set.of("PENDING","INVALID").contains(p.get("status")))throw new IllegalArgumentException("Bu istek zaten sonuçlandırılmış; listeyi yenileyin.");
+  SlackMessageCorrectionService.checkDecision(p,input);
   String action=Objects.toString(input.get("action"),""),note=SlackDefectParser.safe(Objects.toString(input.get("note"),"")).strip(),backlog="";
   if(note.length()>1000)throw new IllegalArgumentException("Karar notu en fazla 1.000 karakter.");
   if(action.equals("APPROVE")){
-   if(!Boolean.TRUE.equals(p.get("valid")))throw new IllegalArgumentException("Format hatalı; doğru formatla yeni mesaj gönderin.");
+   if(!Boolean.TRUE.equals(p.get("valid")))throw new IllegalArgumentException("Format hatalı; önce Mesajı düzelt ile alanları düzenleyip kaydedin.");
    String category=Objects.toString(input.get("taskCategory"),p.get("taskCategory").toString()),subtype=Objects.toString(input.get("taskSubtype"),"");
    if(!SlackBacklogParser.CATEGORIES.contains(category)||subtype.equals("LEAVE"))throw new IllegalArgumentException("İş isteği türü geçersiz; defect ve izinler kendi akışlarından girilmelidir.");
    String title=SlackDefectParser.safe(Objects.toString(input.get("title"),p.get("title").toString())).strip(),description=SlackDefectParser.safe(Objects.toString(input.get("description"),p.get("description").toString())).strip();

@@ -35,7 +35,7 @@ public final class SlackOvertimeParser {
   }
   int sprint=0;double hours=0;String date=fields.getOrDefault("tarih",""),reason=fields.getOrDefault("açıklama","");
   try{sprint=Integer.parseInt(fields.getOrDefault("sprint","").replaceFirst("(?i)^sprint\\s+",""));if(sprint<1||sprint>100000)throw new IllegalArgumentException();}catch(Exception e){errors.add("Sprint pozitif bir sprint numarası olmalı.");}
-  try{if(!date.matches("\\d{4}-\\d{2}-\\d{2}"))throw new IllegalArgumentException();LocalDate.parse(date);}catch(Exception e){errors.add("Tarih YYYY-AA-GG biçiminde geçerli bir gün olmalı.");}
+  try{if(!date.matches("\\d{4}-\\d{1,2}-\\d{1,2}"))throw new IllegalArgumentException();String[] parts=date.split("-");date=LocalDate.of(Integer.parseInt(parts[0]),Integer.parseInt(parts[1]),Integer.parseInt(parts[2])).toString();}catch(Exception e){errors.add("Tarih yıl-ay-gün biçiminde geçerli bir gün olmalı (ör. 2026-10-5 veya 2026-10-05).");}
   try{String value=fields.getOrDefault("saat","").replace(',','.');if(!value.matches("[0-9]+(?:\\.[0-9]{1,2})?"))throw new IllegalArgumentException();hours=Double.parseDouble(value);if(hours<=0||hours>24||hours*4!=Math.rint(hours*4))throw new IllegalArgumentException();}catch(Exception e){hours=0;errors.add("Saat 0,25–24 arasında, çeyrek saat adımlı olmalı.");}
   if(reason.isBlank()||reason.length()>1000)errors.add("Açıklama 1–1.000 karakter olmalı.");
   out.put("sprintNumber",sprint);out.put("date",date);out.put("hours",hours);out.put("reason",reason);out.put("errors",errors);out.put("valid",errors.isEmpty());return out;

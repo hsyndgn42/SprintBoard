@@ -1,5 +1,8 @@
 package com.sprintboard;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -13,7 +16,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 @SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:slackot;DB_CLOSE_DELAY=-1","sprintboard.slack.resolve-names=false","sprintboard.slack.bot-token=","sprintboard.slack.app-token="})
 @WithMockUser(username="admin",roles="ADMIN")
+@org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 class SlackOvertimeTest {
+ @Autowired org.springframework.test.web.servlet.MockMvc mvc;
  @Autowired SlackOvertimeService service;@Autowired JdbcTemplate db;@Autowired BackupService backup;@Autowired ObjectMapper mapper;@Autowired WorkspaceService workspace;
  String member,sprint;LocalDate date;int serial;
  @BeforeEach void setup(){
@@ -28,6 +33,38 @@ class SlackOvertimeTest {
  String receive(String raw){String ts="1792180000."+(++serial);service.accept("TTEST123","COT12345",ts,"UTEST123",raw,1);return db.queryForObject("SELECT id FROM slack_overtime_inbox WHERE message_ts=?",String.class,ts);}
  Map<String,Object> approval(){return new HashMap<>(Map.of("action","APPROVE","memberId",member,"sprintId",sprint,"note","Çalışma doğrulandı","confirmed",true));}
  int entries(){return db.queryForObject("SELECT COUNT(*) FROM overtime_entry WHERE member_id=?",Integer.class,member);}
+ @SuppressWarnings("unchecked") Map<String,Object> entry(String id){return ((List<Map<String,Object>>)service.list("ALL",0).get("items")).stream().filter(p->id.equals(p.get("id"))).findFirst().orElseThrow();}
+ Map<String,Object> correction(String id,String text){return Map.of("text",text,"fingerprint",entry(id).get("fingerprint"));}
+ @Test void normalizesSingleDigitCalendarDatesButRejectsImpossibleDates(){
+  for(String value:List.of("2026-10-5","2026-1-05","2026-1-5","2024-2-29")){var p=SlackOvertimeParser.parse(text().replace(date.toString(),value));assertEquals(true,p.get("valid"));assertDoesNotThrow(()->LocalDate.parse(p.get("date").toString()));}
+  assertEquals("2026-10-05",SlackOvertimeParser.parse(text().replace(date.toString(),"2026-10-5")).get("date"));
+  for(String value:List.of("2026-2-29","2026-2-30","2026-13-5","2026-0-5","2026-10-0","2026-10-32","2026-010-5","26-10-5","5/10/2026"))assertEquals(false,SlackOvertimeParser.parse(text().replace(date.toString(),value)).get("valid"),value);
+ }
+ @Test void correctionPreservesSourceAndSenderRequiresSeparateApprovalAndIsAudited(){
+  String raw=text().replace("2,5","25"),id=receive(raw);assertEquals("INVALID",entry(id).get("status"));assertEquals(0,entries());
+  String originalUrl=entry(id).get("sourceUrl").toString();var edited=new HashMap<>(correction(id,text()));edited.put("userId","spoof");service.correct(id,edited,"admin");
+  var p=entry(id);assertEquals("PENDING",p.get("status"));assertEquals(raw,p.get("originalRaw"));assertEquals(text(),p.get("raw"));assertEquals("UTEST123",p.get("userId"));assertEquals(originalUrl,p.get("sourceUrl"));assertEquals("admin",p.get("correctedBy"));assertEquals(0,entries());
+  assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM slack_receipt_reaction",Integer.class));assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM audit_event WHERE entity_id=? AND action='CORRECTED'",Integer.class,id));
+  var approve=approval();approve.put("fingerprint",p.get("fingerprint"));service.decide(id,approve,"admin");assertEquals(1,entries());assertEquals(2.5,db.queryForObject("SELECT earned_hours FROM overtime_entry WHERE member_id=?",Double.class,member));
+  assertThrows(IllegalArgumentException.class,()->service.correct(id,correction(id,text()),"admin"));assertThrows(IllegalArgumentException.class,()->service.decide(id,approve,"admin"));
+ }
+ @Test void invalidAndStaleCorrectionsCannotOverwriteOrApproveChangedContent(){
+  String id=receive(text()),fingerprint=entry(id).get("fingerprint").toString();
+  assertThrows(IllegalArgumentException.class,()->service.correct(id,correction(id,text().replace("2,5","-4")),"admin"));assertEquals(fingerprint,entry(id).get("fingerprint"));
+  service.correct(id,correction(id,text().replace("2,5","3")),"admin");
+  assertThrows(IllegalArgumentException.class,()->service.correct(id,Map.of("text",text(),"fingerprint",fingerprint),"admin"));
+  var stale=approval();stale.put("fingerprint",fingerprint);assertThrows(IllegalArgumentException.class,()->service.decide(id,stale,"admin"));assertThrows(IllegalArgumentException.class,()->service.decide(id,approval(),"admin"));assertEquals(0,entries());
+  var current=approval();current.put("fingerprint",entry(id).get("fingerprint"));service.decide(id,current,"admin");assertEquals(3d,db.queryForObject("SELECT earned_hours FROM overtime_entry WHERE member_id=?",Double.class,member));
+ }
+ @Test void correctedDateStillMustFitSelectedSprint(){
+  String id=receive(text());service.correct(id,correction(id,text().replace(date.toString(),date.minusDays(10).toString())),"admin");var input=approval();input.put("fingerprint",entry(id).get("fingerprint"));assertThrows(IllegalArgumentException.class,()->service.decide(id,input,"admin"));assertEquals(0,entries());assertEquals("PENDING",entry(id).get("status"));
+ }
+ @Test void correctionApiRequiresAdminAndCsrf()throws Exception{
+  String id=receive("#mesai\nSaat: -2"),body=mapper.writeValueAsString(correction(id,text())),url="/api/admin/slack/overtime-inbox/"+id+"/correction";
+  mvc.perform(post(url).with(user("member").roles("USER")).with(csrf()).contentType("application/json").content(body)).andExpect(status().isForbidden());
+  mvc.perform(post(url).contentType("application/json").content(body)).andExpect(status().isForbidden());
+  mvc.perform(post(url).with(csrf()).contentType("application/json").content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PENDING"));assertEquals(0,entries());
+ }
  @Test void slackApprovalMatchesPartialPlanAndOverrunWithoutDoubleCounting(){
   String plan=workspace.createOvertimeEntry(Map.of("memberId",member,"sprintId",sprint,"plannedHours",16,"includeInCapacity",true)).get("id").toString();
   var before=workspace.capacity(sprint);var input=approval();input.put("planMode","PLANNED");input.put("planId",plan);

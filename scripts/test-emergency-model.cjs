@@ -16,4 +16,9 @@ const removed=structuredClone(sprint);removed.flow.events.push(event('REMOVED',u
 assert(scopeSectionHtml({...sprint,flow:undefined}).includes('bilinmiyor'));assert(scopeSectionHtml({...sprint,flow:{...sprint.flow,origin:'OBSERVED'}}).includes('önceki değişiklikler bilinmiyor'));
 const covered=structuredClone(sprint);covered.items[0]={...covered.items[0],taskCategory:'DEFECT',emergency:false,extraPlanHours:0};assert.equal(buildScope(covered).emergencies.length,0);
 covered.items[0].emergency=true;covered.items[0].extraPlanHours=2;assert.equal(buildScope(covered).emergencies[0].hours,2);
+const reserved=structuredClone(sprint);reserved.items[0]={...reserved.items[0],taskCategory:'DEFECT',reserveTaskId:'reserve',extraPlanHours:0,emergency:false};
+m=buildScope(reserved);assert.equal(m.added.length,1);assert.equal(m.reserveEvents.length,1);assert.equal(m.addedHours,8);assert.equal(m.currentCount,1);
+assert(scopeSectionHtml(reserved).includes('rezerv hareketi'));assert.equal(buildScope(reserved).emergencies.length,0);
+reserved.items[0].extraPlanHours=2;reserved.items[0].emergency=true;m=buildScope(reserved);assert.equal(m.added.length,2);assert.equal(m.addedHours,10);assert.equal(m.emergencyHours,2);
+reserved.flow.events.push(event('REMOVED',{...reserved.items[0],extraPlanHours:0,emergency:false}));reserved.items=[normal];m=buildScope(reserved);assert.equal(m.added.length,1);assert.equal(m.removed.length,1);assert.equal(m.reserveEvents.length,2);
 console.log('Emergency model PASS: scope counts, assigned/estimated/X/leave effort, removed vs Undone, unknown baseline, escaped HTML and Review export.');

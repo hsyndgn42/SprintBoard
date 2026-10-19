@@ -4,7 +4,7 @@
 </div>
 @if (data; as view) {
   <section class="metric-grid overview-metrics" aria-label="Tüm sprintlerin özeti">
-    <article class="card metric"><small>Toplam sprint</small><strong>{{ view.totalSprints }}</strong><span>Tüm dönemler</span></article>
+    <article class="card metric"><small>Toplam sprint</small><strong>{{ view.totalSprints }}</strong><span>{{ view.completedSprints }} kapanmış · {{ view.activeSprints }} aktif · {{ view.plannedSprints }} planlanan</span></article>
     <article class="card metric"><small>Tamamlanan sprint</small><strong>{{ view.completedSprints }}</strong><span>Kapanan dönemler</span></article>
     <article class="card metric good"><small>Done iş</small><strong>{{ view.deliveredTasks }}</strong><span>Tamamlanan sprintler · BAU hariç</span></article>
     <article class="card metric"><small>Teslimat oranı</small><strong>{{ view.deliveryRate === null ? '—' : '%' + view.deliveryRate }}</strong><span>Tamamlanan sprintler · BAU hariç</span></article>
