@@ -18,6 +18,7 @@ import { BackupComponent } from './backup.component';
 import { AccountsComponent } from './accounts.component';
 import { ApiService, BauTemplate, CalendarDay, MemberReportRow, ProductSettings, ReportRow, TaskCategory, TaskSubtype, TeamMember, WorkTypeReportRow, formatDate } from '../api.service';
 import { SbToastService } from '../shared/sb-toast';
+import { SbStateComponent } from '../shared/sb-state.component';
 import { TASK_CATEGORIES, TASK_CATEGORY_COLORS, taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
 
 interface MemberReportSummary {
@@ -37,7 +38,7 @@ interface WorkSubtypeSummary {
 
 @Component({
   standalone: true,
-  imports: [OvertimeTrendComponent,ListPagerComponent, ScopeReportComponent,ReportHtmlExportComponent, RouterLink, FormsModule, DefectReportComponent, MemberContextComponent, RoadmapReportComponent, CapacityTrendComponent],
+  imports: [OvertimeTrendComponent,ListPagerComponent, ScopeReportComponent,ReportHtmlExportComponent, RouterLink, FormsModule, DefectReportComponent, MemberContextComponent, RoadmapReportComponent, CapacityTrendComponent, SbStateComponent],
   host: {'class':'reports-page'},
   templateUrl: './reports.component.html',
   styleUrl: './reports.component.css',
@@ -141,7 +142,34 @@ export class ReportsComponent implements OnInit {
   subtypeBarWidth(category: TaskCategory, count: number): number { const max = Math.max(...this.subtypeSummary(category).map(row => row.taskCount), 1); return Math.max(4, count * 100 / max); }
   subtypeDoneRate(row: WorkSubtypeSummary): number { return row.taskCount ? Math.round(row.done * 100 / row.taskCount) : 0; }
   breakdownTitle(category: TaskCategory): string { return category === 'BAU' ? 'Operasyon kırılımı' : category === 'TEST' ? 'Test kapsamı' : category === 'DEFECT' ? 'Defect kaynağı' : 'İş kırılımı'; }
-  async ngOnInit(): Promise<void> { try { [this.rows, this.memberRows, this.workTypeRows, this.settings] = await Promise.all([this.api.get<ReportRow[]>('/reports'), this.api.get<MemberReportRow[]>('/reports/members'), this.api.get<WorkTypeReportRow[]>('/reports/work-types'), this.api.get<ProductSettings>('/settings')]); } catch (error) { this.error = String(error); } finally { this.loading=false;this.cdr.detectChanges(); } }
+  async ngOnInit(): Promise<void> { await this.load(); }
+
+  /**
+   * True when the person report is narrowed by the reader, so an empty table
+   * means "filtered out" rather than "no data exists". The two situations
+   * need different wording and different next actions.
+   */
+  memberFiltersActive(): boolean {
+    return !!this.selectedSprint || !!this.memberQuery.trim();
+  }
+
+  /** Resets only the person-report filters; loaded data is untouched. */
+  clearMemberFilters(): void {
+    this.selectedSprint = '';
+    this.memberQuery = '';
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Extracted from ngOnInit so a failed load can be retried in place instead
+   * of forcing a full page reload. The request sequence is unchanged.
+   */
+  async load(): Promise<void> {
+    this.loading = true;
+    this.error = '';
+    this.cdr.detectChanges();
+    try { [this.rows, this.memberRows, this.workTypeRows, this.settings] = await Promise.all([this.api.get<ReportRow[]>('/reports'), this.api.get<MemberReportRow[]>('/reports/members'), this.api.get<WorkTypeReportRow[]>('/reports/work-types'), this.api.get<ProductSettings>('/settings')]); } catch (error) { this.error = String(error); } finally { this.loading=false;this.cdr.detectChanges(); }
+  }
   chartX(index: number): number { return this.chartRows.length <= 1 ? 370 : 50 + index * 640 / (this.chartRows.length - 1); }
   chartY(rate: number | null): number { return 196 - Math.max(0, Math.min(100, rate ?? 0)) * 1.6; }
   sizeSegment(row: ReportRow, value: number): number { const total = row.sizeSmall + row.sizeMedium + row.sizeLarge + row.sizeXLarge; return total ? value * 100 / total : 0; }

@@ -14,10 +14,11 @@ import { DefectFieldsComponent } from './defect-fields.component';
 import { emptyDefect,defectSummary } from '../defect-model';
 import { AuthService } from '../auth.service';
 import { TASK_CATEGORIES, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
+import { SbStateComponent } from '../shared/sb-state.component';
 
 @Component({
   standalone: true,
-  imports: [WorkItemActionComponent,SlackInboxComponent,SlackBacklogInboxComponent,FoldDirective, BacklogHistoryComponent, ModalAccessibilityDirective, FormsModule, RouterLink, SprintAddDialogComponent, DefectFieldsComponent],
+  imports: [WorkItemActionComponent,SlackInboxComponent,SlackBacklogInboxComponent,FoldDirective, BacklogHistoryComponent, ModalAccessibilityDirective, FormsModule, RouterLink, SprintAddDialogComponent, DefectFieldsComponent, SbStateComponent],
   template: `
     <div class="page-head"><div><span class="eyebrow">İŞ HAVUZU</span><h1>Backlog</h1><p>İş havuzunu ve sprintlerdeki işleri tek yerden yönetin.</p></div>
       @if (auth.isAdmin()) { <div class="page-actions"><button class="btn primary" (click)="openCreate()">+ Yeni iş</button></div> }</div>
@@ -30,7 +31,14 @@ import { TASK_CATEGORIES, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, 
       <label class="field">Hazırlık<select [(ngModel)]="readinessFilter" (ngModelChange)="resetPage()"><option value="">Tümü</option><option value="ready">Planlamaya hazır</option><option value="warnings">Kontrol gerekli</option><option value="blocked">Bağımlılığı açık</option></select></label>
       <label class="field">Sıralama<select [(ngModel)]="sort" (ngModelChange)="resetPage()"><option value="priority">Öncelik</option><option value="recent">En yeni</option></select></label>
     </div><div class="ui-toolbar-foot"><p class="data-note" aria-live="polite">{{viewHint}}</p><p class="data-note">{{ readyCount }} planlamaya hazır · {{ warningCount }} kontrol gerekli</p></div></section>
-    <div class="section-head" id="backlog-results"><h2>İş listesi</h2><small>{{ visible.length }} / {{ items.length }} kayıt</small></div>
+    <div class="section-head" id="backlog-results"><div><h2>İş listesi</h2><small>{{ visible.length }} / {{ items.length }} kayıt</small></div></div>
+    @if (filtersActive()) {
+      <div class="backlog-filter-summary" role="status">
+        <span class="backlog-filter-summary__label">Aktif filtreler</span>
+        <ul>@for (chip of activeFilterChips(); track chip) { <li>{{ chip }}</li> }</ul>
+        <button type="button" class="btn small" (click)="clearFilters()">Filtreleri temizle</button>
+      </div>
+    }
     @if (visible.length) { <div class="table-wrap backlog-table-wrap"><table class="backlog-table"><caption class="sr-only">Backlog işleri: başlık, roadmap bağlantısı, durum, sprint görevi ve işlemler.</caption><thead><tr><th scope="col">İş</th><th scope="col">Roadmap</th><th scope="col">Durum</th><th scope="col">Sprint görevi</th><th scope="col">İşlemler</th></tr></thead><tbody>
       @for (item of visiblePage; track item.id) { <tr [attr.data-backlog-id]="item.id">
         <td data-label="İş"><button class="backlog-title-link" (click)="openDetail(item)">{{ item.title }}</button><small>{{ taxonomyLabel(item.taskCategory,item.taskSubtype) }} · {{ relativeEstimate(item) }} @if (item.estimatedHours) { · {{ item.estimatedHours }} saat efor }</small></td>
@@ -42,9 +50,10 @@ import { TASK_CATEGORIES, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, 
         <td data-label="İşlemler"><div class="table-actions">@if (auth.isAdmin() && !item.taskId && item.state === 'Ready') { <button class="btn small" (click)="edit(item)">Düzenle</button> <button class="btn small danger" (click)="openDelete(item)">Sil</button> } @if (auth.isAdmin() && !item.taskId && item.state === 'Ready' && activeId) { <button class="btn small" (click)="addToActive(item)">Aktif sprinte al</button> }
           @else if (auth.isAdmin() && item.taskId) { <button class="btn small" (click)="repeat(item)">Yeni iş olarak tekrarla</button> } @else { <span class="muted">—</span> }</div></td>
       </tr> }</tbody></table></div> }
-    @else { <div class="card empty"><strong>Bu filtrede iş bulunamadı</strong>Aramayı veya görünümü değiştirin.</div> }
+    @else if (filtersActive()) { <sb-state variant="no-results" title="Bu filtrede iş yok" message="Toplam {{ items.length }} kayıt var ama hiçbiri seçili filtrelerle eşleşmiyor." actionLabel="Filtreleri temizle" (action)="clearFilters()" /> }
+    @else { <sb-state variant="empty" title="Backlog boş" message="Planlanacak ilk işi ekleyerek başlayabilirsin." [actionLabel]="auth.isAdmin() ? 'Yeni iş ekle' : ''" (action)="openCreate()" /> }
     @if (totalPages > 1) { <nav class="pager" aria-label="Backlog sayfaları"><button class="btn small" [disabled]="page<=1" (click)="changePage(page-1)">← Önceki</button><span aria-live="polite">{{ pageStart }}–{{ pageEnd }} / {{ visible.length }} · Sayfa {{ page }} / {{ totalPages }}</span><button class="btn small" [disabled]="page>=totalPages" (click)="changePage(page+1)">Sonraki →</button></nav> }
-    @if (error && !formOpen) { <p class="notice warn" role="alert">{{ error }}</p> }
+    @if (error && !formOpen) { <sb-state variant="error" title="Backlog işlemi tamamlanamadı" [detail]="error" message="Listeyi yeniden yükleyerek güncel durumu görebilirsin." actionLabel="Yeniden yükle" (action)="load()" /> }
     @if (savedMessage) { <p class="inline-success" role="status">{{ savedMessage }}</p> }
     @if(deleteItem){@defer(on immediate){<app-work-item-action action="delete" [id]="deleteItem.id" [title]="deleteItem.title" (cancel)="closeDelete()" (saved)="deleted()" />}}
     @if (detail; as item) { <div class="modal-layer"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="backlog-detail-title"><header><span class="eyebrow">BACKLOG İŞİ</span><h2 id="backlog-detail-title">{{ item.title }}</h2><p>{{ taxonomyLabel(item.taskCategory,item.taskSubtype) }} · {{ relativeEstimate(item) }} · {{ item.estimatedHours }} sa</p></header><div class="modal-body"><span class="status">{{ item.state === 'Ready' ? 'Havuzda' : statusText(item.taskStatus || item.state) }}</span><h3>Planlama</h3><p>{{ priorityLabel(item.priority) }}</p>@if(item.dependencies.length) { <h3>Önce tamamlanması gereken işler</h3><ul>@for (d of item.dependencies; track d.id) { <li>{{ d.title }} — {{ d.done ? 'Done' : 'Tamamlanmadı' }}</li> }</ul> }@if(item.readiness.eligible) { <h3>Hazırlık kontrolü</h3>@if(item.readiness.ready) { <p class="inline-success">Planlamaya hazır</p> } @else { <ul>@for(w of item.readiness.warnings;track w) { <li>{{ w }}</li> }</ul> } }@if(item.taskCategory==='DEFECT'){<h3>Defect bilgileri</h3><p>{{ defectSummary(item.defect) }}</p><p>İlgili iş: {{ item.defect?.relatedTitle || 'Bağlantı yok' }}</p><p>Bildiren: {{ item.defect?.reporterName || (item.defect?.reporterId ? 'Ad soyad bekleniyor' : 'Kayıt yok') }}</p>@if(item.defect?.sourceUrl){<a [href]="item.defect?.sourceUrl" target="_blank" rel="noopener noreferrer">Kaynak Slack mesajı ↗</a>}}<h3>Kabul kriterleri</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">{{ item.criteria || 'Kabul kriteri belirtilmemiş.' }}</p><h3>Roadmap hedefi</h3><p>@if(item.roadmapId) { <a class="table-link" [routerLink]="['/roadmap',item.roadmapId]">{{ item.roadmapTitle }} →</a> } @else { Roadmap hedefine bağlı değil }</p>@if (item.repeatOfId) { <p class="data-note">Önceki bir işin devamı / tekrarı olarak açılmıştır.</p> }@if (item.taskId) { <p class="data-note">Bu işin sprint görevi var. Tarihsel kayıt korunur; durum ve atamaları sprint ekranından yönetin.</p> }@defer(on immediate){<app-backlog-history [itemId]="item.id" />}</div><footer><button data-modal-dismiss class="btn" (click)="closeDetail()">Kapat</button>@if (item.sprintId) { <a class="btn primary" [routerLink]="['/sprints',item.sprintId,'planning']">Sprint görevine git</a> }@if (auth.isAdmin() && !item.taskId && item.state === 'Ready') { <button class="btn primary" (click)="edit(item)">İşi düzenle</button> }</footer></section></div> }
@@ -122,6 +131,47 @@ export class BacklogComponent implements OnInit {
   get pageEnd(): number { return Math.min(this.page * this.pageSize, this.visible.length); }
   get visiblePage(): BacklogItem[] { return this.visible.slice((this.page - 1) * this.pageSize, this.page * this.pageSize); }
   clearFilters(): void { this.query=""; this.filter="open"; this.typeFilter=""; this.priorityFilter=""; this.readinessFilter=""; this.sort="priority"; this.resetPage(); }
+
+  /**
+   * True when the reader has narrowed the list away from its default view.
+   * `filter` defaults to 'open', so that value on its own is not a filter.
+   */
+  filtersActive(): boolean {
+    return !!this.query.trim()
+      || this.filter !== 'open'
+      || !!this.typeFilter
+      || !!this.priorityFilter
+      || !!this.readinessFilter;
+  }
+
+  /**
+   * Human-readable summary of what is currently narrowing the list, so an
+   * unexpected result count can be explained without reopening every
+   * dropdown. Returns the resolved option labels, not the raw codes.
+   */
+  activeFilterChips(): string[] {
+    const chips: string[] = [];
+    const q = this.query.trim();
+    if (q) chips.push(`Arama: “${q}”`);
+    if (this.filter !== 'open') {
+      chips.push(`Görünüm: ${this.views.find(v => v.value === this.filter)?.label ?? this.filter}`);
+    }
+    if (this.typeFilter) {
+      chips.push(`İş tipi: ${this.taskCategories.find(c => c.value === this.typeFilter)?.label ?? this.typeFilter}`);
+    }
+    if (this.priorityFilter) {
+      chips.push(`Öncelik: ${this.priorities.find(p => p.value === this.priorityFilter)?.label ?? this.priorityFilter}`);
+    }
+    if (this.readinessFilter) {
+      const readiness: Record<string, string> = {
+        ready: 'Planlamaya hazır',
+        warnings: 'Kontrol gerekli',
+        blocked: 'Bağımlılığı açık',
+      };
+      chips.push(`Hazırlık: ${readiness[this.readinessFilter] ?? this.readinessFilter}`);
+    }
+    return chips;
+  }
   resetPage(): void { this.page = 1; this.cdr.detectChanges(); }
   changePage(nextPage: number): void {
     this.page = Math.max(1, Math.min(nextPage, this.totalPages));

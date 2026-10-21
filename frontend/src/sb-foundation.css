@@ -1084,3 +1084,45 @@
   from { background-position: 100% 50%; }
   to { background-position: 0 50%; }
 }
+/* --- backlog active-filter summary ----------------------------------------
+   The filter controls live in a collapsible toolbar, so a reader who scrolls
+   to an unexpectedly short list had no way to see what was excluding rows.
+   This restates the active narrowing next to the results. */
+.main-content .backlog-filter-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2) var(--sb-space-3);
+  align-items: center;
+  margin-bottom: var(--sb-space-3);
+  padding: var(--sb-space-2) var(--sb-space-3);
+  background: var(--sb-info-bg);
+  border: 1px solid var(--sb-info-border);
+  border-radius: var(--sb-radius-md);
+  font-size: var(--sb-font-md);
+}
+
+.main-content .backlog-filter-summary__label {
+  font-size: var(--sb-font-sm);
+  font-weight: var(--sb-weight-semibold);
+  letter-spacing: var(--sb-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--sb-info-fg);
+}
+
+.main-content .backlog-filter-summary ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2);
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.main-content .backlog-filter-summary li {
+  padding: 2px var(--sb-space-2);
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-info-border);
+  border-radius: var(--sb-radius-pill);
+  color: var(--sb-text);
+}

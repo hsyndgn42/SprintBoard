@@ -48,7 +48,8 @@
         }
       </div>
       <footer class="history-footer"><span>Teslimat işleri · BAU hariç</span><span>Tüm geçmişte <strong>{{ view.undoneTasks }} Undone</strong></span></footer>
-    } @else { <div class="empty"><strong>Henüz tamamlanan sprint yok</strong>Sprint kapandığında sonuçları burada göreceksin.</div> }
+    } @else { <sb-state variant="empty" title="Henüz tamamlanan sprint yok" message="Bir sprint kapandığında teslimat sonuçları burada birikir." /> }
   </section>
-} @else if (error) { <div class="card empty" role="alert"><strong>Genel bakış yüklenemedi</strong>{{ error }}</div> }
-@else { <div class="loading" role="status">Genel bakış yükleniyor…</div> }
+} @else if (error) {
+  <sb-state variant="error" title="Genel bakış yüklenemedi" message="Özet verileri alınamadı. Servis çalışıyorsa tekrar denemek yeterli olabilir." [detail]="error" actionLabel="Tekrar dene" [actionDisabled]="loading" (action)="load()" />
+} @else { <sb-state variant="loading" title="Genel bakış yükleniyor" message="Sprint, kapasite ve backlog özeti hazırlanıyor." /> }

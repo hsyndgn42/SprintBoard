@@ -15,6 +15,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService, BacklogItem, BauTemplate, CapacityRow, ProductSettings, Sprint, SprintSummary, Task, TaskCategory, TaskSubtype, TeamMember, formatDate, statusText } from '../api.service';
 import { AuthService } from '../auth.service';
+import { SbStateComponent } from '../shared/sb-state.component';
 import { RetroComponent } from './retro.component';
 import { TASK_CATEGORIES, TASK_CATEGORY_COLORS, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
 import { SprintReviewComponent } from './sprint-review.component';
@@ -26,7 +27,7 @@ import { SprintBoardComponent } from './sprint-board.component';
 
 @Component({
   standalone: true,
-  imports: [ListPagerComponent, ModalAccessibilityDirective, FormsModule, RouterLink],
+  imports: [ListPagerComponent, ModalAccessibilityDirective, FormsModule, RouterLink, SbStateComponent],
   template: `
     <div class="page-head"><div><span class="eyebrow">TESLİMAT DÖNEMLERİ</span><h1>Sprintler</h1><p>Aktif, planlanan ve tamamlanan sprintleri ayrı görünümlerde yönetin.</p></div>
       @if (auth.isAdmin()) { <div class="page-actions"><button class="btn primary" (click)="openCreate()">+ Yeni sprint</button></div> }</div>
@@ -38,8 +39,9 @@ import { SprintBoardComponent } from './sprint-board.component';
         <span class="goal">{{ sprint.goal || 'Hedef belirtilmedi' }}</span><span class="status" [class.active]="sprint.status==='active'" [class.completed]="sprint.status==='completed'" [class.planned]="sprint.status==='planned'">{{ statusText(sprint.status) }}</span>
         <span class="ratio">{{ sprint.doneCount }}/{{ sprint.taskCount }}<small>Done iş</small></span></a>
     }</section> }
-    @else { <section class="card empty"><strong>Bu bölümde sprint yok</strong>Yeni sprint oluşturabilir veya diğer sekmeye geçebilirsiniz.</section> }
-    @if (error) { <p class="notice warn" role="alert">{{ error }}</p> }
+    @else if (items.length) { <sb-state variant="no-results" title="Bu bölümde sprint yok" [message]="emptyTabMessage()" [actionLabel]="populatedTab() ? 'Kayıt bulunan sekmeye geç' : ''" (action)="goToPopulatedTab()" /> }
+    @else { <sb-state variant="empty" title="Henüz sprint yok" message="İlk sprinti oluşturduğunda planlama ve pano buradan açılır." [actionLabel]="auth.isAdmin() ? 'Yeni sprint oluştur' : ''" (action)="setFormOpen(true)" /> }
+    @if (error && !formOpen) { <sb-state variant="error" title="Sprint işlemi tamamlanamadı" [detail]="error" message="Listeyi yeniden yükleyerek güncel durumu görebilirsin." actionLabel="Yeniden yükle" (action)="load()" /> }
     @if (formOpen) { <div class="modal-layer"><form class="modal" (ngSubmit)="create()"><header><h2>Yeni sprint</h2><p>Planlanan sprinti oluşturun; aktif sprinte dokunulmaz.</p></header>
       <div class="modal-body form-grid"><label class="field">Sprint adı<input name="name" [(ngModel)]="draft.name" required maxlength="160"></label>
         <label class="field">Hedef (isteğe bağlı)<textarea name="goal" [(ngModel)]="draft.goal" maxlength="10000" placeholder="Hedefi daha sonra belirleyebilirsiniz."></textarea></label>
@@ -67,6 +69,35 @@ export class SprintsComponent implements OnInit {
   get visible(): SprintSummary[] { return this.items.filter(sprint => this.filter === 'planned' ? ['planned', 'draft'].includes(sprint.status) : sprint.status === this.filter); }
   get templateSummary(): string { return this.templates.filter(item => item.active).map(item => item.title).join(' · ') || 'etkin BAU şablonu yok'; }
   count(status: string): number { return this.items.filter(sprint => status === 'planned' ? ['planned', 'draft'].includes(sprint.status) : sprint.status === status).length; }
+
+  /**
+   * Explains an empty tab in terms of where the records actually are, so the
+   * reader does not conclude that SprintBoard has no sprints at all.
+   */
+  emptyTabMessage(): string {
+    const elsewhere = (['active', 'planned', 'completed'] as const)
+      .filter(status => status !== this.filter && this.count(status) > 0)
+      .map(status => `${this.count(status)} ${this.tabLabel(status)}`);
+    return elsewhere.length
+      ? `Kayıtlar diğer sekmelerde: ${elsewhere.join(' · ')}.`
+      : 'Bu durumda sprint bulunmuyor.';
+  }
+
+  /** The first other tab that has records, or '' when none does. */
+  populatedTab(): string {
+    return (['active', 'planned', 'completed'] as const)
+      .find(status => status !== this.filter && this.count(status) > 0) ?? '';
+  }
+
+  /** Navigates to that tab. Uses the existing query-param contract. */
+  goToPopulatedTab(): void {
+    const target = this.populatedTab();
+    if (target) void this.router.navigate(['/sprints'], { queryParams: { status: target } });
+  }
+
+  private tabLabel(status: string): string {
+    return status === 'active' ? 'aktif' : status === 'planned' ? 'planlanan' : 'geçmiş';
+  }
   async ngOnInit(): Promise<void> {
     this.route.queryParamMap.subscribe(params => { const filter = params.get('status'); this.filter = ['active', 'planned', 'completed'].includes(filter || '') ? filter! : 'active'; this.cdr.detectChanges(); });
     await this.load();
