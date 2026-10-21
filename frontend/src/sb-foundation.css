@@ -1141,3 +1141,6 @@
 .settings-group-head p{font-size:12px;line-height:1.65;color:var(--sb-text-muted);margin:0;max-width:72ch}
 .settings-group.danger-zone .settings-group-head{border-bottom-color:var(--sb-danger-border)}
 .settings-group.danger-zone .settings-group-head .eyebrow{color:var(--sb-danger)}
+/* --- Unsaved-change indicator (P-06) ------------------------------------- */
+.dirty-hint{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--sb-warning-fg);background:var(--sb-warning-bg);border:1px solid var(--sb-warning-border);border-radius:999px;padding:5px 12px}
+.dirty-hint::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--sb-warning);flex:none}

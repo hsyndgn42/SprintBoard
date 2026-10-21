@@ -3,6 +3,7 @@ import { OverviewComponent } from './pages/overview.component';
 import { BacklogComponent } from './pages/backlog.component';
 import { SprintsComponent, SprintDetailComponent } from './pages/sprints.component';
 import { ReportsComponent, SettingsComponent } from './pages/insights.component';
+import { unsavedChangesGuard } from './shared/dirty-state';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'overview' },
@@ -16,6 +17,8 @@ export const routes: Routes = [
   { path: 'leaves', loadComponent: () => import('./pages/operations.component').then(m => m.LeavesComponent) },
   { path: 'overtime', loadComponent: () => import('./pages/operations.component').then(m => m.OvertimeComponent) },
   { path: 'reports', component: ReportsComponent },
-  { path: 'settings', component: SettingsComponent },
+  // Settings owns editable forms, so in-app navigation away from it gets
+  // the same confirmation as closing the tab.
+  { path: 'settings', component: SettingsComponent, canDeactivate: [unsavedChangesGuard] },
   { path: '**', redirectTo: 'overview' },
 ];
