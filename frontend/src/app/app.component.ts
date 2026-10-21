@@ -4,11 +4,13 @@ import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { AuthComponent } from './auth.component';
 import { PasswordChangeComponent } from './password-change.component';
+import { SbToastHostComponent } from './shared/sb-toast';
+import { SbBreadcrumbComponent } from './shared/sb-breadcrumb.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, AuthComponent, PasswordChangeComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, AuthComponent, PasswordChangeComponent, SbToastHostComponent, SbBreadcrumbComponent],
   template: `
     @if (!auth.loaded()) {
       <div class="loading auth-loading">SprintBoard açılıyor…</div>
@@ -40,13 +42,14 @@ import { PasswordChangeComponent } from './password-change.component';
       <div class="page-shell" [attr.inert]="narrow && menuOpen ? '' : null">
         <header class="topbar">
           <button type="button" class="mobile-menu icon-button" aria-label="Menüyü aç" aria-controls="primary-navigation" [attr.aria-expanded]="menuOpen" (click)="openMenu()">☰</button>
-          <div class="topbar-title"><span [title]="api.teamName()" style="display:block;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ api.teamName() }}</span><strong>{{ currentTitle }}</strong></div>
+          <div class="topbar-title"><sb-breadcrumb></sb-breadcrumb><strong>{{ currentTitle }}</strong></div>
           <span class="topbar-spacer"></span><div class="session-identity"><strong>{{ auth.state()?.username }}</strong><small>{{ auth.isAdmin() ? 'Yönetici' : auth.state()?.memberId ? 'Takım üyesi' : 'Salt okunur kullanıcı' }}</small></div><app-password-change></app-password-change>
           <form action="/logout" method="post"><input type="hidden" name="_csrf" [value]="auth.csrfToken()"><button class="btn small" type="submit">Çıkış</button></form>
         </header>
         <main id="main-content" class="main-content" tabindex="-1"><router-outlet></router-outlet></main>
       </div>
     </div>
+    <sb-toast-host></sb-toast-host>
     }
   `,
 })
