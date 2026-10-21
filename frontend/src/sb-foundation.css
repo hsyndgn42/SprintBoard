@@ -832,3 +832,84 @@
 }
 
 .main-content .settings-section > :not(summary) { padding: 0 var(--sb-space-5) var(--sb-space-4); }
+
+/* ---------------------------------------------------------------------------
+   Sprint board: horizontal scroll affordance (F-21)
+   At narrower viewports the four lanes no longer fit, and the board silently
+   clipped the last column. Keep the horizontal scroll, but make it obvious:
+   an always-visible slim scrollbar, column snapping, and a fade at the edge.
+   --------------------------------------------------------------------------- */
+@media screen {
+  .main-content .board {
+    scroll-snap-type: x proximity;
+    scroll-padding-left: 2px;
+    padding-bottom: var(--sb-space-2);
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--sb-border-strong) transparent;
+  }
+
+  .main-content .board > .board-column { scroll-snap-align: start; }
+
+  .main-content .board::-webkit-scrollbar { height: 10px; }
+  .main-content .board::-webkit-scrollbar-track {
+    background: var(--sb-surface-sunken);
+    border-radius: var(--sb-radius-pill);
+  }
+  .main-content .board::-webkit-scrollbar-thumb {
+    background: var(--sb-border-strong);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: var(--sb-radius-pill);
+  }
+  .main-content .board::-webkit-scrollbar-thumb:hover { background-color: var(--sb-text-muted); }
+
+  /* Lanes keep a usable width instead of being squeezed into unreadable strips. */
+  @media (max-width: 1180px) {
+    .main-content .board { grid-template-columns: repeat(4, minmax(208px, 1fr)); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-content .board { scroll-snap-type: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   Dense tables: scroll instead of squeeze (F-21, responsive pass)
+   `.table-wrap` already scrolls, but the tables inside it collapsed to the
+   container width, so on a 1024px laptop names broke one word per line, rows
+   grew three times taller and the right-most columns were clipped with no
+   indication that anything was missing. Giving the dense tables a minimum
+   width makes them overflow — and therefore scroll — rather than deform.
+   --------------------------------------------------------------------------- */
+@media screen {
+  .main-content .table-wrap {
+    scrollbar-width: thin;
+    scrollbar-color: var(--sb-border-strong) transparent;
+  }
+  .main-content .table-wrap::-webkit-scrollbar { height: 10px; }
+  .main-content .table-wrap::-webkit-scrollbar-track {
+    background: var(--sb-surface-sunken);
+  }
+  .main-content .table-wrap::-webkit-scrollbar-thumb {
+    background: var(--sb-border-strong);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: var(--sb-radius-pill);
+  }
+  .main-content .table-wrap::-webkit-scrollbar-thumb:hover { background-color: var(--sb-text-muted); }
+
+  .main-content .capacity-table { min-width: 900px; }
+  .main-content .planning-table { min-width: 820px; }
+  .main-content .backlog-table { min-width: 880px; }
+  .main-content .sprint-report-table,
+  .main-content .member-report-table { min-width: 760px; }
+
+  /* Identity columns read as names, not as one word per line. */
+  .main-content .capacity-table tbody td:first-child,
+  .main-content .member-report-table tbody td:first-child {
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+}
