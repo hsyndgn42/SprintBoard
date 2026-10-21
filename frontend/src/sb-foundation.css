@@ -1,0 +1,261 @@
+/* ==========================================================================
+   SprintBoard foundation layer
+   --------------------------------------------------------------------------
+   Single semantic design-token source. Loaded after styles.css and
+   ui-system.css so the historical --oc-* / --ui-* names can be aliased onto
+   these tokens without editing those append-only files.
+
+   Nothing here changes application behaviour: tokens, status colour
+   semantics and focus treatment only.
+   ========================================================================== */
+
+:root {
+  /* ---- brand / primary ------------------------------------------------ */
+  --sb-primary: #1565c0;
+  --sb-primary-hover: #10519c;
+  --sb-primary-active: #0d4383;
+  --sb-primary-soft: #eaf2ff;
+  --sb-primary-border: #c3dafb;
+  --sb-primary-ink: #0f4c93;
+  --sb-on-primary: #fff;
+
+  /* ---- neutral ramp --------------------------------------------------- */
+  --sb-neutral-50: #f7f9fc;
+  --sb-neutral-100: #f3f6fb;
+  --sb-neutral-200: #e9eef6;
+  --sb-neutral-300: #e3e8f2;
+  --sb-neutral-400: #cdd6e4;
+  --sb-neutral-500: #98a4b8;
+  --sb-neutral-600: #667085;
+  --sb-neutral-700: #4a5568;
+  --sb-neutral-800: #2d3748;
+  --sb-neutral-900: #14263e;
+
+  /* ---- surfaces ------------------------------------------------------- */
+  --sb-bg: var(--sb-neutral-100);
+  --sb-surface: #fff;
+  --sb-surface-muted: var(--sb-neutral-50);
+  --sb-surface-sunken: var(--sb-neutral-200);
+  --sb-border: var(--sb-neutral-300);
+  --sb-border-strong: var(--sb-neutral-400);
+
+  /* ---- text ----------------------------------------------------------- */
+  --sb-text: #1f2937;
+  --sb-text-secondary: var(--sb-neutral-700);
+  --sb-text-muted: var(--sb-neutral-600);
+  --sb-text-inverse: #fff;
+
+  /* ---- semantic status ------------------------------------------------ */
+  --sb-success: #07865f;
+  --sb-success-fg: #076a4d;
+  --sb-success-bg: #e7f7f0;
+  --sb-success-border: #b7e4d2;
+
+  --sb-warning: #bb6900;
+  --sb-warning-fg: #8a4c00;
+  --sb-warning-bg: #fff4df;
+  --sb-warning-border: #f3d8a8;
+
+  --sb-danger: #c13333;
+  --sb-danger-fg: #a52b22;
+  --sb-danger-bg: #fff0ed;
+  --sb-danger-border: #f5c4bb;
+
+  --sb-info: #245ca7;
+  --sb-info-fg: #1f518f;
+  --sb-info-bg: #eaf2ff;
+  --sb-info-border: #c3dafb;
+
+  --sb-neutral-fg: #526478;
+  --sb-neutral-bg: #eff3f8;
+  --sb-neutral-border: var(--sb-neutral-300);
+
+  /* ---- spacing scale -------------------------------------------------- */
+  --sb-space-1: 4px;
+  --sb-space-2: 8px;
+  --sb-space-3: 12px;
+  --sb-space-4: 16px;
+  --sb-space-5: 20px;
+  --sb-space-6: 24px;
+  --sb-space-7: 32px;
+  --sb-space-8: 40px;
+
+  /* ---- radii ---------------------------------------------------------- */
+  --sb-radius-sm: 6px;
+  --sb-radius-md: 10px;
+  --sb-radius-lg: 12px;
+  --sb-radius-xl: 16px;
+  --sb-radius-pill: 999px;
+
+  /* ---- elevation ------------------------------------------------------ */
+  --sb-shadow-xs: 0 1px 2px rgba(16, 24, 40, .05);
+  --sb-shadow-sm: 0 1px 2px rgba(16, 24, 40, .04), 0 2px 6px rgba(28, 46, 75, .05);
+  --sb-shadow-md: 0 1px 2px rgba(16, 24, 40, .04), 0 12px 30px rgba(28, 46, 75, .035);
+  --sb-shadow-lg: 0 18px 48px rgba(16, 32, 60, .16);
+
+  /* ---- typography ----------------------------------------------------- */
+  --sb-font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+  --sb-font-xs: 10px;
+  --sb-font-sm: 11px;
+  --sb-font-md: 13px;
+  --sb-font-base: 14px;
+  --sb-font-lg: 16px;
+  --sb-font-xl: 20px;
+
+  /* ---- motion --------------------------------------------------------- */
+  --sb-duration-fast: 90ms;
+  --sb-duration-base: 160ms;
+  --sb-easing: cubic-bezier(.2, .6, .3, 1);
+
+  /* ---- focus ---------------------------------------------------------- */
+  --sb-focus-ring-color: #1565c0;
+  --sb-focus-ring: 0 0 0 2px #fff, 0 0 0 4px var(--sb-focus-ring-color);
+  --sb-focus-ring-tight: 0 0 0 3px rgba(21, 101, 192, .45);
+
+  /* ---- z-index ladder ------------------------------------------------- */
+  --sb-z-base: 1;
+  --sb-z-sticky: 20;
+  --sb-z-nav: 40;
+  --sb-z-topbar: 50;
+  --sb-z-backdrop: 900;
+  --sb-z-modal: 1000;
+  --sb-z-toast: 1100;
+
+  /* ---- legacy aliases -------------------------------------------------
+     Keep the historical variable names working. These are intentionally
+     re-declared here (later in the cascade) so every existing
+     var(--oc-*) / var(--ui-*) reference resolves to a semantic token.
+     --------------------------------------------------------------------- */
+  --oc-font-family: var(--sb-font-family);
+  --oc-bg: var(--sb-bg);
+  --oc-surface: var(--sb-surface);
+  --oc-border: var(--sb-border);
+  --oc-text: var(--sb-text);
+  --oc-muted: var(--sb-text-muted);
+  --oc-primary: var(--sb-primary);
+  --oc-radius: var(--sb-radius-lg);
+  --oc-space-1: var(--sb-space-1);
+  --oc-space-2: var(--sb-space-2);
+  --oc-space-3: var(--sb-space-3);
+  --oc-space-4: var(--sb-space-4);
+  --oc-space-5: var(--sb-space-5);
+  --oc-space-6: var(--sb-space-6);
+  --navy: var(--sb-neutral-900);
+  --green: var(--sb-success);
+  --amber: var(--sb-warning);
+  --red: var(--sb-danger);
+  --shadow: var(--sb-shadow-md);
+}
+
+/* ==========================================================================
+   Status badges — semantic colour + non-colour encoding
+   --------------------------------------------------------------------------
+   Previously `.status.active` shared the green `.done` treatment, so an
+   "Acil / plansız" (emergency) badge looked identical to a completed one,
+   and `.pending` / `.rejected` were never defined at all, rendering both
+   as the same neutral grey.
+
+   Only the colour mapping changes. Status values, class names and the
+   statusText() mapping are untouched.
+   ========================================================================== */
+
+.status {
+  background: var(--sb-neutral-bg);
+  color: var(--sb-neutral-fg);
+  border: 1px solid transparent;
+}
+
+/* Small leading dot so state is never conveyed by hue alone. */
+.status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: var(--sb-radius-pill);
+  background: currentColor;
+  flex: 0 0 auto;
+}
+
+/* `.active` marks unplanned / emergency work and "currently in a sprint".
+   It must read as attention-needed, not as success.
+   Declared before the outcome states so that a task which is both
+   "in sprint" and "done" still renders with its outcome colour. */
+.status.active {
+  background: var(--sb-primary-soft);
+  color: var(--sb-primary-ink);
+  border-color: var(--sb-primary-border);
+}
+
+/* `.emergency` is the stronger variant used for unplanned sprint entries. */
+.status.emergency {
+  background: var(--sb-warning-bg);
+  color: var(--sb-warning-fg);
+  border-color: var(--sb-warning-border);
+}
+
+/* completed work */
+.status.done,
+.status.completed {
+  background: var(--sb-success-bg);
+  color: var(--sb-success-fg);
+  border-color: var(--sb-success-border);
+}
+
+/* work in flight */
+.status.doing,
+.status.in-progress {
+  background: var(--sb-info-bg);
+  color: var(--sb-info-fg);
+  border-color: var(--sb-info-border);
+}
+
+/* not started / queued */
+.status.planned,
+.status.todo {
+  background: var(--sb-warning-bg);
+  color: var(--sb-warning-fg);
+  border-color: var(--sb-warning-border);
+}
+
+/* awaiting a decision */
+.status.pending {
+  background: var(--sb-warning-bg);
+  color: var(--sb-warning-fg);
+  border-color: var(--sb-warning-border);
+}
+
+/* failed / not delivered / refused */
+.status.undone,
+.status.rejected {
+  background: var(--sb-danger-bg);
+  color: var(--sb-danger-fg);
+  border-color: var(--sb-danger-border);
+}
+
+/* ==========================================================================
+   Focus visibility
+   --------------------------------------------------------------------------
+   Unifies the previously inconsistent focus treatments (#f0a500 globally vs.
+   #b2d3f5 on form fields) into one ring that meets 3:1 contrast on both
+   light surfaces and the dark sidebar.
+   ========================================================================== */
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--sb-focus-ring-color);
+  outline-offset: 2px;
+  border-radius: var(--sb-radius-sm);
+}
+
+.sidebar :where(a, button, summary, [tabindex]):focus-visible {
+  outline-color: #ffd166;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

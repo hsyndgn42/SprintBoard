@@ -18,7 +18,7 @@
   @for(column of lanes;track column.key){<section class="board-column" [attr.data-status]="column.key" [attr.aria-label]="column.label"><header><span>{{ column.label }}</span><span [attr.aria-label]="column.items.length+' gösterilen, '+column.total+' toplam görev'">{{ column.items.length }} / {{ column.total }}</span></header>
     @for(item of column.items;track item.id){<article class="task-card" [attr.data-task-id]="item.id" [style.border-left-color]="color(item)">
       <button type="button" class="board-task-title" (click)="open(item)" [attr.aria-label]="item.name+' · Görev detayını aç'">{{ item.name }}</button>
-      @if(item.emergency){<span class="status active">Acil / plansız</span>}
+      @if(item.emergency){<span class="status emergency">Acil / plansız</span>}
       <small>{{ categoryLabel(item.taskCategory) }}@if(item.taskSubtype){ · {{ subtypeLabel(item.taskSubtype) }}}</small>
       <div class="board-task-meta"><span class="estimate-badge">{{ estimate(item) }}</span><span>{{ isLeave(item) ? leaveHours(item)+' sa izin' : item.estimatedHours+' sa tahmin' }}</span></div>
       @if(item.statusNote){<p class="board-note"><strong>{{item.status==='undone'?'Undone açıklaması':'Durum notu'}}</strong><span>{{item.statusNote}}</span></p>}
