@@ -3,7 +3,14 @@
 <div class="report-tabs" role="tablist" aria-label="Rapor türü" (keydown)="tabKey($event)">
 @for(tab of tabs;track tab.id){<button type="button" role="tab" [id]="'report-tab-'+tab.id" [attr.aria-controls]="'report-panel-'+tab.id" [attr.aria-selected]="activeTab===tab.id" [attr.tabindex]="activeTab===tab.id?0:-1" (click)="selectTab(tab.id)">{{tab.label}}</button>}
 </div>
-@if(loading){<p class="notice" role="status">Raporlar yükleniyor…</p>}
+<dl class="sb-context report-context" aria-label="Rapor kapsamı">
+  <div><dt>Rapor</dt><dd>{{ activeTabLabel }}</dd></div>
+  <div><dt>Kapsam</dt><dd>{{ activeScope }}</dd></div>
+  <div><dt>Veri zamanı</dt><dd>{{ viewTime }}</dd></div>
+  <div><dt>Kesinlik</dt><dd>Aktif sprint sonuçları henüz kesin değildir</dd></div>
+</dl>
+@if(loading){<sb-state variant="loading" title="Raporlar yükleniyor" message="Sprint, kişi ve iş tipi verileri hazırlanıyor." />}
+@if(error&&!loading){<sb-state variant="error" title="Raporlar yüklenemedi" message="Rapor verileri alınamadı; aşağıdaki bölümler eksik olabilir." [detail]="error" actionLabel="Tekrar dene" [actionDisabled]="loading" (action)="load()" />}
 <div class="report-tab-panel" id="report-panel-delivery" role="tabpanel" aria-labelledby="report-tab-delivery" [hidden]="activeTab!=='delivery'" tabindex="0">
 <div class="report-local-actions"><span>Bu sekmenin seçili kapsamını indir</span><div><button class="btn" [disabled]="loading||!!error" (click)="exportCsv('sprints')">CSV indir</button><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'delivery',rows:rows,scope:'Tüm tamamlanan sprintler',settings:settings}" /></div></div>
     <div class="mini-metrics" style="margin-bottom:20px"><div><small>Tamamlanan sprint</small><strong>{{ rows.length }}</strong></div><div><small>Teslim edilen iş</small><strong>{{ totalDone }}</strong></div><div><small>Undone iş</small><strong>{{ totalUndone }}</strong></div></div>
@@ -26,7 +33,7 @@
     <section class="card card-pad sprint-comparison"><div class="section-head"><div><span class="eyebrow">TESLİMAT TARİHİ</span><h2>Sprint karşılaştırması</h2><p class="data-note">Teslimat, Size ve SP değerleri BAU hariçtir. BAU dahil toplam kayıt ayrıca gösterilir; teslimat işi olmayan sprintte oran üretilmez.</p></div></div>
       <app-list-pager #deliveryPager [items]="rows" label="Sprint karşılaştırması" />@if (rows.length) { <div class="table-wrap"><table class="sprint-report-table"><caption class="sr-only">Sprint karşılaştırması: bitiş tarihi, iş sayısı, done ve undone dağılımı ile teslimat oranı.</caption><thead><tr><th scope="col">Sprint</th><th scope="col">Bitiş</th><th scope="col">İş</th><th scope="col">Done</th><th scope="col">Undone</th><th scope="col">Teslimat</th><th scope="col">{{ settings.estimationMode === 'SIZE_AND_HOURS' ? 'Size dağılımı' : 'Story Point' }}</th></tr></thead><tbody>
         @for (row of deliveryPager.rows; track row.number) { <tr><td><a [routerLink]="['/sprints', row.id, 'review']"><strong>{{ row.name }}</strong></a></td><td>{{ formatDate(row.end) }}</td><td>{{ row.tasks }}<small>BAU dahil {{ row.allTasks }}</small></td><td>{{ row.done }}</td><td>{{ row.undone }}</td><td><strong>{{ row.deliveryRate === null ? '—' : row.deliveryRate + '%' }}</strong><div class="report-bar"><span [style.width.%]="row.deliveryRate"></span></div></td><td>@if (settings.estimationMode === 'SIZE_AND_HOURS') { <div class="size-distribution" [attr.aria-label]="sizeText(row)"><span class="size-chip small">S {{ row.sizeSmall }}</span><span class="size-chip medium">M {{ row.sizeMedium }}</span><span class="size-chip large">L {{ row.sizeLarge }}</span><span class="size-chip xlarge">XL {{ row.sizeXLarge }}</span></div> } @else { <strong>{{ row.storyPointsTotal }} SP</strong><small class="report-subtext">{{ row.pointedTasks }} işte kayıtlı</small> }</td></tr> }
-      </tbody></table></div> } @else { <div class="empty">Tamamlanan sprint bulunamadı.</div> }
+      </tbody></table></div> } @else { <sb-state variant="empty" title="Tamamlanan sprint yok" message="Bir sprint kapandığında teslimat karşılaştırması burada oluşur." /> }
     </section>
 
 </div>
@@ -47,7 +54,7 @@
           <td>@if (settings.estimationMode === 'SIZE_AND_HOURS') { <div class="size-distribution" [attr.aria-label]="sizeText(member)"><span class="size-chip small">S {{ member.sizeSmall }}</span><span class="size-chip medium">M {{ member.sizeMedium }}</span><span class="size-chip large">L {{ member.sizeLarge }}</span><span class="size-chip xlarge">XL {{ member.sizeXLarge }}</span></div> } @else { <strong>{{ member.storyPointsTotal }} SP</strong><small class="report-subtext">{{ member.pointedTasks }} işte kayıtlı</small> }</td>
           <td><div class="result-distribution"><span class="result-done">{{ member.done }} Done</span><span class="result-undone">{{ member.undone }} Undone</span>@if (member.other) { <span>{{ member.other }} diğer</span> }</div></td>
           <td><strong>{{ member.taskCount?deliveryRate(member)+'%':'—' }}</strong><div class="report-bar"><span [style.width.%]="deliveryRate(member)"></span></div></td></tr> }
-      </tbody></table></div> } @else { <div class="empty">Seçili filtrelerde atama kaydı bulunamadı.</div> }
+      </tbody></table></div> } @else if (memberFiltersActive()) { <sb-state variant="no-results" title="Seçili filtrelerde atama kaydı yok" message="Dönem, arama veya sıralama kısıtlarını gevşetmeyi deneyebilirsin." actionLabel="Filtreleri temizle" (action)="clearMemberFilters()" /> } @else { <sb-state variant="empty" title="Henüz atama kaydı yok" message="Tamamlanan sprintlerde kişilere iş atandığında dağılım burada görünür." /> }
       <p class="data-note report-method-note">Bu görünüm bireysel performans puanı değildir; iş dağılımı ve teslimat kanıtıdır. Birden fazla kişiye atanan görev, her kişinin aldığı işlerde bir kez görünür; efor kişiye atanmış saat üzerinden hesaplanır.</p>
     </section>
 
@@ -65,7 +72,7 @@
       <div class="taxonomy-metrics"><div><small>Toplam iş</small><strong>{{ taxonomyTaskTotal }}</strong></div><div><small>Planlanan efor</small><strong>{{ taxonomyEffortTotal }} sa</strong></div><div><small>Done oranı</small><strong>{{ taxonomyTaskTotal ? taxonomyDoneRate+'%' : '—' }}</strong></div><div><small>Raporlanan kategori</small><strong>{{ workTypeSummary.length }}</strong></div></div>
       @if (workTypeSummary.length) { <div class="taxonomy-overview-grid"><div class="taxonomy-donut-panel"><div class="taxonomy-donut" [style.background]="workTypeGradient" role="img" [attr.aria-label]="workTypeAriaLabel"><span><strong>{{ taxonomyTaskTotal }}</strong><small>iş</small></span></div><div class="taxonomy-legend">@for (row of workTypeSummary; track row.taskCategory) { <div><i [style.background]="row.color"></i><span><strong>{{ categoryLabel(row.taskCategory) }}</strong><small>{{ row.taskCount }} iş · {{ row.effortHours }} sa</small></span><b>{{ categoryShare(row) }}%</b></div> }</div></div>
         <div class="taxonomy-category-bars">@for (row of workTypeSummary; track row.taskCategory) { <article><header><span><i [style.background]="row.color"></i><strong>{{ categoryLabel(row.taskCategory) }}</strong></span><span>{{ row.taskCount }} iş</span></header><div class="taxonomy-bar"><span [style.background]="row.color" [style.width.%]="categoryShare(row)"></span></div><footer><span>{{ row.effortHours }} sa efor</span><span>{{ row.done }} Done · {{ row.undone }} Undone</span></footer></article> }</div></div> }
-      @else { <div class="empty">Seçili dönemde iş tipi kaydı bulunamadı.</div> }
+      @else { <sb-state variant="empty" title="Seçili dönemde iş tipi kaydı yok" message="Bu döneme iş eklendiğinde tip ve alt kırılım dağılımı burada görünür." /> }
       <div class="taxonomy-breakdown-grid">@for (category of detailCategories; track category) { <section class="taxonomy-breakdown"><div class="chart-heading compact"><span><span class="eyebrow">{{ categoryLabel(category) }}</span><h3>{{ breakdownTitle(category) }}</h3></span><strong>{{ categoryTaskCount(category) }} iş</strong></div>
         @for (row of subtypeSummary(category); track row.taskSubtype) { <div class="subtype-row"><div><strong>{{ subtypeLabel(row.taskSubtype) }}</strong><span>{{ row.taskCount }} iş · {{ row.effortHours }} sa</span></div><div class="subtype-track"><span [style.background]="categoryColor(category)" [style.width.%]="subtypeBarWidth(category,row.taskCount)"></span></div><small>%{{ subtypeDoneRate(row) }} Done</small></div> } @empty { <p class="data-note">Bu kırılımda kayıt yok.</p> }
       </section> }</div>
@@ -83,7 +90,8 @@
 @defer(on immediate){<app-defect-report (readyChange)="defectReady.set($event)" />}
 </div>
     <div class="notice" style="margin-top:18px"><strong>Ölçüm notu</strong>{{ settings.estimationMode === 'SIZE_AND_HOURS' ? 'Ekip göreli tahminde Size, kapasite ve atamalarda saat kullanır. Size saatten türetilmez.' : 'Göreli tahmin Story Point ile, kapasite ve kişi atamaları saat ile izlenir. Story Point saatten türetilmez.' }}</div>
-    @if (error) { <p class="notice warn" role="alert">{{ error }}</p> }
+    @if (error) { <!-- Reported once at the top of the page, with a retry action. --> }
+
 
 <div class="report-tab-panel" id="report-panel-scope" role="tabpanel" aria-labelledby="report-tab-scope" [hidden]="activeTab!=='scope'" tabindex="0">
 @defer(on immediate){<app-scope-report (readyChange)="scopeReady.set($event)" />}

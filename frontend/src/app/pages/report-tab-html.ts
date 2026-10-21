@@ -13,7 +13,7 @@ const sum=<T>(rows:T[],get:(row:T)=>number)=>rows.reduce((total,r)=>total+numeri
 const rate=(part:number,total:number)=>total?Math.round(100*part/total)+'%':'—';
 const section=(title:string,body:string,note='')=>`<section class="section"><h2>${h(title)}</h2>${note?`<p class="note">${h(note)}</p>`:''}${body}</section>`;
 const kpis=(rows:[string,unknown][])=>`<div class="kpis">${rows.map(([label,value])=>`<div><small>${h(label)}</small><strong>${h(value)}</strong></div>`).join('')}</div>`;
-const table=(headers:string[],rows:unknown[][])=>`<div class="table-wrap"><table><thead><tr>${headers.map(x=>`<th>${h(x)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map((cell,i)=>`<td data-label="${h(headers[i])}">${h(cell)}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${headers.length}">Seçili kapsamda kayıt yok.</td></tr>`}</tbody></table></div>`;
+const table=(headers:string[],rows:unknown[][])=>`<div class="table-wrap"><table><thead><tr>${headers.map(x=>`<th scope="col">${h(x)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map((cell,i)=>`<td data-label="${h(headers[i])}">${h(cell)}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${headers.length}">Seçili kapsamda kayıt yok.</td></tr>`}</tbody></table></div>`;
 type ChartRow={label:string;values:number[];note?:string};
 function stacks(rows:ChartRow[],labels:string[],unit:string,max?:number){
  const scale=Math.max(1,max??0,...rows.map(r=>r.values.reduce((a,b)=>a+numeric(b),0)));

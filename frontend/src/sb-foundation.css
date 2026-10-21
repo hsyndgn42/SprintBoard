@@ -121,6 +121,68 @@
   --sb-z-modal: 1000;
   --sb-z-toast: 1100;
 
+  /* ---- typography scale (extended) ------------------------------------
+     The six sizes above cover controls and body copy. Professional page
+     and report headers need a display range on top of them. Line heights
+     are unitless so they survive font-size overrides.
+     --------------------------------------------------------------------- */
+  --sb-font-2xl: 24px;
+  --sb-font-3xl: 30px;
+  --sb-font-display: 36px;
+  --sb-leading-tight: 1.15;
+  --sb-leading-snug: 1.3;
+  --sb-leading-normal: 1.5;
+  --sb-leading-relaxed: 1.65;
+  --sb-weight-regular: 400;
+  --sb-weight-medium: 500;
+  --sb-weight-semibold: 600;
+  --sb-weight-bold: 700;
+  /* Uppercase eyebrow/overline labels used above section titles. */
+  --sb-tracking-eyebrow: .08em;
+
+  /* ---- spacing scale (extended) --------------------------------------- */
+  --sb-space-9: 48px;
+  --sb-space-10: 64px;
+
+  /* ---- data visualisation ---------------------------------------------
+     A categorical ramp for charts and distribution bars. These are NOT
+     status colours: they carry no good/bad meaning, so a work-type or
+     person series never reads as a judgement. Ordered for maximum
+     adjacent contrast and checked against protanopia/deuteranopia.
+     --------------------------------------------------------------------- */
+  --sb-viz-1: #1565c0;
+  --sb-viz-2: #07865f;
+  --sb-viz-3: #8a5cd1;
+  --sb-viz-4: #bb6900;
+  --sb-viz-5: #0f8fa6;
+  --sb-viz-6: #b23b78;
+  --sb-viz-7: #5a6b86;
+  --sb-viz-8: #767a2e;
+  /* Track behind any progress/bar fill. */
+  --sb-viz-track: var(--sb-neutral-200);
+
+  /* ---- print ----------------------------------------------------------
+     Print overrides the screen palette with high-contrast ink on white so
+     toner use stays sane and contrast survives greyscale printers.
+     --------------------------------------------------------------------- */
+  --sb-print-ink: #11182a;
+  --sb-print-muted: #4a5568;
+  --sb-print-line: #c8cfdb;
+
+  /* ---- density --------------------------------------------------------
+     Shared control and table rhythm so forms, tables and dialogs do not
+     each invent their own padding.
+     --------------------------------------------------------------------- */
+  --sb-control-h: 34px;
+  --sb-row-pad-y: 8px;
+  --sb-row-pad-y-compact: 5px;
+  --sb-row-pad-x: 10px;
+
+  /* ---- dialog sizing --------------------------------------------------- */
+  --sb-dialog-sm: 420px;
+  --sb-dialog-md: 640px;
+  --sb-dialog-lg: 880px;
+
   /* ---- legacy aliases -------------------------------------------------
      Keep the historical variable names working. These are intentionally
      re-declared here (later in the cascade) so every existing
@@ -814,3 +876,271 @@
     word-break: keep-all;
   }
 }
+
+/* ==========================================================================
+   Shared presentation primitives
+   --------------------------------------------------------------------------
+   These exist to replace markup that each page had re-invented: metric
+   grids, distribution bars, report context strips, metric definitions and
+   loading skeletons. They are deliberately unopinionated about page layout
+   so a page can drop them into any existing grid.
+   ========================================================================== */
+
+/* --- metric grid ----------------------------------------------------------
+   Auto-fit keeps metric cards readable instead of collapsing to slivers on a
+   narrow laptop; the min track is the narrowest width a 4-digit value plus a
+   label stays legible at. */
+.main-content .sb-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--sb-space-4);
+}
+
+.main-content .sb-metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-1);
+  padding: var(--sb-space-4) var(--sb-space-5);
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-lg);
+  box-shadow: var(--sb-shadow-xs);
+}
+
+.main-content .sb-metric__label {
+  font-size: var(--sb-font-sm);
+  font-weight: var(--sb-weight-semibold);
+  letter-spacing: var(--sb-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--sb-text-muted);
+}
+
+.main-content .sb-metric__value {
+  font-size: var(--sb-font-3xl);
+  font-weight: var(--sb-weight-bold);
+  line-height: var(--sb-leading-tight);
+  color: var(--sb-text);
+  /* Tabular figures stop values from jittering as they update. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* The unit is never baked into the value so the number stays scannable. */
+.main-content .sb-metric__unit {
+  margin-left: var(--sb-space-1);
+  font-size: var(--sb-font-md);
+  font-weight: var(--sb-weight-medium);
+  color: var(--sb-text-muted);
+}
+
+.main-content .sb-metric__hint {
+  font-size: var(--sb-font-sm);
+  line-height: var(--sb-leading-snug);
+  color: var(--sb-text-muted);
+}
+
+/* Tone is opt-in. A metric is neutral unless a defined threshold applies,
+   so nothing reads as "bad" just because it is a number. */
+.main-content .sb-metric--success .sb-metric__value { color: var(--sb-success-fg); }
+.main-content .sb-metric--warning .sb-metric__value { color: var(--sb-warning-fg); }
+.main-content .sb-metric--danger .sb-metric__value { color: var(--sb-danger-fg); }
+
+/* --- distribution bar -----------------------------------------------------
+   One horizontal bar made of proportional segments. Used for work-type and
+   status distribution where a pie would be harder to read and to print. */
+.main-content .sb-bar {
+  display: flex;
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  background: var(--sb-viz-track);
+  border-radius: var(--sb-radius-pill);
+}
+
+.main-content .sb-bar__seg {
+  height: 100%;
+  min-width: 2px;
+}
+
+.main-content .sb-bar__seg:nth-child(8n+1) { background: var(--sb-viz-1); }
+.main-content .sb-bar__seg:nth-child(8n+2) { background: var(--sb-viz-2); }
+.main-content .sb-bar__seg:nth-child(8n+3) { background: var(--sb-viz-3); }
+.main-content .sb-bar__seg:nth-child(8n+4) { background: var(--sb-viz-4); }
+.main-content .sb-bar__seg:nth-child(8n+5) { background: var(--sb-viz-5); }
+.main-content .sb-bar__seg:nth-child(8n+6) { background: var(--sb-viz-6); }
+.main-content .sb-bar__seg:nth-child(8n+7) { background: var(--sb-viz-7); }
+.main-content .sb-bar__seg:nth-child(8n+8) { background: var(--sb-viz-8); }
+
+/* Legend entries repeat the same ramp so colour maps 1:1 to the bar. */
+.main-content .sb-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2) var(--sb-space-4);
+  margin-top: var(--sb-space-3);
+  font-size: var(--sb-font-md);
+  color: var(--sb-text-secondary);
+}
+
+.main-content .sb-legend > li {
+  display: flex;
+  gap: var(--sb-space-2);
+  align-items: center;
+  list-style: none;
+}
+
+.main-content .sb-legend__swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--sb-viz-track);
+}
+
+.main-content .sb-legend > li:nth-child(8n+1) .sb-legend__swatch { background: var(--sb-viz-1); }
+.main-content .sb-legend > li:nth-child(8n+2) .sb-legend__swatch { background: var(--sb-viz-2); }
+.main-content .sb-legend > li:nth-child(8n+3) .sb-legend__swatch { background: var(--sb-viz-3); }
+.main-content .sb-legend > li:nth-child(8n+4) .sb-legend__swatch { background: var(--sb-viz-4); }
+.main-content .sb-legend > li:nth-child(8n+5) .sb-legend__swatch { background: var(--sb-viz-5); }
+.main-content .sb-legend > li:nth-child(8n+6) .sb-legend__swatch { background: var(--sb-viz-6); }
+.main-content .sb-legend > li:nth-child(8n+7) .sb-legend__swatch { background: var(--sb-viz-7); }
+.main-content .sb-legend > li:nth-child(8n+8) .sb-legend__swatch { background: var(--sb-viz-8); }
+
+.main-content .sb-legend__value {
+  font-weight: var(--sb-weight-semibold);
+  color: var(--sb-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- report context strip -------------------------------------------------
+   Answers "what am I looking at, over what period, how fresh is it" before
+   the reader interprets a single number. */
+.main-content .sb-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2) var(--sb-space-5);
+  padding: var(--sb-space-3) var(--sb-space-4);
+  background: var(--sb-surface-muted);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-md);
+  font-size: var(--sb-font-md);
+}
+
+.main-content .sb-context > div {
+  display: flex;
+  gap: var(--sb-space-2);
+  align-items: baseline;
+}
+
+.main-content .sb-context dt {
+  font-size: var(--sb-font-sm);
+  font-weight: var(--sb-weight-semibold);
+  letter-spacing: var(--sb-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--sb-text-muted);
+}
+
+.main-content .sb-context dd {
+  margin: 0;
+  font-weight: var(--sb-weight-medium);
+  color: var(--sb-text);
+}
+
+/* --- metric definitions ---------------------------------------------------
+   Every derived number should be able to explain itself in place rather
+   than in external documentation. */
+.main-content .sb-definitions {
+  margin: 0;
+  font-size: var(--sb-font-md);
+  line-height: var(--sb-leading-relaxed);
+}
+
+.main-content .sb-definitions dt {
+  font-weight: var(--sb-weight-semibold);
+  color: var(--sb-text);
+}
+
+.main-content .sb-definitions dd {
+  margin: 0 0 var(--sb-space-3);
+  color: var(--sb-text-secondary);
+}
+
+.main-content .sb-definitions dd:last-child { margin-bottom: 0; }
+
+/* --- skeleton -------------------------------------------------------------
+   A calm shimmer that communicates "content is coming" without implying a
+   specific result. Reduced-motion users get the static base tint. */
+.main-content .sb-skeleton {
+  display: block;
+  height: 1em;
+  background: linear-gradient(90deg,
+    var(--sb-neutral-200) 25%,
+    var(--sb-neutral-100) 37%,
+    var(--sb-neutral-200) 63%);
+  background-size: 400% 100%;
+  border-radius: var(--sb-radius-sm);
+  animation: sb-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes sb-skeleton-shimmer {
+  from { background-position: 100% 50%; }
+  to { background-position: 0 50%; }
+}
+/* --- backlog active-filter summary ----------------------------------------
+   The filter controls live in a collapsible toolbar, so a reader who scrolls
+   to an unexpectedly short list had no way to see what was excluding rows.
+   This restates the active narrowing next to the results. */
+.main-content .backlog-filter-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2) var(--sb-space-3);
+  align-items: center;
+  margin-bottom: var(--sb-space-3);
+  padding: var(--sb-space-2) var(--sb-space-3);
+  background: var(--sb-info-bg);
+  border: 1px solid var(--sb-info-border);
+  border-radius: var(--sb-radius-md);
+  font-size: var(--sb-font-md);
+}
+
+.main-content .backlog-filter-summary__label {
+  font-size: var(--sb-font-sm);
+  font-weight: var(--sb-weight-semibold);
+  letter-spacing: var(--sb-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--sb-info-fg);
+}
+
+.main-content .backlog-filter-summary ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2);
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.main-content .backlog-filter-summary li {
+  padding: 2px var(--sb-space-2);
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-info-border);
+  border-radius: var(--sb-radius-pill);
+  color: var(--sb-text);
+}
+/* --- Settings information architecture (P-05) ----------------------------
+   Categories give the long settings list a shape, and the destructive group
+   is visually separated so backup/restore is never reached by accident. */
+.settings-nav{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 var(--sb-space-6)}
+.settings-nav button{font:inherit;font-size:12px;font-weight:600;padding:7px 14px;border:1px solid var(--sb-border);border-radius:999px;background:var(--sb-surface);color:var(--sb-text-muted);cursor:pointer}
+.settings-nav button:hover{background:var(--sb-surface-muted);color:var(--sb-text)}
+.settings-nav button:focus-visible{outline:var(--sb-focus-ring);outline-offset:2px}
+.settings-group{margin:0 0 var(--sb-space-8);scroll-margin-top:var(--sb-space-6)}
+.settings-group:focus{outline:none}
+.settings-group:focus-visible{outline:var(--sb-focus-ring);outline-offset:6px;border-radius:var(--sb-radius-lg)}
+.settings-group-head{margin:0 0 var(--sb-space-4);padding-bottom:var(--sb-space-3);border-bottom:1px solid var(--sb-border)}
+.settings-group-head h2{font-size:var(--sb-font-xl);margin:4px 0 6px}
+.settings-group-head p{font-size:12px;line-height:1.65;color:var(--sb-text-muted);margin:0;max-width:72ch}
+.settings-group.danger-zone .settings-group-head{border-bottom-color:var(--sb-danger-border)}
+.settings-group.danger-zone .settings-group-head .eyebrow{color:var(--sb-danger)}
+/* --- Unsaved-change indicator (P-06) ------------------------------------- */
+.dirty-hint{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--sb-warning-fg);background:var(--sb-warning-bg);border:1px solid var(--sb-warning-border);border-radius:999px;padding:5px 12px}
+.dirty-hint::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--sb-warning);flex:none}

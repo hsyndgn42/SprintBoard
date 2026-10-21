@@ -18,6 +18,7 @@ import { BackupComponent } from './backup.component';
 import { AccountsComponent } from './accounts.component';
 import { ApiService, BauTemplate, CalendarDay, MemberReportRow, ProductSettings, ReportRow, TaskCategory, TaskSubtype, TeamMember, WorkTypeReportRow, formatDate } from '../api.service';
 import { SbToastService } from '../shared/sb-toast';
+import { SbStateComponent } from '../shared/sb-state.component';
 import { TASK_CATEGORIES, TASK_CATEGORY_COLORS, taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
 
 interface MemberReportSummary {
@@ -37,7 +38,7 @@ interface WorkSubtypeSummary {
 
 @Component({
   standalone: true,
-  imports: [OvertimeTrendComponent,ListPagerComponent, ScopeReportComponent,ReportHtmlExportComponent, RouterLink, FormsModule, DefectReportComponent, MemberContextComponent, RoadmapReportComponent, CapacityTrendComponent],
+  imports: [OvertimeTrendComponent,ListPagerComponent, ScopeReportComponent,ReportHtmlExportComponent, RouterLink, FormsModule, DefectReportComponent, MemberContextComponent, RoadmapReportComponent, CapacityTrendComponent, SbStateComponent],
   host: {'class':'reports-page'},
   templateUrl: './reports.component.html',
   styleUrl: './reports.component.css',
@@ -60,7 +61,17 @@ export class ReportsComponent implements OnInit {
   loading=true;defectReady=signal(false);viewTime=new Intl.DateTimeFormat('tr-TR',{dateStyle:'medium',timeStyle:'short'}).format(new Date());
   get memberPeriod(){return this.rows.find(r=>r.id===this.selectedSprint)?.name||'Tüm tamamlanan sprintler';}
   get typePeriod(){const s=this.typeSprintOptions.find(r=>r.id===this.selectedTypeSprint);return s?s.name+' / '+s.status:'Tüm sprintler (aktif, planlanan ve tamamlanan)';}
-  get memberSortLabel(){return ({tasks:'İş sayısı',effort:'Efor',delivery:'Done oranı',name:'İsim'} as Record<string,string>)[this.memberSort];}
+  get activeTabLabel(){return this.tabs.find(t=>t.id===this.activeTab)?.label||'';}
+  // Each tab answers a different question over a different slice, so the
+  // scope line is resolved per tab rather than once for the page.
+  get activeScope(){
+    switch(this.activeTab){
+      case 'delivery': return 'Tüm tamamlanan sprintler (' + this.rows.length + ')';
+      case 'members': return this.memberScope;
+      case 'types': return this.typePeriod;
+      default: return 'Bölüm kendi filtre kapsamını kullanır';
+    }
+  }  get memberSortLabel(){return ({tasks:'İş sayısı',effort:'Efor',delivery:'Done oranı',name:'İsim'} as Record<string,string>)[this.memberSort];}
   get memberScope(){return this.memberPeriod+' · '+(this.memberQuery||'Tüm kişiler')+' · Sıralama: '+this.memberSortLabel;}
   exportCsv(kind:'sprints'|'members'|'types'){if(this.loading||this.error)return;const text=kind==='members'?memberReportCsv(this.memberSummary,this.settings,this.memberPeriod):kind==='types'?workTypeReportCsv(this.filteredWorkTypeRows):sprintReportCsv(this.rows,this.settings);const file='sprintboard-'+kind+'.csv';downloadText(text,'text/csv;charset=utf-8',file);this.toast.success(file+' indirildi.');}
   private toast = inject(SbToastService);
@@ -141,7 +152,34 @@ export class ReportsComponent implements OnInit {
   subtypeBarWidth(category: TaskCategory, count: number): number { const max = Math.max(...this.subtypeSummary(category).map(row => row.taskCount), 1); return Math.max(4, count * 100 / max); }
   subtypeDoneRate(row: WorkSubtypeSummary): number { return row.taskCount ? Math.round(row.done * 100 / row.taskCount) : 0; }
   breakdownTitle(category: TaskCategory): string { return category === 'BAU' ? 'Operasyon kırılımı' : category === 'TEST' ? 'Test kapsamı' : category === 'DEFECT' ? 'Defect kaynağı' : 'İş kırılımı'; }
-  async ngOnInit(): Promise<void> { try { [this.rows, this.memberRows, this.workTypeRows, this.settings] = await Promise.all([this.api.get<ReportRow[]>('/reports'), this.api.get<MemberReportRow[]>('/reports/members'), this.api.get<WorkTypeReportRow[]>('/reports/work-types'), this.api.get<ProductSettings>('/settings')]); } catch (error) { this.error = String(error); } finally { this.loading=false;this.cdr.detectChanges(); } }
+  async ngOnInit(): Promise<void> { await this.load(); }
+
+  /**
+   * True when the person report is narrowed by the reader, so an empty table
+   * means "filtered out" rather than "no data exists". The two situations
+   * need different wording and different next actions.
+   */
+  memberFiltersActive(): boolean {
+    return !!this.selectedSprint || !!this.memberQuery.trim();
+  }
+
+  /** Resets only the person-report filters; loaded data is untouched. */
+  clearMemberFilters(): void {
+    this.selectedSprint = '';
+    this.memberQuery = '';
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Extracted from ngOnInit so a failed load can be retried in place instead
+   * of forcing a full page reload. The request sequence is unchanged.
+   */
+  async load(): Promise<void> {
+    this.loading = true;
+    this.error = '';
+    this.cdr.detectChanges();
+    try { [this.rows, this.memberRows, this.workTypeRows, this.settings] = await Promise.all([this.api.get<ReportRow[]>('/reports'), this.api.get<MemberReportRow[]>('/reports/members'), this.api.get<WorkTypeReportRow[]>('/reports/work-types'), this.api.get<ProductSettings>('/settings')]); } catch (error) { this.error = String(error); } finally { this.loading=false;this.cdr.detectChanges(); }
+  }
   chartX(index: number): number { return this.chartRows.length <= 1 ? 370 : 50 + index * 640 / (this.chartRows.length - 1); }
   chartY(rate: number | null): number { return 196 - Math.max(0, Math.min(100, rate ?? 0)) * 1.6; }
   sizeSegment(row: ReportRow, value: number): number { const total = row.sizeSmall + row.sizeMedium + row.sizeLarge + row.sizeXLarge; return total ? value * 100 / total : 0; }
@@ -158,34 +196,22 @@ export class ReportsComponent implements OnInit {
 
 @Component({
   standalone: true,
-  imports: [ListPagerComponent, SlackSettingsComponent, ModalAccessibilityDirective, FormsModule, BackupComponent, SubtypeSettingsComponent, AccountsComponent, WorkSettingsComponent],
+  imports: [ListPagerComponent, SlackSettingsComponent, ModalAccessibilityDirective, FormsModule, BackupComponent, SubtypeSettingsComponent, AccountsComponent, WorkSettingsComponent, SbStateComponent],
   template: `
     <div class="page-head"><div><span class="eyebrow">YÖNETİM</span><h1>Ayarlar</h1><p>Sprint varsayılanları, erişim hesapları, tahmin yöntemi, takvim ve yedekleme.</p></div></div>
-    @if(loading){<p class="notice" role="status">Ayarlar yükleniyor…</p>} @else {<details class="settings-section"><summary>Tahmin yöntemi <small>Size / Story Point ve efor</small></summary><div class="settings-primary">
-      <section class="card card-pad"><span class="eyebrow">TAHMİN YÖNTEMİ</span><h2>Göreli tahmin + efor</h2>
-        <p class="muted">Kapasite ve kişi atamaları her iki yöntemde de saat/gün ile hesaplanır. Size veya Story Point yalnız işin göreli büyüklüğünü anlatır.</p>
-        <div class="choice-list"><label><input type="radio" name="estimateMode" value="SIZE_AND_HOURS" [(ngModel)]="settings.estimationMode"><span><strong>Size + efor</strong><small>Ekip standardı. Small, Medium, Large veya X-Large; yanında kişi bazlı saat.</small></span></label>
-          <label><input type="radio" name="estimateMode" value="POINTS_AND_HOURS" [(ngModel)]="settings.estimationMode"><span><strong>Story Point + efor</strong><small>Göreli tahmin Story Point, kapasite ve atama yine saat ile izlenir.</small></span></label></div>
-        <button class="btn primary" [disabled]="saving" (click)="saveSettings()">Tahmin yöntemini kaydet</button>
-        @if (savedMessage) { <p class="inline-success" role="status">{{ savedMessage }}</p> }
-      </section>
-
-    </div></details>
-    }
-    <details class="settings-section"><summary>Slack entegrasyonu <small>Kanallar, bağlantı ve mesaj şablonları</small></summary>@defer (on idle) { <app-slack-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Slack</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
-    </details><details class="settings-section"><summary>Ekip ve çalışma düzeni <small>Günlük saat ve çalışma haftası</small></summary><app-work-settings #workSettings /></details>
-    <details class="settings-section"><summary>Kullanıcılar ve erişim <small>Hesaplar ve işlem geçmişi</small></summary><app-accounts /></details>
-    <details class="settings-section"><summary>BAU varsayılanları <small>Sprint iş şablonları</small></summary>
-    <section class="card card-pad" style="margin:18px 0"><div class="section-head"><div><span class="eyebrow">SPRİNT VARSAYILANLARI</span><h2>BAU iş şablonları</h2></div><button class="btn primary" (click)="openTemplate()">+ BAU işi ekle</button></div>
-      <p class="data-note">Etkin şablonlar yeni sprint oluşturulduğunda, sprint adıyla ayrı backlog ve görev kayıtlarına dönüşür. Buradaki değişiklikler geçmiş veya mevcut sprint görevlerini değiştirmez. On Leave izin kayıtlarından görünür; kapasitede yalnız bir kez düşülür.</p>
-      <app-list-pager #bauPager [items]="templates" label="BAU şablonları" /><div class="list" style="margin-top:14px">@for (template of bauPager.rows; track template.id) { <div class="list-row"><span><strong>{{ template.title }}</strong><small>{{ template.mode === 'LEAVE' ? 'İzinlerden türetilir · 0 saat görev eforu' : template.mode === 'CORE' ? 'Çekirdek ekip · kişi başı ' + template.daysPerMember + ' gün' : 'Elle atama · 0 saat başlangıç' }}</small></span>
-        <span class="page-actions"><span class="status" [class.done]="template.active">{{ template.active ? 'Etkin' : 'Pasif' }}</span><button class="btn small" (click)="openTemplate(template)">Düzenle</button></span></div> }</div>
-      @if (templateMessage) { <p class="inline-success" role="status">{{ templateMessage }}</p> }
-    </section>
-    </details><details class="settings-section"><summary>İş türleri <small>Alt kırılım yönetimi</small></summary><app-subtype-settings #subtypeSettings /></details>
-    <details class="settings-section" open><summary>Yedekleme ve veri güvenliği <small>Son durum, zamanlama ve geri yükleme</small></summary>
-    <app-backup (restored)="load(); subtypeSettings.load(); workSettings.load()" />
-    </details><details class="settings-section"><summary>Çalışma takvimi <small>Tatiller ve çalışılmayan günler</small></summary><section class="card card-pad" style="margin-top:18px"><div class="section-head"><div><span class="eyebrow">ÇALIŞMA TAKVİMİ</span><h2>Çalışılmayan günler</h2></div><span class="muted">{{ calendarVisible.length }} / {{ days.length }} kayıt</span></div>
+    <nav class="settings-nav" aria-label="Ayar kategorileri">
+      <button type="button" (click)="jump('settings-team')">Ekip ve takvim</button>
+      <button type="button" (click)="jump('settings-delivery')">Sprint ve tahmin</button>
+      <button type="button" (click)="jump('settings-integrations')">Entegrasyonlar</button>
+      <button type="button" (click)="jump('settings-admin')">Yönetim ve veri</button>
+    </nav>
+    @if (loading) {
+      <sb-state variant="loading" title="Ayarlar yükleniyor" message="Ekip, tahmin ve entegrasyon ayarları hazırlanıyor." />
+    } @else {
+    <section class="settings-group" id="settings-team" tabindex="-1" aria-labelledby="settings-team-heading">
+      <div class="settings-group-head"><span class="eyebrow">EKİP</span><h2 id="settings-team-heading">Ekip ve çalışma takvimi</h2><p>Günlük çalışma saati, çalışma haftası ve çalışılmayan günler. Bu ayarlar kapasite hesaplamalarının girdisidir.</p></div>
+    <details class="settings-section"><summary>Ekip ve çalışma düzeni <small>Günlük saat ve çalışma haftası</small></summary><app-work-settings #workSettings /></details>
+    <details class="settings-section"><summary>Çalışma takvimi <small>Tatiller ve çalışılmayan günler</small></summary><section class="card card-pad" style="margin-top:18px"><div class="section-head"><div><span class="eyebrow">ÇALIŞMA TAKVİMİ</span><h2>Çalışılmayan günler</h2></div><span class="muted">{{ calendarVisible.length }} / {{ days.length }} kayıt</span></div>
       <p class="data-note">Tüm kayıtlar tam gün çalışılmayan gün olarak uygulanır. Resmî yarım günler (arifeler ve 28 Ekim) ekip kararıyla tam gündür. Çalışma düzeninde zaten kapalı günler tekrar düşülmez; aynı tarihteki tatiller bir kez sayılır. İzin ve mesai hakedişinden düşülmez.</p>
       <div class="form-grid two calendar-controls"><label class="field">Takvim yılı<select [(ngModel)]="calendarYear"><option value="">Tüm yıllar</option>@for(year of calendarYears;track year){<option [value]="year">{{ year }}</option>}</select></label><label class="field">Kapsam filtresi<select [(ngModel)]="calendarScope"><option value="">Tüm kayıtlar</option><option value="team">Tüm ekip</option>@for(member of members;track member.id){<option [value]="member.id">{{ member.name }}</option>}</select></label></div>
       <div class="page-actions calendar-import"><button class="btn" [disabled]="saving" (click)="importHolidays(2027)">2027 tatillerini tamamla</button><button class="btn" [disabled]="saving" (click)="importHolidays(2028)">2028 tatillerini tamamla</button></div>
@@ -200,6 +226,43 @@ export class ReportsComponent implements OnInit {
     </section>
     @if (error) { <p class="notice warn" role="alert">{{ error }}</p> }
     </details>
+    </section>
+    <section class="settings-group" id="settings-delivery" tabindex="-1" aria-labelledby="settings-delivery-heading">
+      <div class="settings-group-head"><span class="eyebrow">TESLİMAT</span><h2 id="settings-delivery-heading">Sprint, tahmin ve iş türleri</h2><p>Yeni sprintlerin nasıl kurulacağını ve işlerin nasıl tahmin edileceğini belirler. Değişiklikler geçmiş sprintleri etkilemez.</p></div>
+    <details class="settings-section"><summary>Tahmin yöntemi <small>Size / Story Point ve efor</small></summary><div class="settings-primary">
+      <section class="card card-pad"><span class="eyebrow">TAHMİN YÖNTEMİ</span><h2>Göreli tahmin + efor</h2>
+        <p class="muted">Kapasite ve kişi atamaları her iki yöntemde de saat/gün ile hesaplanır. Size veya Story Point yalnız işin göreli büyüklüğünü anlatır.</p>
+        <div class="choice-list"><label><input type="radio" name="estimateMode" value="SIZE_AND_HOURS" [(ngModel)]="settings.estimationMode"><span><strong>Size + efor</strong><small>Ekip standardı. Small, Medium, Large veya X-Large; yanında kişi bazlı saat.</small></span></label>
+          <label><input type="radio" name="estimateMode" value="POINTS_AND_HOURS" [(ngModel)]="settings.estimationMode"><span><strong>Story Point + efor</strong><small>Göreli tahmin Story Point, kapasite ve atama yine saat ile izlenir.</small></span></label></div>
+        <button class="btn primary" [disabled]="saving" (click)="saveSettings()">Tahmin yöntemini kaydet</button>
+        @if (savedMessage) { <p class="inline-success" role="status">{{ savedMessage }}</p> }
+      </section>
+
+    </div></details>
+    <details class="settings-section"><summary>BAU varsayılanları <small>Sprint iş şablonları</small></summary>
+    <section class="card card-pad" style="margin:18px 0"><div class="section-head"><div><span class="eyebrow">SPRİNT VARSAYILANLARI</span><h2>BAU iş şablonları</h2></div><button class="btn primary" (click)="openTemplate()">+ BAU işi ekle</button></div>
+      <p class="data-note">Etkin şablonlar yeni sprint oluşturulduğunda, sprint adıyla ayrı backlog ve görev kayıtlarına dönüşür. Buradaki değişiklikler geçmiş veya mevcut sprint görevlerini değiştirmez. On Leave izin kayıtlarından görünür; kapasitede yalnız bir kez düşülür.</p>
+      <app-list-pager #bauPager [items]="templates" label="BAU şablonları" /><div class="list" style="margin-top:14px">@for (template of bauPager.rows; track template.id) { <div class="list-row"><span><strong>{{ template.title }}</strong><small>{{ template.mode === 'LEAVE' ? 'İzinlerden türetilir · 0 saat görev eforu' : template.mode === 'CORE' ? 'Çekirdek ekip · kişi başı ' + template.daysPerMember + ' gün' : 'Elle atama · 0 saat başlangıç' }}</small></span>
+        <span class="page-actions"><span class="status" [class.done]="template.active">{{ template.active ? 'Etkin' : 'Pasif' }}</span><button class="btn small" (click)="openTemplate(template)">Düzenle</button></span></div> }</div>
+      @if (templateMessage) { <p class="inline-success" role="status">{{ templateMessage }}</p> }
+    </section>
+    </details>
+    <details class="settings-section"><summary>İş türleri <small>Alt kırılım yönetimi</small></summary><app-subtype-settings #subtypeSettings /></details>
+    </section>
+    <section class="settings-group" id="settings-integrations" tabindex="-1" aria-labelledby="settings-integrations-heading">
+      <div class="settings-group-head"><span class="eyebrow">ENTEGRASYON</span><h2 id="settings-integrations-heading">Bağlı servisler</h2><p>Dış servis bağlantıları ve bu servislere gönderilen mesaj şablonları.</p></div>
+    <details class="settings-section"><summary>Slack entegrasyonu <small>Kanallar, bağlantı ve mesaj şablonları</small></summary>@defer (on idle) { <app-slack-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Slack</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
+    </details>
+    </section>
+    <section class="settings-group danger-zone" id="settings-admin" tabindex="-1" aria-labelledby="settings-admin-heading">
+      <div class="settings-group-head"><span class="eyebrow">YÖNETİM</span><h2 id="settings-admin-heading">Kullanıcılar ve veri güvenliği</h2><p>Erişim hesapları ile yedekleme. Geri yükleme mevcut verinin üzerine yazar; bu bölümdeki işlemler geri alınamaz.</p></div>
+    <details class="settings-section"><summary>Kullanıcılar ve erişim <small>Hesaplar ve işlem geçmişi</small></summary><app-accounts /></details>
+    <details class="settings-section"><summary>Yedekleme ve veri güvenliği <small>Son durum, zamanlama ve geri yükleme</small></summary>
+    <app-backup (restored)="load(); subtypeSettings.load(); workSettings.load()" />
+    </details>
+    </section>
+    }
+
     @if (templateOpen) { <div class="modal-layer"><form class="modal" (ngSubmit)="saveTemplate()"><header><h2>{{ editingTemplateId ? 'BAU işini düzenle' : 'BAU işi ekle' }}</h2><p>Değişiklik yalnız daha sonra oluşturulan sprintlere uygulanır.</p></header>
       <div class="modal-body form-grid"><label class="field">İş adı<input name="bauTitle" [(ngModel)]="templateDraft.title" required maxlength="120" placeholder="Örn. Operasyon desteği"></label>
         <label class="field">Atama kuralı<select name="bauMode" [ngModel]="templateDraft.mode" (ngModelChange)="setTemplateMode($event)" [disabled]="editingTemplateId === 'bau-leave'">
@@ -212,6 +275,19 @@ export class ReportsComponent implements OnInit {
 })
 export class SettingsComponent implements OnInit {
   loading=true;
+
+  /**
+   * Moves both the viewport and keyboard focus to a settings category.
+   * Focus matters as much as scrolling here: without it a keyboard user
+   * jumps visually but keeps tabbing from the nav, so the group carries
+   * tabindex="-1" purely as a focus target.
+   */
+  jump(id: string): void {
+    const target = document.getElementById(id);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    target.focus({ preventScroll: true });
+  }
   private api = inject(ApiService);
   private cdr = inject(ChangeDetectorRef);
   settings: ProductSettings = { estimationMode: 'SIZE_AND_HOURS', hoursPerDay: 8 };

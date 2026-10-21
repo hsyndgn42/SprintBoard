@@ -14,10 +14,11 @@ import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, OvertimeBalance, LeaveRecord, OvertimeEntry, OvertimeRecord, SprintSummary, TeamMember, formatDate } from '../api.service';
 import { AuthService } from '../auth.service';
+import { SbStateComponent } from '../shared/sb-state.component';
 
 @Component({
   standalone: true,
-  imports: [ListPagerComponent, ModalAccessibilityDirective, FormsModule, MemberCapacityComponent, MemberParticipationComponent, MemberPhotoComponent],
+  imports: [ListPagerComponent, ModalAccessibilityDirective, FormsModule, MemberCapacityComponent, MemberParticipationComponent, MemberPhotoComponent, SbStateComponent],
   template: `
     <div class="page-head"><div><span class="eyebrow">EKİP</span><h1>Takım ve roller</h1><p>Çekirdek ekip, Support ve geçmiş üyeler tek dizinde.</p></div>@if (auth.isAdmin()) { <button class="btn primary" (click)="openCreate()">+ Üye ekle</button> }</div>
     <div class="mini-metrics team-metrics"><div><small>Aktif üye</small><strong>{{ activeCount }}</strong></div><div><small>Support</small><strong>{{ supportCount }}</strong></div><div><small>Geçmiş üye</small><strong>{{ pastCount }}</strong></div></div>
@@ -35,9 +36,9 @@ import { AuthService } from '../auth.service';
             <div class="member-secondary-actions"><button type="button" class="btn small" (click)="openParticipation(member)">Katılım geçmişi</button><button type="button" class="btn small" (click)="openCapacity(member)">Kapasite ayarları</button></div>
           </footer>
         </article>
-      }</div> } @else { <div class="empty"><strong>Bu filtrede kişi yok</strong>Aramayı veya filtreleri değiştirin.</div> }
+      }</div> } @else if (members.length) { <sb-state variant="no-results" title="Bu filtrede kişi yok" [message]="'Kayıtlı ' + members.length + ' kişi var ama hiçbiri seçili arama ve filtrelerle eşleşmiyor.'" actionLabel="Filtreleri temizle" (action)="clearMemberFilters()" /> } @else { <sb-state variant="empty" title="Henüz takım üyesi yok" message="Üye eklediğinde kapasite, izin ve atama ekranları dolmaya başlar." [actionLabel]="auth.isAdmin() ? 'Üye ekle' : ''" (action)="openCreate()" /> }
     </section>
-    @if (error) { <p class="notice warn" role="alert">{{ error }}</p> }
+    @if (error && !formOpen) { <sb-state variant="error" title="Takım işlemi tamamlanamadı" [detail]="error" message="Listeyi yeniden yükleyerek güncel durumu görebilirsin." actionLabel="Yeniden yükle" (action)="load()" /> }
     @if(photoMember){<app-member-photo [member]="photoMember" (closed)="closePhoto()" (saved)="load()" />}
     @if(participationMember){@defer(on immediate){<app-member-participation [member]="participationMember" (closed)="closeParticipation()" (saved)="load()" />}}
     @if(capacityMember){@defer(on immediate){<app-member-capacity [member]="capacityMember" (closed)="closeCapacity()" />}}
@@ -86,6 +87,14 @@ export class TeamComponent implements OnInit {
     (this.roleFilter === 'all' || `${member.role} ${member.teamRole} ${member.title}`.toLowerCase().includes(this.roleFilter)) &&
     (!q || `${member.name} ${member.title} ${member.role} ${member.teamRole}`.toLocaleLowerCase('tr-TR').includes(q))); }
   initials(name: string): string { return name.trim().split(/\s+/).slice(0,2).map(part => part[0] || '').join('').toLocaleUpperCase('tr-TR'); }
+
+  /** Restores the default directory view: active members, all roles, no search. */
+  clearMemberFilters(): void {
+    this.query = '';
+    this.roleFilter = 'all';
+    this.statusFilter = 'active';
+    this.cdr.detectChanges();
+  }
   roleLabel(member: TeamMember): string { const role = `${member.teamRole} ${member.title}`.toLowerCase(); return role.includes('architect') ? 'Architect' : role.includes('design') ? 'Designer' : role.includes('test') ? 'Tester' : role.includes('anal') ? 'Analyst' : role.includes('develop') ? 'Developer' : member.role || 'Rol belirtilmedi'; }
   engagementLabel(member: TeamMember): string { return /support|destek|external|adjacent/i.test(`${member.engagement} ${member.teamRole}`) ? 'Support' : 'Çekirdek ekip'; }
   async ngOnInit(): Promise<void> { await this.load(); }
@@ -104,7 +113,7 @@ export class TeamComponent implements OnInit {
 const leaveLabel = (kind: string) => ({ ANNUAL: 'Yıllık izin', OVERTIME: 'Mesai hakedişinden izin', COMPANY_GRANTED: 'Şirket izni', UNSPECIFIED: 'Türü belirtilmemiş' }[kind] || kind);
 const emptyLeave = () => ({ memberId: '', sprintId: '', days: 1, start: '', end: '', leaveType: '', overtimeAccounting: 'DEBIT' });
 @Component({
-  standalone: true, imports: [FoldDirective,ListPagerComponent, LeaveRequestsComponent, ModalAccessibilityDirective, FormsModule],
+  standalone: true, imports: [FoldDirective,ListPagerComponent, LeaveRequestsComponent, ModalAccessibilityDirective, FormsModule, SbStateComponent],
   template: `
     <div class="page-head"><div><span class="eyebrow">EKİP OPERASYONU</span><h1>Kişi izinleri</h1><p>İzin türünü, kapasite etkisini ve mesai kullanımını birlikte izleyin.</p></div>@if(auth.isAdmin()){<button class="btn primary" (click)="open()">+ İzin ekle</button>}</div>
     @defer(on immediate){<app-leave-requests [sprints]="sprints" (approved)="load()" />}
@@ -120,9 +129,9 @@ const emptyLeave = () => ({ memberId: '', sprintId: '', days: 1, start: '', end:
         <div class="person-accordion-body"><app-list-pager #leavePager [items]="group.records" label="İzin kayıtları" />@for(record of leavePager.rows; track record.id){<div class="person-record"><span><strong>{{record.sprintName || 'Sprint belirtilmedi'}} · {{label(record.leaveType)}}</strong><small>@if(record.start){ {{formatDate(record.start)}} – {{formatDate(record.end)}} }@else{ Tarih kesin değil · sprint bazlı }</small>
         <small>@if(record.leaveType==='OVERTIME'){ {{record.overtimeHours}} sa · {{record.overtimeAccounting==='IN_SNAPSHOT' ? 'Geçmiş bakiyede zaten düşülmüş; tekrar düşmez' : 'Mesai kullanımına yansıdı'}} }@else if(record.leaveType==='UNSPECIFIED'){ Mesai etkisi bilinmiyor; otomatik düşülmedi }@else{ Mesai hakedişinden düşmez }</small></span>
         <span class="person-values"><strong>{{record.days}} gün</strong>@if(auth.isAdmin()){<button class="btn small" (click)="open(record)">Düzenle</button>}</span></div>}</div></details>
-      }@empty{<div class="empty">Bu filtrede izin kaydı yok.</div>}</div>
+      }@empty{@if(records.length){<sb-state variant="no-results" title="Bu filtrede izin kaydı yok" [message]="'Kayıtlı ' + records.length + ' izin var ama hiçbiri seçili filtrelerle eşleşmiyor.'" actionLabel="Filtreleri temizle" (action)="clearLeaveFilters()" />}@else{<sb-state variant="empty" title="Henüz izin kaydı yok" message="İzinler kaydedildiğinde kapasite ve sprint planlaması bunları dikkate alır." />}}</div>
     </details>
-    @if(error){<p class="notice warn" role="alert">{{error}}</p>}
+    @if(error && !formOpen){<sb-state variant="error" title="İzin işlemi tamamlanamadı" [detail]="error" message="Kayıtları yeniden yükleyerek güncel durumu görebilirsin." actionLabel="Yeniden yükle" (action)="load()" />}
     @if(formOpen){<div class="modal-layer"><form class="modal" (ngSubmit)="save()"><header><h2>{{editingId ? 'İzni düzenle' : 'İzin kaydı'}}</h2><p>Mesai izni tek kayıtla hem kapasiteye hem kullanıma yansır.</p></header><div class="modal-body form-grid">
       <label class="field">Üye<select name="memberId" [(ngModel)]="draft.memberId" [disabled]="!!editingId" required><option value="">Kişi seçin</option>@for(member of activeMembers; track member.id){<option [value]="member.id">{{member.name}}</option>}</select></label>
       <label class="field">Sprint<select name="sprintId" [(ngModel)]="draft.sprintId" (ngModelChange)="loadCapacity()" [disabled]="!!editingId" required><option value="">Sprint seçin</option>@for(sprint of sprints; track sprint.id){<option [value]="sprint.id">{{sprint.name}}</option>}</select></label>
@@ -151,6 +160,15 @@ export class LeavesComponent implements OnInit {
   daysFor(type:string){return this.filteredRecords.filter(r=>r.leaveType===type).reduce((s,r)=>s+r.days,0);}
   get groupedRecords(){const groups=new Map<string,LeaveRecord[]>();for(const r of this.filteredRecords)groups.set(r.memberId,[...(groups.get(r.memberId)||[]),r]);return [...groups].map(([memberId,records])=>({memberId,memberName:records[0].memberName,records,days:records.reduce((s,r)=>s+r.days,0)})).sort((a,b)=>a.memberName.localeCompare(b.memberName,'tr-TR'));}
   balanceFor(id:string){return this.balances.find(b=>b.memberId===id)?.balanceHours||0;}
+
+  /** Restores the default leave view: every person, sprint, type and precision. */
+  clearLeaveFilters(): void {
+    this.memberFilter = 'all';
+    this.sprintFilter = 'all';
+    this.typeFilter = 'all';
+    this.precisionFilter = 'all';
+    this.cdr.detectChanges();
+  }
   get estimatedHours():number|null {const o=this.original;if(o?.leaveType==='OVERTIME'&&o.days===this.draft.days&&(o.start||'')===this.draft.start&&(o.end||'')===this.draft.end)return o.overtimeHours;const h=this.capacityRows.find(r=>r.memberId===this.draft.memberId)?.hoursPerDay;return h===undefined?null:Math.round(this.draft.days*h*100)/100;}
   open(record?:LeaveRecord){this.original=record||null;this.editingId=record?.id||null;this.draft=record?{memberId:record.memberId,sprintId:record.sprintId,days:record.days,start:record.start||'',end:record.end||'',leaveType:record.leaveType==='UNSPECIFIED'?'':record.leaveType,overtimeAccounting:record.overtimeAccounting==='IN_SNAPSHOT'?'IN_SNAPSHOT':'DEBIT'}:emptyLeave();this.error='';this.formOpen=true;void this.loadCapacity();this.cdr.detectChanges();}
   close(){this.formOpen=false;this.error='';this.cdr.detectChanges();}
