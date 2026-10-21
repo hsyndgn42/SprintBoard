@@ -59,7 +59,7 @@ function bar(label:string,value:number,max:number,display:string){return `<div c
 class RawHtml{constructor(readonly html:string){}}
 const raw=(html:string)=>new RawHtml(html);
 type Cell=string|number|null|undefined|RawHtml;
-function table(headers:string[],rows:Cell[][],cls=''){return `<div class="table-wrap"><table class="${cls}"><thead><tr>${headers.map(x=>`<th>${h(x)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map((cell,i)=>`<td data-label="${h(headers[i])}">${cell instanceof RawHtml?cell.html:h(cell)}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${headers.length}">Bu kapsamda kayıt yok.</td></tr>`}</tbody></table></div>`;}
+function table(headers:string[],rows:Cell[][],cls=''){return `<div class="table-wrap"><table class="${cls}"><thead><tr>${headers.map(x=>`<th scope="col">${h(x)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map((cell,i)=>`<td data-label="${h(headers[i])}">${cell instanceof RawHtml?cell.html:h(cell)}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${headers.length}">Bu kapsamda kayıt yok.</td></tr>`}</tbody></table></div>`;}
 function relative(r:{sizeSmall:number;sizeMedium:number;sizeLarge:number;sizeXLarge:number;pointedTasks:number;storyPointsTotal:number},settings:ProductSettings){return settings.estimationMode==='SIZE_AND_HOURS'?raw(`<span class="chips">${[['S',r.sizeSmall],['M',r.sizeMedium],['L',r.sizeLarge],['XL',r.sizeXLarge]].map(([s,c])=>`<span class="chip">${h(s)} ${h(c??0)}</span>`).join('')}</span>`):raw(h(r.pointedTasks?n(r.storyPointsTotal)+' SP':'SP belirtilmedi'));}
 
 function estimateChart(sprint:Sprint,settings:ProductSettings){

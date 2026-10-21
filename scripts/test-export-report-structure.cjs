@@ -30,7 +30,7 @@ check('no table call site double-escapes a plain cell',
 check('report tab table already escaped and still does',
   /<td data-label="\$\{h\(headers\[i\]\)\}">\$\{h\(cell\)\}<\/td>/.test(reportTab));
 check('table headers are escaped in both generators',
-  /<th>\$\{h\(x\)\}<\/th>/.test(presentation) && /<th>\$\{h\(x\)\}<\/th>/.test(reportTab));
+  /<th[^>]*>\$\{h\(x\)\}<\/th>/.test(presentation) && /<th[^>]*>\$\{h\(x\)\}<\/th>/.test(reportTab));
 
 // --- §18: the reader can tell what the report is -------------------------
 check('a report metadata strip exists', /function metaStrip/.test(presentation));
