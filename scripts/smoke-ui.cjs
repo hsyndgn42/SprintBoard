@@ -393,13 +393,25 @@ async function main() {
     if(process.env.SPRINTBOARD_SETUP!=='1'||base!=='http://127.0.0.1:4183')throw Error('Review notes smoke requires disposable H2 at 4183');
     await require('./test-review-notes-ui.cjs')({evaluate,command,navigate,clickButton,setFieldValue,sleep,events});ws.close();return;
   }
+  // Dataset-agnostic route smoke. These expectations used to be live-dataset
+  // values ("Sprint 14", "Sprint 13", the member name "Elçim" and the hard-coded
+  // id legacy-sprint-14), so the run failed on any other database. The intended
+  // assertion is that each route renders its page, so match on the static page
+  // headings instead.
   const pages = [
-    ['roadmap', 'Roadmap'], ['backlog', 'İş listesi'], ['sprints', 'Sprint 14'],
-    ['sprints/legacy-sprint-14/summary', 'DÖNEM ÖZETİ'], ['team', 'Elçim'],
+    ['roadmap', 'Roadmap'], ['backlog', 'İş listesi'], ['sprints', 'Sprintler'],
+    ['team', 'Takım ve roller'],
     ['leaves', 'İzin geçmişi'], ['overtime', 'Kişi mesaileri'],
-    ['reports', 'Sprint 13'],
+    ['reports', 'Raporlar'],
   ];
-  if (process.env.SPRINTBOARD_ROLE !== 'USER') pages.push(['settings', 'Çalışılmayan günler']);
+  // The sprint detail route needs a real id; resolve one from the API rather than
+  // hard-coding one. With an empty dataset there is nothing to open, so skip it.
+  const smokeSprintId = await evaluate("fetch('/api/sprints').then(r=>r.json()).then(list=>list.length?((list.find(s=>s.status==='active')||list[0]).id||''):'')");
+  if (smokeSprintId) pages.splice(3, 0, ['sprints/' + smokeSprintId + '/summary', 'DÖNEM ÖZETİ']);
+  else console.log('sprints/<id>/summary: SKIPPED (dataset contains no sprints)');
+  // "Çalışılmayan günler" sits inside a collapsed <details>, so it is absent from
+  // innerText; match the visible accordion label instead.
+  if (process.env.SPRINTBOARD_ROLE !== 'USER') pages.push(['settings', 'Çalışma takvimi']);
   for (const [route, expected] of pages) {
     await evaluate(`location.hash = ${JSON.stringify('#/' + route)}`);
     let rendered = '';
