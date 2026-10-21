@@ -12,6 +12,9 @@ const root = path.join(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const html = read('frontend/src/app/pages/sprint-review.component.html');
 const code = read('frontend/src/app/pages/sprint-review.component.ts');
+// Comments explain intent and often contain the very words these checks look
+// for, so behavioural assertions run against code with comments stripped.
+const logic = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 const narrativeCss = read('frontend/src/app/pages/sprint-review-narrative.css');
 const model = read('frontend/src/app/pages/review-summary.model.ts');
 
@@ -60,14 +63,20 @@ check('focus moves into the presentation on entry',
   /getElementById\('review-presentation-title'\)\?\.focus\(\)/.test(code));
 check('the presentation title can receive focus', /id="review-presentation-title"[^>]*tabindex="-1"/.test(html));
 check('focus returns to the trigger on exit',
-  /presentTrigger/.test(code) && /trigger\?\.focus\(\)/.test(code));
+  /presentTrigger/.test(logic) && /live\?\.focus\(\)/.test(logic));
+// The button lives in the bar presentation mode hides, so the focus call must
+// outlive Angular's re-render; a microtask would focus a still-hidden element.
+check('focus is restored after the re-render, not in a microtask',
+  /setTimeout\(\(\)=>\{const live=/.test(logic));
+check('a replaced trigger node is looked up again',
+  /trigger\?\.isConnected\?trigger:document\.querySelector/.test(logic));
 check('leaving the sprint also leaves presentation mode',
   /this\.presenting\.set\(false\)/.test(code));
 
 // --- meeting mode must not fight the room --------------------------------
 check('presentation mode does not trap keyboard focus',
-  !/focusin|focusTrap|trapFocus/.test(code));
-check('nothing auto-advances', !/setInterval|setTimeout\([^)]*slide/i.test(code));
+  !/\bfocusin\b|focusTrap|trapFocus/.test(logic));
+check('nothing auto-advances', !/setInterval|setTimeout\([^)]*slide/i.test(logic));
 check('reduced motion is respected',
   /prefers-reduced-motion/.test(narrativeCss));
 check('presentation typography is scaled up for a room',
