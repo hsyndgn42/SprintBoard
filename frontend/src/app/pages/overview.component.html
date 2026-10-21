@@ -1,5 +1,5 @@
 <div class="page-head overview-heading">
-  <div><span class="eyebrow">ÜRÜN ÖZETİ</span><h1>VIBE Craft <span>Overview</span></h1></div>
+  <div><span class="eyebrow">ÜRÜN ÖZETİ</span><h1>{{ teamName() }} <span>Overview</span></h1></div>
   <a class="btn" routerLink="/reports">Raporları aç <span aria-hidden="true">↗</span></a>
 </div>
 @if (data; as view) {
@@ -16,6 +16,11 @@
         <h2>{{ active.name }}</h2><p class="sprint-goal">{{ active.goal || 'Sprint hedefi belirtilmemiş.' }}</p>
         <div class="active-progress"><span><strong>{{ active.deliveryDoneCount }}</strong> / {{ active.deliveryTaskCount }} teslimat işi Done</span><b>{{ progress === null ? '—' : '%' + progress }}</b></div>
         <div class="progress-track" role="progressbar" aria-label="BAU hariç teslimat oranı" [attr.aria-valuenow]="progress" aria-valuemin="0" aria-valuemax="100"><span [style.width.%]="progress ?? 0"></span></div>
+        @if (timeElapsed !== null) {
+          <div class="active-progress schedule"><span><strong>{{ view.activeSprintDaysRemaining }}</strong> gün kaldı · {{ view.activeSprintDaysTotal }} günlük sprint</span><b>%{{ timeElapsed }} süre</b></div>
+          <div class="progress-track schedule" role="progressbar" aria-label="Geçen sprint süresi oranı" [attr.aria-valuenow]="timeElapsed" aria-valuemin="0" aria-valuemax="100"><span [style.width.%]="timeElapsed"></span></div>
+          <p class="schedule-note">Takvim günü · teslimat oranıyla karşılaştırmak için. Hafta sonu ve izinler bu çubuktan düşülmez.</p>
+        }
         <div class="active-bottom"><span>BAU hariç ilerleme · {{ active.taskCount }} toplam kayıt</span><div class="active-actions"><a class="btn" [routerLink]="['/sprints', active.id, 'summary']">Sprint detayı</a><a class="btn board-link" [routerLink]="['/sprints', active.id, 'board']">Panoyu aç →</a></div></div>
       } @else {
         <span class="active-label">SPRINT HAZIRLIĞI</span><h2>Aktif sprint yok</h2><p class="sprint-goal">Yeni dönemi Sprintler sayfasından planlayabilirsin.</p><a class="btn" routerLink="/sprints">Sprintleri aç →</a>
@@ -30,6 +35,37 @@
       <details class="capacity-method"><summary>Hesaplama kapsamı</summary><p>Günlük ve aylık kapasite yalnız çekirdek ekibi içerir; çalışma takvimi ve tarihli izinler düşülür. Tarihi bilinmeyen izinler yalnız sprint kapasitesinden düşer. Aktif sprint toplamına Support için ayrılan kapasite de dahildir; planlanan efor gerçekleşen süre değildir.</p></details>
     </section>
   </div>
+  @if (view.activeSprint; as active) {
+    @if (hasSignals) {
+      <section class="card attention-panel" aria-label="Dikkat gerektiren işler">
+        <div class="section-head"><div><span class="eyebrow">DİKKAT GEREKTİREN</span><h2>Aktif sprintte takip edilmesi gerekenler</h2></div><span class="unit">İŞ ADEDİ</span></div>
+        @if (alerts.length) {
+          <ul class="attention-list">
+            @for (alert of alerts; track alert.key) {
+              <li><a [routerLink]="alert.link" [class]="'attention-item ' + alert.tone"><strong>{{ alert.count }}</strong><span><b>{{ alert.label }}</b><small>{{ alert.hint }}</small></span><i aria-hidden="true">→</i></a></li>
+            }
+          </ul>
+        } @else {
+          <p class="attention-clear"><span aria-hidden="true">✓</span> Blocked, tahminsiz, atamasız veya sprint içi eklenen iş yok.</p>
+        }
+        <p class="attention-note">Sayımlar yalnız aktif sprintin teslimat işlerini kapsar; BAU ve izin kayıtları hariçtir. Sprint içi eklenen işler planlama sonrası kapsama giren kayıtlardır.</p>
+      </section>
+    }
+    @if (typeBreakdown.length) {
+      <section class="card distribution-panel" aria-label="Aktif sprint iş tipi dağılımı">
+        <div class="section-head"><div><span class="eyebrow">KAPSAM DAĞILIMI</span><h2>Aktif sprint iş tipleri</h2></div><span class="unit">{{ typeTotal }} TESLİMAT İŞİ</span></div>
+        <div class="sb-bar" role="img" aria-label="Aktif sprint iş tipi dağılımı">
+          @for (row of typeBreakdown; track row.category) { <span class="sb-bar__seg" [style.background]="typeColor(row)" [style.width.%]="typeShare(row)"></span> }
+        </div>
+        <ul class="sb-legend">
+          @for (row of typeBreakdown; track row.category) {
+            <li class="sb-legend__item"><i class="sb-legend__swatch" [style.background]="typeColor(row)" aria-hidden="true"></i><span>{{ categoryLabel(row.category) }}</span><b>{{ row.taskCount }} iş · {{ row.doneCount }} Done</b></li>
+          }
+        </ul>
+        <p class="attention-note">İş adedi · BAU hariç. Oranlar aktif sprintin teslimat işleri üzerinden hesaplanır.</p>
+      </section>
+    }
+  }
   <nav class="overview-shortcuts" aria-label="Ürün alanları">
     <a class="card shortcut" routerLink="/roadmap"><span class="shortcut-icon" aria-hidden="true">◇</span><span><small>Roadmap</small><strong>{{ view.roadmapCount }} hedef</strong><span>{{ view.backlogLinkedCount }} bağlı iş</span></span><b aria-hidden="true">↗</b></a>
     <a class="card shortcut" routerLink="/backlog"><span class="shortcut-icon" aria-hidden="true">≡</span><span><small>Backlog</small><strong>{{ view.backlogReadyCount }} hazır iş</strong><span>{{ view.backlogCount }} toplam kayıt · {{ view.backlogInSprintCount }} sprint bağlantılı</span></span><b aria-hidden="true">↗</b></a>
