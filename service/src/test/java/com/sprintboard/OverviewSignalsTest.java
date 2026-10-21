@@ -85,6 +85,21 @@ class OverviewSignalsTest {
   assertEquals(2L,count(o,"activeSprintUnassignedCount"),"both unassigned delivery tasks count, BAU does not");
  }
 
+ @Test void effortMatrixPlanningCountsAsEstimated(){
+  String m=named("Matrix planner"),s=sprint();
+  // Planned only through the effort matrix: no intake estimate was ever
+  // recorded, yet somebody committed hours to it. Calling this "unestimated"
+  // sends the reader after work that is in fact planned, and the estimate
+  // cannot be corrected once the task is in a sprint.
+  task(s,"DEV","",0,assigned(m,6));
+  // Nobody said how big this is, and nobody committed hours: genuinely unestimated.
+  task(s,"DEV","",0,List.of());
+  w.startSprint(s);
+
+  assertEquals(1L,count(w.overview(),"activeSprintUnestimatedCount"),
+    "allocated effort is an estimate; only work with neither counts");
+ }
+
  @Test void typeBreakdownCoversDeliveryWorkAndTracksDone(){
   String m=member(),s=sprint();
   String first=task(s,"DEV","",3,assigned(m,3));

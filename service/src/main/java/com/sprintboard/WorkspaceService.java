@@ -223,8 +223,11 @@ public class WorkspaceService {
             || Boolean.TRUE.equals(task.get("emergency")))
         .count();
 
+    // "Unestimated" must mean nobody said how big the work is. A task planned
+    // through the effort matrix carries no intake estimate but is still
+    // planned, so read planningHours, which already resolves that fallback.
     long unestimated = delivery.stream()
-        .filter(task -> !(task.get("estimatedHours") instanceof Number hours) || hours.doubleValue() <= 0)
+        .filter(task -> !(task.get("planningHours") instanceof Number hours) || hours.doubleValue() <= 0)
         .count();
 
     long unassigned = delivery.stream()

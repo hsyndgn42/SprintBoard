@@ -52,7 +52,7 @@ export class SprintBoardComponent implements OnChanges,OnDestroy {
   get items(){return filterBoard(this.sprint.items,this.filters).filter(t=>(!this.onlyBlocked||!isBau(t)&&t.blocker?.blocked)&&(!this.onlyEmergency||t.emergency)&&(!this.onlyUnestimated||this.isUnestimated(t))&&(!this.onlyUnassigned||this.isUnassigned(t)));}
   // Mirrors the dashboard attention signals (WorkspaceService.activeSignals):
   // delivery scope only, so BAU and leave records never match.
-  isUnestimated(t:Task){return !isBau(t)&&!(Number(t.estimatedHours)>0);}
+  isUnestimated(t:Task){return !isBau(t)&&!(Number(t.planningHours)>0);}
   isUnassigned(t:Task){return !isBau(t)&&!(t.assignments?.length);}
   get emergencyOptions(){return this.sprint.items.filter(t=>t.emergency&&t.id!==this.actionTask?.id);}
   get people(){return boardMembers(this.sprint.items);}

@@ -17,7 +17,15 @@ public final class DefectReserve {
    for(var t:tasks)t.put("reserveTaskId",links.get(t.get("id")));
  }
  public static List<Map<String,Object>> enrich(List<Map<String,Object>> tasks){
-   for(var t:tasks){t.put("planningHours",number(t,"estimatedHours"));for(var a:assignments(t))a.put("planningHours",hours(a));}
+   // Planned effort falls back to what was actually allocated when no intake
+   // estimate was recorded. Sprints planned entirely through the effort matrix
+   // are genuinely planned, so reading the raw estimate alone would report
+   // them as unplanned work that nobody can correct after the fact.
+   for(var t:tasks){
+     double estimate=number(t,"estimatedHours");
+     t.put("planningHours",estimate>0.000001?estimate:assignments(t).stream().mapToDouble(DefectReserve::hours).sum());
+     for(var a:assignments(t))a.put("planningHours",hours(a));
+   }
    // Assigned effort is authoritative for defects; their original intake estimate may still be zero.
    // Keep the estimate intact and deduct covered effort from the reserve, not from the defect.
    for(var t:tasks)if("DEFECT".equals(t.get("taskCategory"))){
