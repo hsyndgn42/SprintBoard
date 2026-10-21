@@ -1126,3 +1126,18 @@
   border-radius: var(--sb-radius-pill);
   color: var(--sb-text);
 }
+/* --- Settings information architecture (P-05) ----------------------------
+   Categories give the long settings list a shape, and the destructive group
+   is visually separated so backup/restore is never reached by accident. */
+.settings-nav{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 var(--sb-space-6)}
+.settings-nav button{font:inherit;font-size:12px;font-weight:600;padding:7px 14px;border:1px solid var(--sb-border);border-radius:999px;background:var(--sb-surface);color:var(--sb-text-muted);cursor:pointer}
+.settings-nav button:hover{background:var(--sb-surface-muted);color:var(--sb-text)}
+.settings-nav button:focus-visible{outline:var(--sb-focus-ring);outline-offset:2px}
+.settings-group{margin:0 0 var(--sb-space-8);scroll-margin-top:var(--sb-space-6)}
+.settings-group:focus{outline:none}
+.settings-group:focus-visible{outline:var(--sb-focus-ring);outline-offset:6px;border-radius:var(--sb-radius-lg)}
+.settings-group-head{margin:0 0 var(--sb-space-4);padding-bottom:var(--sb-space-3);border-bottom:1px solid var(--sb-border)}
+.settings-group-head h2{font-size:var(--sb-font-xl);margin:4px 0 6px}
+.settings-group-head p{font-size:12px;line-height:1.65;color:var(--sb-text-muted);margin:0;max-width:72ch}
+.settings-group.danger-zone .settings-group-head{border-bottom-color:var(--sb-danger-border)}
+.settings-group.danger-zone .settings-group-head .eyebrow{color:var(--sb-danger)}
