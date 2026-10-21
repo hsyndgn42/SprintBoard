@@ -4,7 +4,7 @@ Spring Boot ve Angular tabanlı sprint yönetimi uygulaması. Tek servis instanc
 
 - [Kullanıcı kılavuzu ve ilk kurulum ayarları](docs/USER_GUIDE.html) · [Markdown kaynağı](docs/USER_GUIDE.md)
 - [Ürün backlogu](BACKLOG.md)
-- [Admin hesap kurtarma](docs/account-recovery.md)
+- [Admin hesap kurtarma](docs/USER_GUIDE.md#sifre-degistirme-ve-admin-kurtarma)
 
 ## Çalışan sistemi açma
 
@@ -124,7 +124,7 @@ service/src/main/java/   Uygulama servisleri
 service/src/main/resources/db/migration/  Veritabanı migration dosyaları
 service/src/test/        Backend testleri
 scripts/                Regresyon testleri ve bakım yedeği aracı
-docs/                   Kullanıcı kılavuzu ve hesap kurtarma
+docs/                   Kullanıcı kılavuzu ve veri uyumluluk planı
 assets/team-photos/     Yerel özel fotoğraf varlıkları, Git dışında
 ```
 
