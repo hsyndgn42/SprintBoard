@@ -12,13 +12,15 @@ import { RouterLink } from '@angular/router';
 import { ApiService, TeamMember, ProductSettings, Sprint, SprintSummary, Task, formatDate, statusText } from '../api.service';
 import { taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
 import { buildReview, effort, isLeave, percent, REVIEW_STATUSES } from './review.model';
+import { reviewSummary, reviewExceptions, REVIEW_DEFINITIONS, SummaryMetric, ReviewException } from './review-summary.model';
 import {ReviewNotesComponent} from './review-notes.component';
 import {downloadText} from './share-export';
 import {SprintFlowComponent} from './sprint-flow.component';
 
 @Component({
   selector: 'app-sprint-review', standalone: true, imports: [FoldDirective,SlackReviewSendComponent,ReviewOperationsComponent,DefectSupportReviewComponent,ScopeSummaryComponent,FormsModule, RouterLink,ReviewNotesComponent,SprintFlowComponent],
-  templateUrl: './sprint-review.component.html', styleUrl: './sprint-review.component.css',
+  templateUrl: './sprint-review.component.html', styleUrls: ['./sprint-review.component.css', './sprint-review-narrative.css'],
+  host: { '(document:keydown)': 'onKeydown($event)', '[class.review-presenting]': 'presenting()' },
 })
 export class SprintReviewComponent implements OnChanges {
   private api=inject(ApiService);private cdr=inject(ChangeDetectorRef);
@@ -30,6 +32,24 @@ export class SprintReviewComponent implements OnChanges {
   @Input({ required: true }) settings!: ProductSettings;
   get hasReservedDefects(){return this.sprint.items.some(t=>t.taskCategory==='DEFECT'&&!!t.reserveTaskId);}
   model!: ReturnType<typeof buildReview>;
+  summary: SummaryMetric[]=[]; exceptions: ReviewException[]=[];
+  readonly definitions=REVIEW_DEFINITIONS;
+  /**
+   * Presentation mode is component state rather than a separate route, so
+   * the meeting view reuses the already-built review model instead of
+   * recomputing or re-fetching anything.
+   */
+  presenting=signal(false);
+  private presentTrigger: HTMLElement|null=null;
+  readonly sections=[
+    {id:'review-summary',label:'Yönetici özeti'},
+    {id:'review-outcome',label:'Planlanan / tamamlanan'},
+    {id:'review-delivered',label:'Teslim edilen'},
+    {id:'review-pending',label:'Tamamlanmayan'},
+    {id:'review-scope',label:'Kapsam değişimi'},
+    {id:'review-exceptions',label:'Riskler ve istisnalar'},
+    {id:'review-appendix',label:'Detaylı döküm'},
+  ];
   notesReady=signal(false);private previousSprintId='';
   viewTime=new Intl.DateTimeFormat('tr-TR',{dateStyle:'medium',timeStyle:'short'}).format(new Date());
   query = signal(''); category = signal(''); status = signal('');
@@ -39,7 +59,15 @@ export class SprintReviewComponent implements OnChanges {
   readonly statusText = statusText;
   readonly effort = effort;
   readonly isLeave = isLeave;
-  ngOnChanges() { if(this.previousSprintId!==this.sprint.id){this.previousSprintId=this.sprint.id;this.notesReady.set(false);this.operations=undefined;this.overtimeReady=false;void this.loadTeam();}this.model = buildReview(this.sprint, this.settings); this.viewTime=new Intl.DateTimeFormat('tr-TR',{dateStyle:'medium',timeStyle:'short'}).format(new Date()); this.reset(); }
+  ngOnChanges() { if(this.previousSprintId!==this.sprint.id){this.previousSprintId=this.sprint.id;this.notesReady.set(false);this.operations=undefined;this.overtimeReady=false;this.presenting.set(false);void this.loadTeam();}this.model = buildReview(this.sprint, this.settings); this.refreshDerived(); this.viewTime=new Intl.DateTimeFormat('tr-TR',{dateStyle:'medium',timeStyle:'short'}).format(new Date()); this.reset(); }
+  /** Recomputed when the sprint changes and again once operations data lands. */
+  refreshDerived(){ this.summary=reviewSummary(this.sprint,this.settings,this.operations); this.exceptions=reviewExceptions(this.sprint,this.settings,this.operations); }
+  operationsLoaded(value: ReviewOperations){ this.operations=value; this.refreshDerived(); }
+
+  present(event?: Event){ this.presentTrigger=(event?.currentTarget as HTMLElement)??null; this.presenting.set(true); queueMicrotask(()=>{document.getElementById('review-presentation-title')?.focus();}); }
+  /** Escape always leaves the meeting view; focus returns to the button that opened it. */
+  exitPresentation(){ if(!this.presenting())return; this.presenting.set(false); const trigger=this.presentTrigger; this.presentTrigger=null; queueMicrotask(()=>trigger?.focus()); }
+  onKeydown(event: KeyboardEvent){ if(event.key==='Escape'&&this.presenting()){event.preventDefault();this.exitPresentation();} }
   reset() { this.query.set(''); this.category.set(''); this.status.set(''); }
   number(value: number) { return new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 }).format(value); }
   taxonomy(task: Task) { return taskCategoryLabel(task.taskCategory) + (task.taskSubtype ? ' · ' + taskSubtypeLabel(task.taskSubtype) : ''); }

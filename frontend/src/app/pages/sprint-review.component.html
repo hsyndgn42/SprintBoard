@@ -1,26 +1,48 @@
 @if (model; as review) {
-  <div class="review" data-testid="sprint-review">
+  <div class="review" data-testid="sprint-review" [class.presenting]="presenting()">
+    @if(presenting()){
+      <div class="present-bar">
+        <span><strong>{{ sprint.name }}</strong> · {{ settings.teamName }} · {{ formatDate(sprint.start) }} – {{ formatDate(sprint.end) }}</span>
+        <button class="btn" (click)="exitPresentation()" data-testid="exit-presentation">Sunumdan çık (Esc)</button>
+      </div>
+    }
     <section class="card review-hero">
-      <div><span class="eyebrow">SPRINT REVIEW · {{ sprint.name }}</span><h2>{{ sprint.status === 'completed' ? 'Teslimatın büyük resmi' : 'Sprintin şu anki fotoğrafı' }}</h2>
+      <div><span class="eyebrow">SPRINT REVIEW · {{ sprint.name }}</span><h2 id="review-presentation-title" tabindex="-1">{{ sprint.status === 'completed' ? 'Teslimatın büyük resmi' : 'Sprintin şu anki fotoğrafı' }}</h2>
         <p>{{ formatDate(sprint.start) }} – {{ formatDate(sprint.end) }} <span class="status" [class.completed]="sprint.status === 'completed'" [class.active]="sprint.status === 'active'">{{ statusText(sprint.status) }}</span></p>
         <p class="review-goal">{{ sprint.goal || 'Bu sprint için hedef belirtilmemiş.' }}</p>
         @if (sprint.status !== 'completed') { <p class="data-note">Canlı görünüm: sprint henüz kapanmadı. Bu değerler kesin kapanış sonucu değildir.</p> }
         @else { <p class="data-note">{{ sprint.closureFrozen ? 'Görev sonuçları sabit kapanış kaydından alınmıştır. Toplantı notları kapanıştan sonra güncellenebilir.' : 'Geçmiş sprint kayıtlarıdır; kapanış anı snapshot kaydı bulunmuyor.' }}</p> }
-        <p class="print-only data-note">Görünüm zamanı: {{ viewTime }}. Tüm görevler ve kayıtlı Review notları dahildir; görev listesinin ekran filtreleri uygulanmaz.</p>
-      </div><div class="share-actions"><div class="ui-actions"><button class="btn" [disabled]="!notesReady()||!overtimeReady" [title]="notesReady()?'Kayıtlı Review içeriğini yazdır':'Notların yüklenmesini bekleyin; açık taslağı kaydedin veya kapatın'" (click)="print()">PDF / Yazdır</button><button class="btn primary" [disabled]="!teamReady||!overtimeReady||sharing" (click)="share()">Sprint özeti HTML indir</button><app-slack-review-send [sprintId]="sprint.id" [sprintName]="sprint.name" /></div><details class="ui-help"><summary>Paylaşıma hangi bilgiler dahil?</summary><small>PDF: kayıtlı toplantı notları ve izin ayrıntıları dahil. HTML: hedef, Done/devreden işler, çekirdek ekip + Architecture ve fotoğrafları; sonuç, göreli tahmin ve acil/kapsam grafikleri (kapsam gerekçeleri dahil), varsa sonraki sprint planı; toplantı notları ve kişisel izin ayrıntıları hariç. Paylaşmadan önce kontrol edin.</small></details></div>
+        <p class="data-note print-only">Görünüm zamanı: {{ viewTime }}. Tüm görevler ve kayıtlı Review notları dahildir; görev listesinin ekran filtreleri uygulanmaz.</p>
+      </div><div class="share-actions"><div class="ui-actions"><button class="btn" (click)="present($event)" data-testid="enter-presentation">Sunum modu</button><button class="btn" [disabled]="!notesReady()||!overtimeReady" [title]="notesReady()?'Kayıtlı Review içeriğini yazdır':'Notların yüklenmesini bekleyin; açık taslağı kaydedin veya kapatın'" (click)="print()">PDF / Yazdır</button><button class="btn primary" [disabled]="!teamReady||!overtimeReady||sharing" (click)="share()">Sprint özeti HTML indir</button><app-slack-review-send [sprintId]="sprint.id" [sprintName]="sprint.name" /></div><details class="ui-help"><summary>Paylaşıma hangi bilgiler dahil?</summary><small>PDF: kayıtlı toplantı notları ve izin ayrıntıları dahil. HTML: hedef, Done/devreden işler, çekirdek ekip + Architecture ve fotoğrafları; sonuç, göreli tahmin ve acil/kapsam grafikleri (kapsam gerekçeleri dahil), varsa sonraki sprint planı; toplantı notları ve kişisel izin ayrıntıları hariç. Paylaşmadan önce kontrol edin.</small></details></div>
     </section>
 
     @if(sharing){<p role="status">Review HTML hazırlanıyor…</p>}
     @if(shareError){<p class="notice warn" role="alert">{{shareError}}</p>}
     @if(teamError){<p class="notice warn" role="alert">{{teamError}} <button class="btn small" (click)="loadTeam()">Ekip bilgisini yeniden yükle</button></p>}
-    @if(teamReady&&team.length){<details appFold class="card review-team"><summary class="section-head"><div><span class="eyebrow">SPRINT EKİBİ</span><h2>Çekirdek ekip & Architecture</h2></div><small>{{team.length}} kişi</small></summary><div class="review-team-grid">@for(member of team;track member.id){<div class="review-team-person">@if(member.photoDataUrl){<img [src]="member.photoDataUrl" [alt]="member.name+' profil fotoğrafı'">}@else{<span class="review-team-initial">{{member.name[0]}}</span>}<span><strong>{{member.name}}</strong><small>{{member.title || member.teamRole}}</small></span></div>}</div><p class="data-note">Sprint katılımı esas alınır; fotoğraf ve profil unvanları güncel takım profilinden gelir. Diğer Support katkıları görev atamalarında görünür.</p></details>}
+
+    <nav class="review-jump" aria-label="Review bölümleri">
+      <span>Bölümler:</span>
+      @for(section of sections;track section.id){<a [href]="'#'+section.id">{{section.label}}</a>}
+    </nav>
+
+    <section id="review-summary" class="card card-pad review-summary" aria-labelledby="review-summary-title">
+      <div class="section-head"><div><span class="eyebrow">YÖNETİCİ ÖZETİ</span><h2 id="review-summary-title">Bu sprintte ne oldu</h2></div><small>{{ settings.teamName }} · {{ formatDate(sprint.start) }} – {{ formatDate(sprint.end) }}</small></div>
+      <div class="summary-grid">
+        @for(metric of summary;track metric.key){
+          <div class="summary-metric" [class.unknown]="!metric.known">
+            <span>{{ metric.label }}</span>
+            <strong>{{ metric.display }}</strong>
+            <small>{{ metric.detail }}</small>
+          </div>
+        }
+      </div>
+      <p class="data-note">Her değer kayıtlı veriden türetilir. “—” veri bulunmadığını gösterir ve sıfırla aynı şey değildir. Birleşik bir sağlık skoru üretilmez; renkler durum değil kategori ayrımı içindir.</p>
+    </section>
+
     <app-review-notes [sprintId]="sprint.id" (readyChange)="notesReady.set($event)" />
     <app-sprint-flow [sprint]="sprint" />
-    <app-review-operations [sprint]="sprint" (readyChange)="overtimeReady=$event" (loaded)="operations=$event" />
-    <app-scope-summary [sprint]="sprint" />
-    @if(hasReservedDefects){<details appFold class="card card-pad folded-defects"><summary><h2>Defect Support kapsamında alınan işler</h2></summary>@defer(on immediate){<app-defect-support-review [sprint]="sprint" />}</details>}
 
-    <div class="review-kpis">
+    <div id="review-outcome" class="review-kpis">
       <section class="card"><span>Teslimat sonucu</span><strong>{{ review.done }} <small>/ {{ review.delivery.length }} iş</small></strong><p>BAU hariç Done / toplam iş</p></section>
       <section class="card"><span>Done oranı</span><strong>{{ review.rate === null ? '—' : '%' + review.rate }}</strong><p>İş adedi üzerinden; efor oranı değil</p></section>
       <section class="card"><span>Tamamlanmayan teslimat</span><strong>{{ review.pending.length }} <small>iş</small></strong><p>Undone, yapılacak ve devam eden</p></section>
@@ -39,7 +61,7 @@
       </details>
     </div>
 
-    <details appFold class="card card-pad"><summary class="section-head"><div><span class="eyebrow">İŞ KARMASI</span><h2>Tür bazında teslimat ve operasyon</h2></div><span class="muted">{{ sprint.items.length }} toplam kayıt</span></summary>
+    <details id="review-delivered" appFold class="card card-pad"><summary class="section-head"><div><span class="eyebrow">İŞ KARMASI</span><h2>Tür bazında teslimat ve operasyon</h2></div><span class="muted">{{ sprint.items.length }} toplam kayıt</span></summary>
       @for(row of review.typeDistribution;track row.key){<article class="review-type-progress">
         <div class="type-progress-head"><strong>{{row.label}}</strong><span>{{row.done}} / {{row.count}} Done <b>%{{number(percent(row.done,row.count))}}</b></span><small>{{number(row.hours)}} sa planlanan</small></div>
         <div class="review-completion-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="percent(row.done,row.count)" [attr.aria-label]="row.label+' tamamlanma'" [attr.aria-valuetext]="row.done+' / '+row.count+' Done'"><span [style.width.%]="percent(row.done,row.count)"></span></div>
@@ -47,6 +69,17 @@
       </article>}
       <p class="data-note">Doluluk yalnız Done oranını gösterir; kalan işler aşağıdaki durum adetlerinde ayrılır. BAU otomatik Done kabul edilir. İzin kayıtları efora eklenmez.</p>
     </details>
+
+    <details id="review-pending" appFold class="card card-pad pending-results"><summary class="section-head"><div><span class="eyebrow">SONRAKİ PLAN İÇİN</span><h2>Tamamlanmayan teslimat işleri</h2></div><a class="btn small" routerLink="/backlog">Backlog’a git →</a></summary>
+      <p class="data-note">{{ sprint.status === 'completed' ? 'Geçmiş sprint sonucu korunur. Devam kararı için Backlog’daki ilişkili kaydı kontrol edin; burada taşınmış olduğu varsayılmaz.' : 'Bu işler henüz tamamlanmadı. Sprint kapanışından önce durumlarını ve Undone gerekçelerini gözden geçirin.' }}</p>
+      @for (task of review.pending; track task.id) { <article class="pending-row"><div><strong>{{ task.name }}</strong><p>{{ task.statusNote || 'Sonuç / gerekçe notu girilmemiş.' }}</p></div><span class="status" [class.undone]="task.status === 'undone'">{{ statusText(task.status) }}</span></article> }
+      @if (!review.pending.length) { <p class="empty">{{ review.delivery.length ? 'Tamamlanmayan teslimat işi yok.' : 'Bu sprintte henüz teslimat işi yok.' }}</p> }
+    </details>
+
+    <div id="review-scope"><app-scope-summary [sprint]="sprint" /></div>
+    @if(hasReservedDefects){<details appFold class="card card-pad folded-defects"><summary><h2>Defect Support kapsamında alınan işler</h2></summary>@defer(on immediate){<app-defect-support-review [sprint]="sprint" />}</details>}
+
+    <app-review-operations [sprint]="sprint" (readyChange)="overtimeReady=$event" (loaded)="operationsLoaded($event)" />
 
     <div class="review-grid">
       <details appFold class="card card-pad"><summary class="section-head"><div><span class="eyebrow">GÖRELİ TAHMİN · BAU HARİÇ</span><h2>{{ settings.estimationMode === 'SIZE_AND_HOURS' ? 'Size dağılımı' : 'Story Point özeti' }}</h2></div></summary>
@@ -65,23 +98,41 @@
       </details>
     </div>
 
+    <section id="review-exceptions" class="card card-pad review-exceptions" aria-labelledby="review-exceptions-title">
+      <div class="section-head"><div><span class="eyebrow">DİKKAT EDİLECEKLER</span><h2 id="review-exceptions-title">Riskler ve istisnalar</h2></div><small>{{ exceptions.length }} kayıt</small></div>
+      @if(exceptions.length){
+        <ul class="exception-list">
+          @for(row of exceptions;track row.key){
+            <li><div><strong>{{ row.label }}</strong>@if(row.count>1||row.names.length){<span class="exception-count">{{ row.count }}</span>}</div>
+              <p>{{ row.detail }}</p>
+              @if(row.names.length){<p class="exception-names">{{ row.names.join(' · ') }}</p>}
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="empty">Kayıtlı veriden türetilen istisna yok. Bu bir başarı değerlendirmesi değildir; yalnız listelenen koşulların hiçbirinin kayıtlı olmadığını gösterir.</p>
+      }
+      <p class="data-note">Yalnız kayıtlı koşullardan türetilir. Sebep, sorumlu, performans yorumu veya aksiyon önerisi üretilmez.</p>
+    </section>
+
+    @if(teamReady&&team.length){<details appFold class="card review-team"><summary class="section-head"><div><span class="eyebrow">SPRINT EKİBİ</span><h2>Çekirdek ekip & Architecture</h2></div><small>{{team.length}} kişi</small></summary><div class="review-team-grid">@for(member of team;track member.id){<div class="review-team-person">@if(member.photoDataUrl){<img [src]="member.photoDataUrl" [alt]="member.name+' profil fotoğrafı'">}@else{<span class="review-team-initial">{{member.name[0]}}</span>}<span><strong>{{member.name}}</strong><small>{{member.title || member.teamRole}}</small></span></div>}</div><p class="data-note">Sprint katılımı esas alınır; fotoğraf ve profil unvanları güncel takım profilinden gelir. Diğer Support katkıları görev atamalarında görünür.</p></details>}
+
     <div class="breakdown-grid">@for (group of review.breakdowns; track group.category) {
       <details appFold class="card card-pad"><summary><div class="fold-title"><span class="eyebrow">{{ group.label }} ALT KIRILIMLARI</span><h2>{{ group.category === 'BAU' ? 'Ekip operasyonu' : group.category === 'TEST' ? 'Test kapsamı' : group.category === 'DEFECT' ? 'Defect kapsamı' : 'İş kırılımı' }}</h2></div></summary>
         @for (row of group.rows; track row.key) { @if (row.key !== 'UNSPECIFIED' || row.count) { <div class="subtype-row"><div><strong>{{ row.label }}</strong><small>{{ row.done }} Done · {{ row.count - row.done }} tamamlanmayan</small></div><span>{{ row.count }} iş<small>{{ row.key === 'LEAVE' ? number(review.leaveHours) + ' sa izin' : number(row.hours) + ' sa' }}</small></span></div> } }
       </details>
     }</div>
 
-    <details appFold class="card card-pad pending-results"><summary class="section-head"><div><span class="eyebrow">SONRAKİ PLAN İÇİN</span><h2>Tamamlanmayan teslimat işleri</h2></div><a class="btn small" routerLink="/backlog">Backlog’a git →</a></summary>
-      <p class="data-note">{{ sprint.status === 'completed' ? 'Geçmiş sprint sonucu korunur. Devam kararı için Backlog’daki ilişkili kaydı kontrol edin; burada taşınmış olduğu varsayılmaz.' : 'Bu işler henüz tamamlanmadı. Sprint kapanışından önce durumlarını ve Undone gerekçelerini gözden geçirin.' }}</p>
-      @for (task of review.pending; track task.id) { <article class="pending-row"><div><strong>{{ task.name }}</strong><p>{{ task.statusNote || 'Sonuç / gerekçe notu girilmemiş.' }}</p></div><span class="status" [class.undone]="task.status === 'undone'">{{ statusText(task.status) }}</span></article> }
-      @if (!review.pending.length) { <p class="empty">{{ review.delivery.length ? 'Tamamlanmayan teslimat işi yok.' : 'Bu sprintte henüz teslimat işi yok.' }}</p> }
-    </details>
-
-    <details appFold class="card card-pad task-results"><summary class="section-head"><div><span class="eyebrow">DETAYLI DÖKÜM</span><h2>Tüm sprint işleri</h2></div><span class="muted screen-count">{{ visibleTasks.length }} / {{ sprint.items.length }} kayıt</span><span class="muted print-count">{{ sprint.items.length }} kayıt</span></summary>
+    <details id="review-appendix" appFold class="card card-pad task-results"><summary class="section-head"><div><span class="eyebrow">DETAYLI DÖKÜM</span><h2>Tüm sprint işleri</h2></div><span class="muted screen-count">{{ visibleTasks.length }} / {{ sprint.items.length }} kayıt</span><span class="muted print-count">{{ sprint.items.length }} kayıt</span></summary>
       <div class="review-filters"><label class="field">Görev, kişi veya not ara<input [(ngModel)]="query" placeholder="Aramak için yazın" data-testid="review-search"></label><label class="field">İş tipi<select [(ngModel)]="category"><option value="">Tüm türler</option>@for (row of review.categories; track row.key) { <option [value]="row.key">{{ row.label }}</option> }</select></label><label class="field">Sonuç<select [(ngModel)]="status"><option value="">Tüm durumlar</option>@for (row of statusOptions; track row.key) { <option [value]="row.key">{{ row.label }}</option> }</select></label><button class="btn" (click)="reset()">Filtreleri temizle</button></div>
       <p class="data-note">Filtreler yalnız aşağıdaki dökümü etkiler; üstteki özet ve grafikler sprintin tamamını kapsar. PDF tüm görevleri içerir.</p>
 <div class="result-list">@for (task of review.items; track task.id) { <article class="result-row" [class.filtered-out]="!visibleTasks.includes(task)"><div class="result-title"><strong>{{ task.name }}</strong><span class="status" [class.done]="task.status === 'done'" [class.undone]="task.status === 'undone'">{{ statusText(task.status) }}</span></div><div class="result-meta"><span>{{ taxonomy(task) }}</span><span>{{ estimate(task) }}</span><span>{{ isLeave(task) ? number(leaveHours(task)) + ' sa izin' : number(effort(task)) + ' sa planlanan' }}</span></div>@if(task.taskCategory==='DEFECT'){<p class="result-note">Defect: {{ defectSummary(task.defect) }}@if(task.defect?.reporterId){ · Bildiren: {{ task.defect?.reporterName || 'Ad soyad bekleniyor' }}}</p>}<p class="assignees">{{ assignmentText(task) }}</p>@if (task.statusNote) { <p class="result-note">{{ task.statusNote }}</p> }</article> }</div>
       @if (!visibleTasks.length) { <p class="empty filter-empty">Gösterilecek görev yok. Filtreleri değiştirebilirsiniz.</p> }
+    </details>
+
+    <details appFold class="card card-pad review-definitions"><summary class="section-head"><div><span class="eyebrow">YÖNTEM</span><h2>Tanımlar ve yöntem</h2></div></summary>
+      <dl class="definition-list">@for(row of definitions;track row[0]){<div><dt>{{ row[0] }}</dt><dd>{{ row[1] }}</dd></div>}</dl>
+      <p class="data-note">Aynı tanımlar indirilen HTML dosyasında da yer alır.</p>
     </details>
   </div>
 }
