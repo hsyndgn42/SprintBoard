@@ -9,9 +9,10 @@ import { ModalAccessibilityDirective } from '../modal-accessibility.directive';
 import { taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
 import { defectSummary } from '../defect-model';
 import { BOARD_COLUMNS, boardColor, boardMembers, emptyBoardFilters, filterBoard } from './board.model';
+import { FoldDirective } from '../fold.directive';
 
 @Component({
-  selector:'app-sprint-board',standalone:true,imports:[SprintJournalComponent,FormsModule,ModalAccessibilityDirective,SprintFlowComponent],
+  selector:'app-sprint-board',standalone:true,imports:[SprintJournalComponent,FormsModule,ModalAccessibilityDirective,SprintFlowComponent,FoldDirective],
   templateUrl:'./sprint-board.component.html',styleUrl:'./sprint-board.component.css',
 })
 export class SprintBoardComponent implements OnChanges,OnDestroy {
@@ -59,6 +60,7 @@ export class SprintBoardComponent implements OnChanges,OnDestroy {
   changeStatus(task:Task,status:string){if(this.canTask(task)&&!this.busy)this.statusChange.emit({task,status});}
   estimate(item:Task){return this.settings.estimationMode==='SIZE_AND_HOURS'?(item.size?'Size '+({SMALL:'Small',MEDIUM:'Medium',LARGE:'Large','X-LARGE':'X-Large'}[item.size]):'Size belirtilmedi'):(item.storyPoints!=null?item.storyPoints+' SP':'SP belirtilmedi');}
   isLeave(item:Task){return item.workKind==='LEAVE'||item.taskSubtype==='LEAVE';}
+  initials(name:string){return (name||'?').trim().split(/\s+/).slice(0,2).map(part=>part.charAt(0).toLocaleUpperCase('tr')).join('')||'?';}
   leaveHours(item:Task){return item.assignments.reduce((n,a)=>n+(a.leaveDays||0)*(a.hoursPerDay??this.settings.hoursPerDay),0);}
   assignedHours(item:Task){return item.assignments.reduce((n,a)=>n+(a.supportOnly?0:a.estimatedHours),0);}
 }

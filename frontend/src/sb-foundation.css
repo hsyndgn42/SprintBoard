@@ -474,3 +474,307 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ==========================================================================
+   Backlog table density
+   --------------------------------------------------------------------------
+   ui-system.css stretched every action button (`flex: 1 1 auto`) inside a
+   20%-wide column, so rows with three actions wrapped to a second line and
+   row height oscillated between ~54px and ~82px. Rebalance the columns and
+   stop the stretch so the row rhythm is stable.
+   ========================================================================== */
+
+@media screen and (min-width: 861px) {
+  .main-content .backlog-table th:first-child { width: 30%; }
+  .main-content .backlog-table th:nth-child(2) { width: 17%; }
+  .main-content .backlog-table th:nth-child(3) { width: 13%; }
+  .main-content .backlog-table th:nth-child(4) { width: 12%; }
+  .main-content .backlog-table th:last-child { width: 28%; }
+
+  .main-content .backlog-table .table-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--sb-space-2);
+  }
+
+  .main-content .backlog-table .table-actions .btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .main-content .backlog-table td { vertical-align: middle; }
+}
+
+/* De-emphasise the per-row roadmap picker: it is a quick-edit affordance,
+   not the primary content of the row. Full affordance returns on
+   hover/focus so it stays obviously interactive. */
+.main-content .backlog-table .compact-select {
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--sb-text-secondary);
+  transition: border-color var(--sb-duration-fast) var(--sb-easing),
+              background-color var(--sb-duration-fast) var(--sb-easing);
+}
+
+.main-content .backlog-table tr:hover .compact-select,
+.main-content .backlog-table .compact-select:hover,
+.main-content .backlog-table .compact-select:focus {
+  border-color: var(--sb-border);
+  background-color: var(--sb-surface);
+  color: var(--sb-text);
+}
+
+.main-content .backlog-table .compact-select:disabled {
+  opacity: .6;
+  cursor: progress;
+}
+
+/* Destructive row action reads as destructive without shouting. */
+.main-content .backlog-table .btn.small.danger {
+  color: var(--sb-danger-fg);
+  border-color: var(--sb-danger-border);
+  background: var(--sb-surface);
+}
+
+.main-content .backlog-table .btn.small.danger:hover {
+  background: var(--sb-danger-bg);
+  border-color: var(--sb-danger);
+}
+
+/* ==========================================================================
+   Sprint board — task card density
+   --------------------------------------------------------------------------
+   Cards were ~250px tall because two full-width buttons (including the rare,
+   destructive "Backlog'a geri gönder") were permanently stacked, and the
+   assignee was not shown at all even though task.assignments is already in
+   the payload. Scanning "who is on what" required opening every card.
+   ========================================================================== */
+
+.main-content .task-card {
+  padding: 10px 12px;
+  gap: 6px;
+}
+
+.main-content .task-card .board-task-title {
+  font-size: var(--sb-font-md);
+  line-height: 1.4;
+}
+
+.main-content .task-card > small { font-size: var(--sb-font-xs); }
+
+.main-content .task-card .board-task-meta {
+  gap: var(--sb-space-2);
+  font-size: var(--sb-font-xs);
+}
+
+/* --- assignees -------------------------------------------------------- */
+
+.board-task-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-1);
+  align-items: center;
+}
+
+.board-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 2px 8px 2px 2px;
+  border-radius: var(--sb-radius-pill);
+  background: var(--sb-surface-sunken);
+  color: var(--sb-text-secondary);
+  font-size: var(--sb-font-xs);
+  font-weight: 650;
+}
+
+.board-person-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: var(--sb-radius-pill);
+  background: var(--sb-primary);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+.board-person-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "X destek" assignments do not consume effort — mark them distinctly. */
+.board-person.support .board-person-mark { background: var(--sb-neutral-500); }
+.board-person.support::after {
+  content: "X";
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--sb-text-muted);
+}
+
+.board-person.unassigned {
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px dashed var(--sb-border-strong);
+  color: var(--sb-text-muted);
+  font-weight: 600;
+}
+
+/* --- progressive disclosure for secondary card actions ---------------- */
+
+.main-content .task-card .board-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height var(--sb-duration-base) var(--sb-easing),
+              opacity var(--sb-duration-base) var(--sb-easing),
+              margin-top var(--sb-duration-base) var(--sb-easing);
+}
+
+/* `:focus-within` is essential: it keeps these controls reachable by
+   keyboard even though they are visually collapsed by default. */
+.main-content .task-card:hover .board-card-actions,
+.main-content .task-card:focus-within .board-card-actions {
+  max-height: 140px;
+  margin-top: var(--sb-space-1);
+  opacity: 1;
+}
+
+.main-content .task-card .board-card-actions .btn {
+  flex: 1 1 auto;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: var(--sb-font-xs);
+}
+
+/* Pointer-less devices never produce hover, so never hide the actions. */
+@media (hover: none) {
+  .main-content .task-card .board-card-actions {
+    max-height: none;
+    opacity: 1;
+    margin-top: var(--sb-space-1);
+    overflow: visible;
+  }
+}
+
+/* --- lane headers ------------------------------------------------------ */
+
+.main-content .board-column > header {
+  position: sticky;
+  top: 0;
+  z-index: var(--sb-z-sticky);
+  background: var(--sb-surface-muted);
+  backdrop-filter: saturate(140%) blur(2px);
+}
+
+/* Horizontal-scroll affordance when lanes overflow (narrow laptops). */
+.main-content .board {
+  scrollbar-gutter: stable;
+}
+
+/* ==========================================================================
+   Sprint board — reclaim vertical space above the kanban
+   --------------------------------------------------------------------------
+   The board previously began roughly 900px down the page: the flow panel,
+   a two-row filter grid, two stacked checkbox rows and an always-expanded
+   BAU panel all competed with the work itself.
+   ========================================================================== */
+
+.main-content .board-filters { padding: 14px 16px; }
+
+.main-content .board-filters .section-head { margin-bottom: var(--sb-space-3); }
+
+.main-content .board-filter-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) repeat(3, minmax(0, 1fr));
+  gap: var(--sb-space-3);
+  align-items: end;
+}
+
+.board-filter-extra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-4);
+  margin-top: var(--sb-space-3);
+  padding-top: var(--sb-space-3);
+  border-top: 1px solid var(--sb-border);
+}
+
+.main-content .board-filter-extra .blocked-filter { margin: 0; white-space: nowrap; }
+
+.main-content .board-filter-extra .board-count {
+  margin: 0 0 0 auto;
+  text-align: right;
+  font-size: var(--sb-font-sm);
+}
+
+@media (max-width: 1100px) {
+  .main-content .board-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .main-content .board-filter-extra .board-count { margin-left: 0; text-align: left; flex-basis: 100%; }
+}
+
+/* BAU is reference information, not the day-to-day board: collapse it. */
+.main-content details.board-bau { padding: 12px 16px; }
+.main-content details.board-bau:not([open]) { padding-bottom: 12px; }
+.main-content details.board-bau > summary { cursor: pointer; }
+.main-content details.board-bau > summary h2 { margin: 0; }
+
+/* ==========================================================================
+   Page action hierarchy
+   --------------------------------------------------------------------------
+   The sprint detail header rendered four equally weighted buttons, so
+   "Sprinti tamamla" (irreversible) looked exactly like "Sprinti düzenle".
+   ========================================================================== */
+
+.btn.subtle {
+  background: transparent;
+  border-color: transparent;
+  color: var(--sb-text-muted);
+  box-shadow: none;
+}
+
+.btn.subtle:hover {
+  background: var(--sb-surface-sunken);
+  color: var(--sb-text);
+}
+
+/* Sprint lifecycle transitions are separated from routine edits and
+   labelled with a divider so they are not clicked by accident. */
+.sprint-detail-actions { align-items: center; }
+
+.sprint-detail-actions .closing-action {
+  margin-left: var(--sb-space-3);
+  position: relative;
+  border-color: var(--sb-warning-border);
+  color: var(--sb-warning-fg);
+  background: var(--sb-surface);
+  font-weight: 700;
+}
+
+.sprint-detail-actions .closing-action::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--sb-space-3) / 2);
+  top: 15%;
+  height: 70%;
+  border-left: 1px solid var(--sb-border);
+}
+
+.sprint-detail-actions .closing-action:hover {
+  background: var(--sb-warning-bg);
+  border-color: var(--sb-warning);
+}

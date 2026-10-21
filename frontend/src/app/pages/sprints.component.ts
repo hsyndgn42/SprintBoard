@@ -9,7 +9,8 @@ import { isBau, effectiveTaskStatus } from '../task-lifecycle';
 import { SprintJournalComponent } from './sprint-journal.component';
 import { PlanningInsightsComponent } from './planning-insights.component';
 import { ModalAccessibilityDirective } from '../modal-accessibility.directive';
-import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { SbBreadcrumbService } from '../shared/sb-breadcrumb.component';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService, BacklogItem, BauTemplate, CapacityRow, ProductSettings, Sprint, SprintSummary, Task, TaskCategory, TaskSubtype, TeamMember, formatDate, statusText } from '../api.service';
@@ -86,11 +87,11 @@ export class SprintsComponent implements OnInit {
   template: `
     @if (sprint; as current) {
       <div class="page-head sprint-detail-head"><div><span class="eyebrow">SPRİNT DETAYI</span><h1>{{ current.name }}</h1><p>{{ current.goal || 'Sprint hedefi belirtilmedi.' }}</p></div>
-        <div class="page-actions"><a class="btn" routerLink="/sprints" [queryParams]="{status:current.status === 'completed' ? 'completed' : current.status}">← Sprintler</a>
+        <div class="page-actions sprint-detail-actions"><a class="btn subtle" routerLink="/sprints" [queryParams]="{status:current.status === 'completed' ? 'completed' : current.status}">← Sprintler</a>
           @if (auth.isAdmin() && !current.closureFrozen && (current.status === 'active' || current.status === 'planned')) { <button class="btn" (click)="setEditOpen(true)">Sprinti düzenle</button> }
           @if (auth.isAdmin() && (current.status === 'active' || current.status === 'planned')) { <button class="btn primary" (click)="openAddTask()">+ İş ekle</button> }
-          @if (auth.isAdmin() && current.status === 'active') { <button class="btn" (click)="openComplete()">Sprinti tamamla</button> }
-          @if (auth.isAdmin() && current.status === 'planned') { <button class="btn primary" (click)="start()">Sprinti başlat</button> }
+          @if (auth.isAdmin() && current.status === 'active') { <button class="btn closing-action" (click)="openComplete()">Sprinti tamamla</button> }
+          @if (auth.isAdmin() && current.status === 'planned') { <button class="btn closing-action" (click)="start()">Sprinti başlat</button> }
         </div></div>
       @if(current.closureFrozen){<p class="notice" data-testid="closure-frozen">Kapanış kaydı sabitlendi · {{ current.closedAt }}. Görevler, atamalar, kapasite ve tahmin yöntemi kapanış anını gösterir.</p>}
       <nav class="subtabs" aria-label="Sprint alanları"><a [routerLink]="['/sprints', current.id, 'summary']" [class.active]="tab==='summary'">Özet</a><a [routerLink]="['/sprints', current.id, 'planning']" [class.active]="tab==='planning'">Planlama</a><a [routerLink]="['/sprints', current.id, 'capacity']" [class.active]="tab==='capacity'">Kapasite</a><a [routerLink]="['/sprints', current.id, 'effort']" [class.active]="tab==='effort'">Efor matrisi</a><a [routerLink]="['/sprints', current.id, 'board']" [class.active]="tab==='board'">Pano</a><a [routerLink]="['/sprints', current.id, 'journal']" [class.active]="tab==='journal'">Sprint günlüğü</a><a [routerLink]="['/sprints', current.id, 'review']" [class.active]="tab==='review'">Review</a><a [routerLink]="['/sprints', current.id, 'retro']" [class.active]="tab==='retro'">Retro</a></nav>
@@ -173,12 +174,14 @@ export class SprintsComponent implements OnInit {
   `,
   styles:[`.capacity-actions{display:flex;flex-direction:column;align-items:stretch;gap:6px;min-width:145px}`],
 })
-export class SprintDetailComponent implements OnInit {
+export class SprintDetailComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   auth = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private breadcrumb = inject(SbBreadcrumbService);
+  ngOnDestroy(): void { this.breadcrumb.clear(); }
   sprint: Sprint | null = null;
   settings: ProductSettings = { estimationMode: 'SIZE_AND_HOURS', hoursPerDay: 8 };
   tab = 'summary';
@@ -295,7 +298,7 @@ export class SprintDetailComponent implements OnInit {
   private sprintLoadVersion=0;
   async load(id: string): Promise<void> {
     const version=++this.sprintLoadVersion;this.capacityLoaded=false;++this.capacityRequestId;if(id!==this.sprint?.id)this.sprint=null;
-    try { const [sprint,settings]=await Promise.all([this.api.get<Sprint>(`/sprints/${encodeURIComponent(id)}`),this.api.get<ProductSettings>('/settings')]);if(version!==this.sprintLoadVersion)return;this.sprint=sprint;this.settings=sprint?.closureSettings||sprint?.workSettings||settings;this.error='';if(['planning','capacity','summary'].includes(this.tab))await this.loadCapacity(id);}
+    try { const [sprint,settings]=await Promise.all([this.api.get<Sprint>(`/sprints/${encodeURIComponent(id)}`),this.api.get<ProductSettings>('/settings')]);if(version!==this.sprintLoadVersion)return;this.sprint=sprint;this.breadcrumb.set(sprint?.name||'');this.settings=sprint?.closureSettings||sprint?.workSettings||settings;this.error='';if(['planning','capacity','summary'].includes(this.tab))await this.loadCapacity(id);}
     catch(error){if(version===this.sprintLoadVersion){this.error=String(error);this.sprint=null;}}
     finally{if(version===this.sprintLoadVersion)this.cdr.detectChanges();}
   }
