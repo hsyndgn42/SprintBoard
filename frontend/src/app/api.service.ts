@@ -29,12 +29,27 @@ export interface Task {
 }
 export interface SprintFlow {origin:'START'|'OBSERVED'|'UNTRACKED';trackedAt:string|null;baseline:Task[];events:{id:string;scopeChange?:boolean;action:'ADDED'|'REMOVED';at:string;reason:string;task:Task}[];version:number;wipLimit:number|null;wip:number;blocked:number;currentCount:number;added:number;removed:number}
 export interface Sprint extends SprintSummary { editVersion?:string; defectReserves?:DefectReserveSummary[]; items: Task[]; closureFrozen?:boolean; closedAt?:string; closureSettings?:ProductSettings;workSettings?:ProductSettings;flow?:SprintFlow }
+export interface OverviewTypeBreakdown {
+  category: TaskCategory | string; taskCount: number; doneCount: number;
+}
 export interface Overview {
   totalSprints: number; completedSprints: number; activeSprints:number; plannedSprints:number; deliveredTasks: number; undoneTasks: number;
   deliveryRate: number | null; activeSprint: SprintSummary | null; recentSprints: SprintSummary[];
   roadmapCount: number; backlogCount: number; backlogLinkedCount: number; backlogReadyCount: number;
   backlogInSprintCount: number; activeMemberCount: number; activeSprintCapacityHours: number;
   activeSprintPlannedHours: number; todayCapacityHours: number; monthCapacityHours: number;
+  // --- additive dashboard signals (iteration 2) ---------------------------
+  // Optional so a client built against an older service, or a cached
+  // response, keeps working. All are counts scoped to the active sprint and
+  // reuse the existing delivery/BAU definitions; none is a ratio, so every
+  // denominator and its zero check stays on this side.
+  activeSprintDaysTotal?: number | null;
+  activeSprintDaysRemaining?: number | null;
+  activeSprintBlockedCount?: number;
+  activeSprintAddedDuringCount?: number;
+  activeSprintUnestimatedCount?: number;
+  activeSprintUnassignedCount?: number;
+  activeSprintTypeBreakdown?: OverviewTypeBreakdown[];
 }
 export interface RoadmapItem {
   kind: 'PROJECT' | 'FEATURE_SET' | 'GENERAL' | 'UNSPECIFIED'; referenceId: string | null;

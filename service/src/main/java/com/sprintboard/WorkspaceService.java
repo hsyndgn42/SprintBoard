@@ -143,9 +143,11 @@ public class WorkspaceService {
     LocalDate today = LocalDate.now(java.time.ZoneId.of("Europe/Istanbul"));
     long[] backlogCounts = jdbc.queryForObject("SELECT COUNT(*),COUNT(roadmap_id),COUNT(CASE WHEN state='Ready' THEN 1 END),COUNT(CASE WHEN state='IN_SPRINT' THEN 1 END) FROM backlog_item",
         (rs, row) -> new long[] { rs.getLong(1), rs.getLong(2), rs.getLong(3), rs.getLong(4) });
+    Map<String, Object> activeSprint = all.stream().filter(row -> "active".equals(row.get("status"))).findFirst().orElse(null);
+    ActiveSprintSignals signals = activeSignals(activeId, activeSprint, today);
     return map("totalSprints", all.size(), "completedSprints", completed.size(), "activeSprints", all.stream().filter(s->"active".equals(s.get("status"))).count(), "plannedSprints", all.stream().filter(s->"planned".equals(s.get("status"))).count(), "deliveredTasks", done, "undoneTasks", undone,
         "deliveryRate", deliveryTotal == 0 ? null : Math.round(100.0 * done / deliveryTotal),
-        "activeSprint", all.stream().filter(row -> "active".equals(row.get("status"))).findFirst().orElse(null),
+        "activeSprint", activeSprint,
         "recentSprints", completed.stream().limit(5).toList(),
         "roadmapCount", jdbc.queryForObject("SELECT COUNT(*) FROM roadmap_item", Integer.class),
         "backlogCount", backlogCounts[0], "backlogLinkedCount", backlogCounts[1],
@@ -153,7 +155,91 @@ public class WorkspaceService {
         "activeMemberCount", team().stream().filter(p->((Number)p.get("active")).intValue()==1).count(),
         "activeSprintCapacityHours", sprintAvailable, "activeSprintPlannedHours", sprintPlanned,
         "todayCapacityHours", calendarCapacity(today, today),
-        "monthCapacityHours", calendarCapacity(today.withDayOfMonth(1), today.withDayOfMonth(today.lengthOfMonth())));
+        "monthCapacityHours", calendarCapacity(today.withDayOfMonth(1), today.withDayOfMonth(today.lengthOfMonth())),
+        // Additive dashboard signals (D-1). All are counts, all are scoped to
+        // the active sprint only, and all reuse the existing delivery/BAU
+        // definitions rather than introducing new business rules.
+        "activeSprintDaysTotal", signals.daysTotal(),
+        "activeSprintDaysRemaining", signals.daysRemaining(),
+        "activeSprintBlockedCount", signals.blocked(),
+        "activeSprintAddedDuringCount", signals.addedDuring(),
+        "activeSprintUnestimatedCount", signals.unestimated(),
+        "activeSprintUnassignedCount", signals.unassigned(),
+        "activeSprintTypeBreakdown", signals.typeBreakdown());
+  }
+
+  /**
+   * Attention signals for the dashboard, derived entirely from the existing
+   * active-sprint detail. Counts only — never ratios — so the client keeps
+   * ownership of every denominator and its zero check.
+   */
+  private record ActiveSprintSignals(
+      Integer daysTotal, Integer daysRemaining, long blocked, long addedDuring,
+      long unestimated, long unassigned, List<Map<String, Object>> typeBreakdown) {
+
+    /** The shape returned when no sprint is active: nothing to report on. */
+    static ActiveSprintSignals none() {
+      return new ActiveSprintSignals(null, null, 0, 0, 0, 0, List.of());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private ActiveSprintSignals activeSignals(String activeId, Map<String, Object> activeSprint, LocalDate today) {
+    if (activeId == null || activeSprint == null) return ActiveSprintSignals.none();
+    Map<String, Object> detail = sprint(activeId);
+    if (detail == null) return ActiveSprintSignals.none();
+
+    // Inclusive day span, so a one-day sprint reads as 1 rather than 0.
+    Integer daysTotal = null;
+    Integer daysRemaining = null;
+    Object start = activeSprint.get("start");
+    Object end = activeSprint.get("end");
+    if (start != null && end != null) {
+      LocalDate from = LocalDate.parse((String) start);
+      LocalDate to = LocalDate.parse((String) end);
+      daysTotal = (int) (java.time.temporal.ChronoUnit.DAYS.between(from, to) + 1);
+      // Never negative: an overrunning sprint has zero days left, not -3.
+      daysRemaining = (int) Math.max(0, java.time.temporal.ChronoUnit.DAYS.between(today, to));
+    }
+
+    List<Map<String, Object>> items = (List<Map<String, Object>>) detail.getOrDefault("items", List.of());
+    // Delivery scope is the inverse of BauPolicy, matching DELIVERY_FILTER
+    // and therefore the deliveryTaskCount the dashboard already shows.
+    List<Map<String, Object>> delivery = items.stream().filter(task -> !BauPolicy.isBau(task)).toList();
+
+    // The flow read model already excludes BAU from its blocked count.
+    long blocked = detail.get("flow") instanceof Map<?, ?> flowMap && flowMap.get("blocked") instanceof Number count
+        ? count.longValue() : 0;
+
+    long addedDuring = items.stream().filter(task -> Boolean.TRUE.equals(task.get("addedDuringSprint"))).count();
+
+    long unestimated = delivery.stream()
+        .filter(task -> !(task.get("estimatedHours") instanceof Number hours) || hours.doubleValue() <= 0)
+        .count();
+
+    long unassigned = delivery.stream()
+        .filter(task -> !(task.get("assignments") instanceof List<?> people) || people.isEmpty())
+        .count();
+
+    // Ordered by descending task count so the client can render the
+    // distribution without re-sorting; ties fall back to the category name
+    // to keep the output deterministic between calls.
+    List<Map<String, Object>> breakdown = delivery.stream()
+        .collect(java.util.stream.Collectors.groupingBy(
+            task -> task.get("taskCategory") == null ? "OTHER" : String.valueOf(task.get("taskCategory")),
+            java.util.LinkedHashMap::new,
+            java.util.stream.Collectors.toList()))
+        .entrySet().stream()
+        .map(entry -> map(
+            "category", entry.getKey(),
+            "taskCount", entry.getValue().size(),
+            "doneCount", entry.getValue().stream().filter(task -> "done".equals(task.get("status"))).count()))
+        .sorted(java.util.Comparator
+            .comparingLong((Map<String, Object> row) -> -((Number) row.get("taskCount")).longValue())
+            .thenComparing(row -> String.valueOf(row.get("category"))))
+        .toList();
+
+    return new ActiveSprintSignals(daysTotal, daysRemaining, blocked, addedDuring, unestimated, unassigned, breakdown);
   }
 
   private double calendarCapacity(LocalDate from, LocalDate to) {
