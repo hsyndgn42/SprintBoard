@@ -23,11 +23,11 @@ import { AuthService } from './auth.service';
           <span class="eyebrow">GÜVENLİ GİRİŞ</span><h1>SprintBoard’a giriş yap</h1>
           @if (auth.passwordChanged()) { <p class="notice" role="status">Şifreniz değiştirildi. Tüm oturumlarınız kapatıldı; yeni şifrenizle giriş yapın.</p> }
           <p>Sprintleri, ekibi ve raporları görüntülemek için hesabınla oturum aç.</p>
-          <form class="form-grid" action="/login" method="post" ngNoForm>
+          <form class="form-grid" action="/login" method="post" ngNoForm (submit)="signingIn = true">
             <input type="hidden" name="_csrf" [value]="auth.csrfToken()">
             <label class="field">Kullanıcı adı<input name="username" autocomplete="username" required autofocus></label>
             <label class="field">Şifre<input name="password" type="password" autocomplete="current-password" required></label>
-            <button class="btn primary auth-submit" type="submit">Giriş yap</button>
+            <button class="btn primary auth-submit" type="submit" [attr.aria-busy]="signingIn">{{ signingIn ? 'Giriş yapılıyor…' : 'Giriş yap' }}</button>
           </form>
           @if (loginFailed) { <p class="auth-error" role="alert">Kullanıcı adı veya şifre hatalı.</p> }
         }
@@ -44,6 +44,7 @@ export class AuthComponent {
   password = '';
   confirm = '';
   busy = false;
+  signingIn = false;
   error = '';
   get loginFailed(): boolean { return window.location.hash.includes('error=1'); }
   async setup(): Promise<void> {

@@ -31,7 +31,7 @@ interface RoadmapEffort extends RoadmapItem {
         </article>}</div>
       </section>
       <section class="visual-card"><h3>Roadmap bazlı gerçekleşen mesai</h3><p>Planlanan efordan ayrı · Göreve bağlı onaylı/doğrudan mesai kayıtları</p><div class="visual-rows">@for(row of roadmapPager.rows;track row.id){<article class="visual-row"><strong>{{row.title}}</strong><div><div class="visual-track"><span class="v-open" [style.width.%]="overtimeSegment(row.overtimeHours)"></span></div><strong>{{num(row.overtimeHours)}} sa mesai</strong></div></article>}</div></section>
-      <div class="table-wrap"><table><thead><tr><th>Roadmap</th><th>Sprint işleri</th><th>Atanan efor</th><th>Mesai (ayrı)</th><th>Done / Undone / Açık efor</th><th>Havuz tahmini</th></tr></thead><tbody>
+      <div class="table-wrap"><table><thead><tr><th scope="col">Roadmap</th><th scope="col">Sprint işleri</th><th scope="col">Atanan efor</th><th scope="col">Mesai (ayrı)</th><th scope="col">Done / Undone / Açık efor</th><th scope="col">Havuz tahmini</th></tr></thead><tbody>
         @for(row of roadmapPager.rows;track row.id){<tr><td><a [routerLink]="['/roadmap',row.id]"><strong>{{ row.title }}</strong></a><small>{{ kindLabel(row.kind) }} · {{ row.referenceId || 'Referans ID yok' }}</small></td>
           <td>{{ row.taskCount }} iş<small>{{ row.done }} Done · {{ row.undone }} Undone · {{ row.open }} açık</small></td>
           <td><strong>{{ num(row.assignedHours) }} sa</strong><div class="report-bar"><span [style.width.%]="volume(row)"></span></div><small>{{ row.supportAssignmentCount }} X atama · {{ row.unassignedTaskCount }} atamasız iş</small></td>

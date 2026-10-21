@@ -7,20 +7,23 @@
     <label class="field">İş tipi<select name="boardCategory" [(ngModel)]="filters.category" (ngModelChange)="categoryChanged()"><option value="">Tüm iş tipleri</option>@for(category of categories;track category){<option [value]="category">{{ categoryLabel(category) }}</option>}</select></label>
     <label class="field">Alt kırılım<select name="boardSubtype" [(ngModel)]="filters.subtype" (ngModelChange)="changed()"><option value="">Tüm alt kırılımlar</option><option value="__none__">Alt kırılım yok</option>@for(subtype of subtypes;track subtype){<option [value]="subtype">{{ subtypeLabel(subtype) }}</option>}</select></label>
   </div>
-  <label class="blocked-filter"><input type="checkbox" [(ngModel)]="onlyBlocked" (ngModelChange)="changed()">Yalnız engel olan işleri göster</label>
-  <label class="blocked-filter"><input type="checkbox" [(ngModel)]="onlyEmergency" (ngModelChange)="changed()">Yalnız acil işleri göster</label>
-  <p class="board-count" role="status" aria-live="polite"><strong>{{ items.length }} / {{ sprint.items.length }} görev</strong> · BAU dahil. Kişi filtresi X destek ve izin atamalarını da kapsar.</p>
+  <div class="board-filter-extra">
+    <label class="blocked-filter"><input type="checkbox" [(ngModel)]="onlyBlocked" (ngModelChange)="changed()">Yalnız engel olan işleri göster</label>
+    <label class="blocked-filter"><input type="checkbox" [(ngModel)]="onlyEmergency" (ngModelChange)="changed()">Yalnız acil işleri göster</label>
+    <p class="board-count" role="status" aria-live="polite"><strong>{{ items.length }} / {{ sprint.items.length }} görev</strong> · BAU dahil. Kişi filtresi X destek ve izin atamalarını da kapsar.</p>
+  </div>
 </section>
 @if(sprint.status==='completed'){<p class="data-note board-source">{{ sprint.closureFrozen ? 'Kapanış anındaki sabit kayıt · salt okunur.' : 'Geçmiş sprint kaydı · kapanış snapshot’ı bulunmuyor; salt okunur.' }}</p>}
 @if(!items.length){<section class="card empty board-empty"><strong>{{ sprint.items.length ? 'Filtrelere uygun görev yok' : 'Bu sprintte henüz görev yok' }}</strong>@if(filtered){<p>Aramayı veya filtreleri değiştirebilirsiniz.</p><button class="btn" (click)="reset()">Tüm görevleri göster</button>}</section>}
-@if(bauItems.length){<section class="card card-pad board-bau" aria-label="BAU otomatik Done"><div class="section-head"><div><span class="eyebrow">EKİP OPERASYONU</span><h2>BAU · {{bauItems.length}} iş</h2></div><span class="status done">Done · otomatik</span></div><p class="data-note">Manuel durum takibi yok. Review’de Done kabul edilir, kapanışta otomatik tamamlanır.</p><div class="board-bau-list">@for(item of bauItems;track item.id){<article [attr.data-task-id]="item.id"><button class="board-task-title" (click)="open(item)">{{item.name}}</button><small>{{subtypeLabel(item.taskSubtype)}} · {{isLeave(item)?leaveHours(item)+' sa izin':item.estimatedHours+' sa planlanan'}}</small></article>}</div></section>}
+@if(bauItems.length){<details appFold class="card card-pad board-bau"><summary class="section-head"><div><span class="eyebrow">EKİP OPERASYONU</span><h2>BAU · {{bauItems.length}} iş</h2></div><span class="status done">Done · otomatik</span></summary><p class="data-note">Manuel durum takibi yok. Review’de Done kabul edilir, kapanışta otomatik tamamlanır.</p><div class="board-bau-list">@for(item of bauItems;track item.id){<article [attr.data-task-id]="item.id"><button class="board-task-title" (click)="open(item)">{{item.name}}</button><small>{{subtypeLabel(item.taskSubtype)}} · {{isLeave(item)?leaveHours(item)+' sa izin':item.estimatedHours+' sa planlanan'}}</small></article>}</div></details>}
 <div class="board" aria-label="Görev durum sütunları">
-  @for(column of lanes;track column.key){<section class="board-column" [attr.data-status]="column.key" [attr.aria-label]="column.label"><header><span>{{ column.label }}</span><span [attr.aria-label]="column.items.length+' gösterilen, '+column.total+' toplam görev'">{{ column.items.length }} / {{ column.total }}</span></header>
-    @for(item of column.items;track item.id){<article class="task-card" [attr.data-task-id]="item.id" [style.border-left-color]="color(item)">
+  @for(column of lanes;track column.key){<section class="board-column" [attr.data-status]="column.key" [attr.aria-label]="column.label"><header><span>{{ column.label }}</span><span [attr.aria-label]="column.items.length+' gösterilen, '+column.total+' toplam görev'">  {{ column.items.length }} / {{ column.total }}</span></header><div class="board-lane-items" role="list">
+      @for(item of column.items;track item.id){<article class="task-card" role="listitem" [attr.data-task-id]="item.id" [style.border-left-color]="color(item)">
       <button type="button" class="board-task-title" (click)="open(item)" [attr.aria-label]="item.name+' · Görev detayını aç'">{{ item.name }}</button>
-      @if(item.emergency){<span class="status active">Acil / plansız</span>}
+      @if(item.emergency){<span class="status emergency">Acil / plansız</span>}
       <small>{{ categoryLabel(item.taskCategory) }}@if(item.taskSubtype){ · {{ subtypeLabel(item.taskSubtype) }}}</small>
       <div class="board-task-meta"><span class="estimate-badge">{{ estimate(item) }}</span><span>{{ isLeave(item) ? leaveHours(item)+' sa izin' : item.estimatedHours+' sa tahmin' }}</span></div>
+      <div class="board-task-people">@for(a of item.assignments;track a.memberId){<span class="board-person" [class.support]="a.supportOnly" [attr.title]="a.memberName + (a.supportOnly ? ' · X destek' : '')"><span class="board-person-mark" aria-hidden="true">{{ initials(a.memberName) }}</span><span class="board-person-name">{{ a.memberName }}</span></span>}@empty{<span class="board-person unassigned">Atanmamış</span>}</div>
       @if(item.statusNote){<p class="board-note"><strong>{{item.status==='undone'?'Undone açıklaması':'Durum notu'}}</strong><span>{{item.statusNote}}</span></p>}
       @if(item.blocker?.blocked){<p class="blocker-label"><strong>Engel var</strong> · {{ item.blocker?.reason }}</p>}
       @if(canTask(item)){<select class="compact-select" [disabled]="busy" [attr.aria-label]="item.name+' durumunu değiştir'" [value]="item.status" (change)="selectStatus(item,$event)">@for(option of columns;track option.key){<option [value]="option.key" [selected]="item.status===option.key" [disabled]="item.blocker?.blocked && (option.key==='done'||option.key==='undone')">{{ option.label }}</option>}</select>}
@@ -29,7 +32,8 @@
         @if(removable(item)){<button type="button" class="btn small" [disabled]="busy||actionBusy" (click)="startAction(item,'remove')">Backlog’a geri gönder</button>}
         @if(item.status==='undone'&&!item.blocker?.blocked){<button type="button" class="btn small" [disabled]="busy" (click)="changeStatus(item,'undone')">Açıklamayı düzenle</button>}
       </div>}
-    </article>}@empty{<p class="board-lane-empty">{{ filtered ? 'Bu filtrede görev yok' : 'Henüz görev yok' }}</p>}
+    </article>}@empty{<p class="board-lane-empty" role="listitem">{{ filtered ? 'Bu filtrede görev yok' : 'Henüz görev yok' }}</p>}
+    </div>
   </section>}
 </div>
 @if(selected;as item){<div class="modal-layer"><section class="modal board-detail"><header><span class="eyebrow">GÖREV DETAYI · {{ sprint.name }}</span><h2>{{ item.name }}</h2><p>{{ categoryLabel(item.taskCategory) }} · {{ subtypeLabel(item.taskSubtype) }}</p></header>

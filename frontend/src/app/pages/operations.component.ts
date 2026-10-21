@@ -109,7 +109,7 @@ const emptyLeave = () => ({ memberId: '', sprintId: '', days: 1, start: '', end:
     <div class="page-head"><div><span class="eyebrow">EKİP OPERASYONU</span><h1>Kişi izinleri</h1><p>İzin türünü, kapasite etkisini ve mesai kullanımını birlikte izleyin.</p></div>@if(auth.isAdmin()){<button class="btn primary" (click)="open()">+ İzin ekle</button>}</div>
     @defer(on immediate){<app-leave-requests [sprints]="sprints" (approved)="load()" />}
     <div class="mini-metrics ops-metrics"><div><small>Filtrede izin</small><strong>{{ totalDays }} gün</strong></div><div><small>Yıllık izin</small><strong>{{ daysFor('ANNUAL') }} gün</strong></div><div><small>Mesai izni</small><strong>{{ daysFor('OVERTIME') }} gün</strong></div><div><small>Türü belirsiz</small><strong>{{ daysFor('UNSPECIFIED') }} gün</strong></div></div>
-    <details appFold class="card card-pad"><summary class="section-head"><h2>İzin geçmişi</h2><small>{{filteredRecords.length}} kayıt</small></summary>
+    <details appFold class="card card-pad" [open]="filteredRecords.length > 0"><summary class="section-head"><h2>İzin geçmişi</h2><small>{{filteredRecords.length}} kayıt</small></summary>
       <details class="ui-help"><summary>İzin ve kapasite nasıl hesaplanır?</summary><p class="data-note">Tüm izin türleri kapasiteyi azaltır. Yalnız mesai hakedişinden izin, mesai bakiyesini düşürür. Yıllık izin toplamı kullanılan gündür; yıllık hakediş bakiyesi değildir. Şirket tatilleri ortak takvimden girilir.</p></details>
       <div class="filter-toolbar ui-toolbar"><label class="field">Kişi<select [(ngModel)]="memberFilter"><option value="all">Tüm kişiler</option>@for(member of activeMembers; track member.id){<option [value]="member.id">{{member.name}}</option>}</select></label>
       <label class="field">Sprint<select [(ngModel)]="sprintFilter"><option value="all">Tüm sprintler</option>@for(sprint of sprints; track sprint.id){<option [value]="sprint.id">{{sprint.name}}</option>}</select></label>
@@ -135,7 +135,7 @@ const emptyLeave = () => ({ memberId: '', sprintId: '', days: 1, start: '', end:
         <p class="data-note">“Zaten düşülmüş” yalnız eski mesai tablosunda kullanım olarak yer aldığı doğrulanan izinler içindir. Yeni izinlerde “Yeni kullanım” seçin. Mesai sayfasında ayrıca kullanım girmeyin.</p>
       }
       @if(editingId){<p class="data-note">Geçmiş izin türünü yalnız bildiğiniz kaynağa göre düzeltin. Sabit kapanışlı sprintlerde gün/tarih değiştirilemez; tür düzeltmesi bakiyeye yansır.</p>}
-      @if(error){<p class="notice warn" role="alert">{{error}}</p>}</div><footer><button data-modal-dismiss type="button" class="btn" [disabled]="saving" (click)="close()">Vazgeç</button><button type="submit" class="btn primary" [disabled]="saving || !draft.leaveType">İzni kaydet</button></footer></form></div>}
+      @if(error){<p class="notice warn" role="alert">{{error}}</p>}</div><footer><button data-modal-dismiss type="button" class="btn" (click)="close()">Vazgeç</button><button type="submit" class="btn primary" [disabled]="saving || !draft.leaveType">{{ saving ? 'Kaydediliyor…' : 'İzni kaydet' }}</button></footer></form></div>}
   `,
 })
 export class LeavesComponent implements OnInit {

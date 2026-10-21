@@ -29,7 +29,7 @@ interface BackupPreview { counts: Record<string, { current: number; incoming: nu
         <button class="btn" [disabled]="busy || !backup" (click)="validate()">{{ busy ? 'İşleniyor…' : 'Yedeği doğrula ve önizle' }}</button>
       </div>
       @if (preview; as result) { <section class="restore-preview" aria-label="Geri yükleme önizlemesi"><h3>Değişecek veriler</h3><p class="data-note">Yedek tarihi: {{ result.exportedAt || 'Belirtilmemiş' }}. İlişki ve alan kontrolleri geçti.</p>
-        <div class="table-wrap"><table><thead><tr><th>Veri</th><th>Mevcut</th><th>Yedekte</th></tr></thead><tbody>@for (row of previewRows; track row.key) { <tr><td>{{ row.label }}</td><td>{{ row.current }}</td><td>{{ row.incoming }}</td></tr> }</tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">Veri</th><th scope="col">Mevcut</th><th scope="col">Yedekte</th></tr></thead><tbody>@for (row of previewRows; track row.key) { <tr><td>{{ row.label }}</td><td>{{ row.current }}</td><td>{{ row.incoming }}</td></tr> }</tbody></table></div>
         <p class="notice warn">Bu işlem mevcut ürün verisini değiştirir. İndirdiğiniz yedeği ayrıca güvenli bir yerde tutun.</p>
         <label class="field">Onaylamak için GERİ YÜKLE yazın<input [ngModel]="confirmation" (ngModelChange)="setConfirmation($event)" autocomplete="off" data-testid="restore-confirmation"></label>
         <div class="restore-actions"><button class="btn" [disabled]="busy" (click)="cancel()">Vazgeç</button><button class="btn primary" [disabled]="busy || confirmation !== 'GERİ YÜKLE'" (click)="restore()">Yedeği uygula</button></div>
