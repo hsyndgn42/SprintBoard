@@ -21,7 +21,16 @@ class OverviewSignalsTest {
  @Autowired WorkspaceService w;@Autowired JdbcTemplate db;@Autowired SprintFlowService flowService;
 
  String sprint(){return w.createSprint(Map.of("name","Signals sprint","start","2026-10-06","end","2026-10-26")).get("id").toString();}
- String member(){return w.createMember(Map.of("name","Developer","role","Member","teamRole","DEVELOPER","engagement","CORE","joinedOn","2026-01-01")).get("id").toString();}
+ String member(){return named("Developer");}
+ String named(String name){return w.createMember(Map.of("name",name,"role","Member","teamRole","DEVELOPER","engagement","CORE","joinedOn","2026-01-01")).get("id").toString();}
+
+ /** A defect entered after planning and linked to the sprint's reserve. */
+ String defect(String s,String title,double hours,String member,String reserve){
+  return w.createSprintTask(s,Map.of("title",title,"criteria","QA","taskCategory","DEFECT",
+    "taskSubtype","PROD_DEFECT","size","SMALL","readinessAcknowledged",true,"reason","QA","estimatedHours",hours,
+    "assignments",List.of(Map.of("memberId",member,"estimatedHours",hours,"supportOnly",false)),
+    "reserveTaskId",reserve)).get("id").toString();
+ }
 
  String task(String s,String category,String subtype,double hours,List<Map<String,Object>> assignments){
   return w.createSprintTask(s,Map.of("title","Signal "+category+" "+subtype,"criteria","QA","taskCategory",category,
@@ -124,6 +133,44 @@ class OverviewSignalsTest {
   @SuppressWarnings("unchecked")
   var flow=(Map<String,Object>)w.sprint(s).get("flow");
   assertEquals(((Number)flow.get("blocked")).longValue(),count(o,"activeSprintBlockedCount"));
+ }
+
+ @Test void scopeGrowthExcludesBauAndReserveCoveredDefects(){
+  String m1=named("Reserve owner"),m2=named("Overflow owner"),s=sprint();
+  // A Defect Support reserve budgeted per person before the sprint starts.
+  // "One person's spare budget cannot cover another", so giving each member
+  // their own budget keeps this test independent of task processing order.
+  String reserve=task(s,"BAU","DEFECT_SUPPORT",20,
+    List.of(Map.of("memberId",m1,"estimatedHours",10d,"supportOnly",false),
+            Map.of("memberId",m2,"estimatedHours",10d,"supportOnly",false)));
+  task(s,"DEV","",5,assigned(m1,5));
+  w.startSprint(s);
+
+  // Entered after planning, absorbed entirely by m1's reserve: the team
+  // already set this capacity aside, so it is not scope growth.
+  defect(s,"Covered defect",4,m1,reserve);
+  // Entered after planning and 10 hours beyond m2's reserve: the overflow is
+  // genuinely unplanned load.
+  defect(s,"Overflow defect",20,m2,reserve);
+  // Plain delivery work added mid-sprint is always growth.
+  task(s,"DEV","",3,assigned(m1,3));
+  // Automatic BAU is outside delivery scope and must never count.
+  task(s,"BAU","",2,assigned(m1,2));
+
+  var o=w.overview();
+  assertEquals(2L,count(o,"activeSprintAddedDuringCount"),
+    "only the overflowing defect and the new DEV task are scope growth");
+
+  // The count must agree with the emergency flag the board and review
+  // already show, rather than becoming a third opinion on the same question.
+  @SuppressWarnings("unchecked")
+  var items=(List<Map<String,Object>>)w.sprint(s).get("items");
+  long emergency=items.stream()
+    .filter(t->Boolean.TRUE.equals(t.get("addedDuringSprint")))
+    .filter(t->!"DEFECT".equals(t.get("taskCategory"))||Boolean.TRUE.equals(t.get("emergency")))
+    .filter(t->!"BAU".equals(t.get("taskCategory")))
+    .count();
+  assertEquals(emergency,count(o,"activeSprintAddedDuringCount"));
  }
 
  @Test void existingOverviewFieldsAreUnchanged(){

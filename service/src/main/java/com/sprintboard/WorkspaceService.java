@@ -211,7 +211,17 @@ public class WorkspaceService {
     long blocked = detail.get("flow") instanceof Map<?, ?> flowMap && flowMap.get("blocked") instanceof Number count
         ? count.longValue() : 0;
 
-    long addedDuring = items.stream().filter(task -> Boolean.TRUE.equals(task.get("addedDuringSprint"))).count();
+    // Scope growth means work the team did not plan for. A task entered after
+    // planning is only new load if nothing already absorbed it: automatic BAU
+    // is excluded with the rest of delivery, and a defect that its Defect
+    // Support reserve fully covers is not growth either. DefectReserve already
+    // encodes exactly that as `emergency` (extraPlanHours > 0), so reuse it
+    // rather than restating the rule here.
+    long addedDuring = delivery.stream()
+        .filter(task -> Boolean.TRUE.equals(task.get("addedDuringSprint")))
+        .filter(task -> !"DEFECT".equals(task.get("taskCategory"))
+            || Boolean.TRUE.equals(task.get("emergency")))
+        .count();
 
     long unestimated = delivery.stream()
         .filter(task -> !(task.get("estimatedHours") instanceof Number hours) || hours.doubleValue() <= 0)

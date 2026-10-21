@@ -10,6 +10,8 @@
   <div class="board-filter-extra">
     <label class="blocked-filter"><input type="checkbox" [(ngModel)]="onlyBlocked" (ngModelChange)="changed()">Yalnız engel olan işleri göster</label>
     <label class="blocked-filter"><input type="checkbox" [(ngModel)]="onlyEmergency" (ngModelChange)="changed()">Yalnız acil işleri göster</label>
+    <label class="blocked-filter"><input type="checkbox" [(ngModel)]="onlyUnestimated" (ngModelChange)="changed()">Yalnız tahminsiz işleri göster</label>
+    <label class="blocked-filter"><input type="checkbox" [(ngModel)]="onlyUnassigned" (ngModelChange)="changed()">Yalnız atamasız işleri göster</label>
     <p class="board-count" role="status" aria-live="polite"><strong>{{ items.length }} / {{ sprint.items.length }} görev</strong> · BAU dahil. Kişi filtresi X destek ve izin atamalarını da kapsar.</p>
   </div>
 </section>

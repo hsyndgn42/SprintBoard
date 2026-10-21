@@ -42,13 +42,13 @@
         @if (alerts.length) {
           <ul class="attention-list">
             @for (alert of alerts; track alert.key) {
-              <li><a [routerLink]="alert.link" [class]="'attention-item ' + alert.tone"><strong>{{ alert.count }}</strong><span><b>{{ alert.label }}</b><small>{{ alert.hint }}</small></span><i aria-hidden="true">→</i></a></li>
+              <li><a [routerLink]="alert.link" [queryParams]="{focus: alert.focus}" [class]="'attention-item ' + alert.tone"><strong>{{ alert.count }}</strong><span><b>{{ alert.label }}</b><small>{{ alert.hint }}</small></span><i aria-hidden="true">→</i></a></li>
             }
           </ul>
         } @else {
           <p class="attention-clear"><span aria-hidden="true">✓</span> Blocked, tahminsiz, atamasız veya sprint içi eklenen iş yok.</p>
         }
-        <p class="attention-note">Sayımlar yalnız aktif sprintin teslimat işlerini kapsar; BAU ve izin kayıtları hariçtir. Sprint içi eklenen işler planlama sonrası kapsama giren kayıtlardır.</p>
+        <p class="attention-note">Sayımlar yalnız aktif sprintin teslimat işlerini kapsar; BAU ve izin kayıtları hariçtir. Sprint içi eklenen işler planlama sonrası kapsama giren ve Defect Support rezervinden karşılanmayan kayıtlardır. Sayıya tıklayınca pano o işlerle filtrelenir.</p>
       </section>
     }
     @if (typeBreakdown.length) {

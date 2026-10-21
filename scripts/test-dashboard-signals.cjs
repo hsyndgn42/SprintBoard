@@ -52,7 +52,15 @@ check('alerts default missing counts to zero', (ts.match(/\?\? 0,/g) || []).leng
 for (const key of ['blocked', 'unestimated', 'unassigned', 'added']) {
   check(`alert present: ${key}`, ts.includes(`key: '${key}'`));
 }
-check('each alert links somewhere actionable', /link: board/.test(ts) && /link: \['\/sprints', active\.id, 'summary'\]/.test(ts));
+// Every alert must land on the board *and* name the filter that isolates
+// the tasks it counted. A link to an unfiltered board leaves the user
+// hunting for which items the number meant, which is how this strip
+// previously misled a reader into opening an unrelated task.
+check('each alert links to the board', (ts.match(/link: board,/g) || []).length === 4);
+check('each alert carries a board focus filter',
+  ['blocked', 'unestimated', 'unassigned', 'emergency']
+    .every(f => new RegExp(`focus: '${f}'`).test(ts)));
+check('alert links pass the focus to the board', /\[queryParams\]="\{focus: alert\.focus\}"/.test(html));
 check('clean sprint renders a positive clear state', /attention-clear/.test(html));
 check('attention strip hidden when the service sent no signals', /@if \(hasSignals\)/.test(html));
 check('hasSignals probes for undefined, not falsy zero', /!== undefined/.test(ts));
@@ -60,6 +68,9 @@ check('hasSignals probes for undefined, not falsy zero', /!== undefined/.test(ts
 // --- units and scope are always stated ------------------------------------
 check('attention strip states its unit', /İŞ ADEDİ/.test(html));
 check('attention strip states BAU exclusion', /BAU ve izin kayıtları hariçtir/.test(html));
+// The footnote is the only place the reserve rule is explained to the
+// reader; if the backend rule changes, this sentence must change with it.
+check('attention strip states the reserve exclusion', /Defect Support rezervinden karşılanmayan/.test(html));
 check('distribution states task-count unit', /TESLİMAT İŞİ/.test(html));
 check('schedule bar states it is calendar days', /Takvim günü/.test(html));
 check('schedule bar does not claim leave is deducted', /düşülmez/.test(html));
