@@ -65,8 +65,15 @@ export class SprintReviewComponent implements OnChanges {
   operationsLoaded(value: ReviewOperations){ this.operations=value; this.refreshDerived(); }
 
   present(event?: Event){ this.presentTrigger=(event?.currentTarget as HTMLElement)??null; this.presenting.set(true); queueMicrotask(()=>{this.openNarrative(true);document.getElementById('review-presentation-title')?.focus();}); }
-  /** Escape always leaves the meeting view; focus returns to the button that opened it. */
-  exitPresentation(){ if(!this.presenting())return; this.openNarrative(false); this.presenting.set(false); const trigger=this.presentTrigger; this.presentTrigger=null; queueMicrotask(()=>trigger?.focus()); }
+  /**
+   * Escape always leaves the meeting view; focus returns to the button that
+   * opened it. The focus call is deferred to a macrotask because the button
+   * sits inside the action bar that presentation mode hides: a microtask
+   * would run before Angular re-renders, and focusing a hidden element is a
+   * silent no-op. The saved node can also be detached by that re-render, so
+   * fall back to looking the live button up again.
+   */
+  exitPresentation(){ if(!this.presenting())return; this.openNarrative(false); this.presenting.set(false); const trigger=this.presentTrigger; this.presentTrigger=null; setTimeout(()=>{const live=trigger?.isConnected?trigger:document.querySelector<HTMLElement>('[data-testid=enter-presentation]'); live?.focus();}); }
   /**
    * Narrative sections must be readable on stage without anyone clicking.
    * The `open` attribute is set directly rather than relying on CSS to defeat
