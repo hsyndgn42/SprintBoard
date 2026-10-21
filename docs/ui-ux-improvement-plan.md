@@ -294,3 +294,56 @@ Aşama 1 tüm diğerlerinin önkoşuludur. Aşama 8 ve 9 sürekli olarak her aş
 8. Sprint panosunda kanban 1440×900'de ilk ekranda görünüyor.
 9. Status rozetleri semantik olarak ayrışıyor.
 10. Görev kartlarında atanan kişi görünüyor.
+
+---
+
+## Uygulama sonucu (plan vs. gerçekleşen)
+
+Bu bölüm plan yazıldıktan sonra eklenmiştir ve gerçekleşen durumu kaydeder.
+
+| Faz | Durum | Not |
+| --- | --- | --- |
+| 1 Foundation | ✅ Uygulandı | `frontend/src/sb-foundation.css` + `angular.json` |
+| 2 Shared components | ✅ Uygulandı | `sb-state.components.ts`, `sb-toast.ts`, `sb-breadcrumb.component.ts` |
+| 3 Layout/navigation | ✅ Uygulandı | Breadcrumb ve toast host `app.component.ts` içinde |
+| 4 Dashboard | ⚠️ Kısmi | Token ve aksiyon hiyerarşisi uygulandı; bilgi mimarisi yeniden düzenlenmedi |
+| 5 Backlog / Sprint panosu | ✅ Uygulandı | Pano yüksekliği 2333 px → 1723 px, backlog 2731 px → 2524 px |
+| 6 Forms / feedback | ✅ Uygulandı | F-26 dirty-guard **uygulanmadı** (aşağıya bk.) |
+| 7 Settings | ⚠️ Ertelendi | F-28 yeniden kategorizasyon yapılmadı; yalnız okunabilirlik iyileştirildi |
+| 8 A11y | ✅ Uygulandı | `scope`, `caption`, kanban `list/listitem`, login busy state |
+| 9 Responsive | ✅ Uygulandı | Yoğun tablolar ve pano artık sıkışmak yerine kaydırılıyor |
+| 10 Test | ✅ Uygulandı | `test-ui-tokens.cjs`, `test-status-semantics.cjs`, `inventory-api-calls.cjs` |
+
+### Plandan sapmalar ve gerekçeleri
+
+**F-28 (Ayarlar yeniden kategorizasyonu) ertelendi.** Sekiz accordion 28 KB'lık
+bir template içinde `@if (loading) / @else` sınırını kesiyor; DOM sırasını
+değiştirmek bu sınırı yeniden kurmayı gerektiriyor ve kaydetme akışına dokunma
+riski taşıyor. Alternatif olan CSS `order` yaklaşımı ise DOM sırası ile görsel
+sırayı ayrıştırarak klavye/okuyucu sırasını bozardı (a11y anti-pattern'i).
+Bunun yerine her accordion'a tarayıcıyı hızlandıran başlık + açıklama düzeni
+verildi. Kategorizasyon ayrı ve odaklı bir değişiklik olarak bırakıldı.
+
+**F-26 (kaydedilmemiş değişiklik uyarısı) uygulanmadı.** Uygulamadaki tüm
+formlar template-driven; dirty takibi için her dialog'a durum eklemek
+gerekiyordu. Bu, davranış değiştirme riskini kabul edilebilir bulunmadığı için
+kapsam dışında bırakıldı.
+
+**F-30'un varsayımı düzeltildi.** İnceleme sırasında "Tüm raporlar PDF"
+butonunun devre dışı bırakılmadığı varsayılmıştı; kodda `[disabled]` zaten
+mevcuttu. Eksik olan tek şey nedenin kullanıcıya açıklanmasıydı; yalnız
+açıklayıcı `title` eklendi.
+
+**Tamamlanma kriteri 1 kısmen karşılandı.** `mvn package` başarılı ve 146
+backend testi geçiyor, ancak bundle budget uyarısı sürüyor. Bu uyarı bu
+çalışmadan önce de vardı (master'da 751.51 kB / 700 kB); bu çalışma +21.7 kB
+ekledi. Budget'ın kendisi değiştirilmedi.
+
+**Tamamlanma kriteri 4 karşılanamadı.** `scripts/smoke-ui.cjs` yazarın canlı
+veri setine bağlı (14 sprint bekliyor). Aynı test master'da da aynı şekilde
+başarısız oluyor; bu bir regresyon değil, taşınabilirlik sınırı.
+
+**`sb-state.components.ts` henüz hiçbir sayfada kullanılmıyor.** Ortak
+empty/loading/error component'leri oluşturuldu fakat mevcut inline durum
+metinleri kaldırılmadı — geri bildirim yollarından hiçbiri kaybolmasın diye.
+Bunların sayfalara bağlanması sonraki adıma bırakıldı.
