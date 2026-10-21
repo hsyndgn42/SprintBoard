@@ -72,7 +72,7 @@ export function reviewSummary(
       'BAU ve izin kayıtları hariç sprint işleri. Teslimat oranının paydasıdır.'),
     metric('done', 'Done', `${review.done}`,
       'Durumu Done olan teslimat işi adedi. Sprint kapsamı.'),
-    metric('rate', 'Done oranı', review.rate === null ? UNKNOWN : `%${review.rate}`,
+    metric('rate', 'Done oranı', review.rate === null ? UNKNOWN : `${review.rate}%`,
       'Done teslimat işi / toplam teslimat işi. Teslimat işi yoksa hesaplanmaz; sıfırla eş tutulmaz.',
       review.rate !== null),
     metric('pending', 'Tamamlanmayan', `${review.pending.length}`,
