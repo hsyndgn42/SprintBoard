@@ -8,6 +8,8 @@ import { TASK_CATEGORY_COLORS, taskCategoryLabel } from '../task-taxonomy';
 export interface OverviewAlert {
   key: string; label: string; count: number; hint: string;
   tone: 'warn' | 'info'; link: unknown[];
+  /** Board filter that isolates exactly the tasks behind this count. */
+  focus: 'blocked' | 'unestimated' | 'unassigned' | 'emergency';
 }
 
 @Component({
@@ -54,10 +56,10 @@ export class OverviewComponent implements OnInit {
     if (!view || !active) return [];
     const board = ['/sprints', active.id, 'board'];
     const rows: OverviewAlert[] = [
-      {key: 'blocked', label: 'Blocked iş', count: view.activeSprintBlockedCount ?? 0, hint: 'Panoda blocker işaretli', tone: 'warn', link: board},
-      {key: 'unestimated', label: 'Tahminsiz iş', count: view.activeSprintUnestimatedCount ?? 0, hint: 'Planlanan efor girilmemiş', tone: 'warn', link: board},
-      {key: 'unassigned', label: 'Atamasız iş', count: view.activeSprintUnassignedCount ?? 0, hint: 'Sorumlu kişi yok', tone: 'warn', link: board},
-      {key: 'added', label: 'Sprint içi eklenen', count: view.activeSprintAddedDuringCount ?? 0, hint: 'Planlama sonrası kapsama girdi', tone: 'info', link: ['/sprints', active.id, 'summary']},
+      {key: 'blocked', label: 'Blocked iş', count: view.activeSprintBlockedCount ?? 0, hint: 'Panoda blocker işaretli', tone: 'warn', link: board, focus: 'blocked'},
+      {key: 'unestimated', label: 'Tahminsiz iş', count: view.activeSprintUnestimatedCount ?? 0, hint: 'Planlanan efor girilmemiş', tone: 'warn', link: board, focus: 'unestimated'},
+      {key: 'unassigned', label: 'Atamasız iş', count: view.activeSprintUnassignedCount ?? 0, hint: 'Sorumlu kişi yok', tone: 'warn', link: board, focus: 'unassigned'},
+      {key: 'added', label: 'Sprint içi eklenen', count: view.activeSprintAddedDuringCount ?? 0, hint: 'Rezervden karşılanmayan yeni iş', tone: 'info', link: board, focus: 'emergency'},
     ];
     return rows.filter(row => row.count > 0);
   }

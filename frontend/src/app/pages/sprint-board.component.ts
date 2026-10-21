@@ -1,6 +1,7 @@
 import { isBau, effectiveTaskStatus } from '../task-lifecycle';
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, inject } from '@angular/core';
 import { AuthService } from '../auth.service';
+import { ActivatedRoute } from '@angular/router';
 import { SprintJournalComponent } from './sprint-journal.component';
 import { FormsModule } from '@angular/forms';
 import { ApiService, ProductSettings, Sprint, Task, statusText } from '../api.service';
@@ -25,27 +26,45 @@ export class SprintBoardComponent implements OnChanges,OnDestroy {
   @Output() updated=new EventEmitter<void>();
   auth=inject(AuthService);
   canTask(task:Task){return this.sprint.status==='active'&&!this.sprint.closureFrozen&&!isBau(task)&&this.auth.canWork(task);}
-  private api=inject(ApiService); actionTask:Task|null=null;action:'block'|'unblock'|'remove'='block';reason='';actionError='';actionBusy=false;confirmed=false;onlyBlocked=false;onlyEmergency=false;replacementTaskId='';
+  private api=inject(ApiService); actionTask:Task|null=null;action:'block'|'unblock'|'remove'='block';reason='';actionError='';actionBusy=false;confirmed=false;onlyBlocked=false;onlyEmergency=false;onlyUnestimated=false;onlyUnassigned=false;replacementTaskId='';
   private cdr=inject(ChangeDetectorRef);
+  private route=inject(ActivatedRoute);
   private sprintId='';
   filters=emptyBoardFilters();
   selectedId:string|null=null;
   isBau=isBau; effectiveStatus=effectiveTaskStatus;
   get bauItems(){return this.items.filter(isBau);}
   columns=BOARD_COLUMNS;statusText=statusText;categoryLabel=taskCategoryLabel;subtypeLabel=taskSubtypeLabel;color=boardColor;defectSummary=defectSummary;
-  ngOnChanges(){if(this.sprintId!==this.sprint.id){this.sprintId=this.sprint.id;this.filters=emptyBoardFilters();this.selectedId=null;this.actionTask=null;this.onlyBlocked=false;this.onlyEmergency=false;}}
-  get items(){return filterBoard(this.sprint.items,this.filters).filter(t=>(!this.onlyBlocked||!isBau(t)&&t.blocker?.blocked)&&(!this.onlyEmergency||t.emergency));}
+  ngOnChanges(){if(this.sprintId!==this.sprint.id){this.sprintId=this.sprint.id;this.filters=emptyBoardFilters();this.selectedId=null;this.actionTask=null;this.onlyBlocked=false;this.onlyEmergency=false;this.onlyUnestimated=false;this.onlyUnassigned=false;this.applyFocus();}}
+  /**
+   * Opens the board pre-filtered when another screen links here to explain a
+   * count, so an attention signal on the dashboard can be acted on instead of
+   * leaving the reader to search the whole board by hand.
+   */
+  private applyFocus(){
+    switch(this.route.snapshot.queryParamMap.get('focus')){
+      case 'unestimated': this.onlyUnestimated=true; break;
+      case 'unassigned': this.onlyUnassigned=true; break;
+      case 'blocked': this.onlyBlocked=true; break;
+      case 'emergency': this.onlyEmergency=true; break;
+    }
+  }
+  get items(){return filterBoard(this.sprint.items,this.filters).filter(t=>(!this.onlyBlocked||!isBau(t)&&t.blocker?.blocked)&&(!this.onlyEmergency||t.emergency)&&(!this.onlyUnestimated||this.isUnestimated(t))&&(!this.onlyUnassigned||this.isUnassigned(t)));}
+  // Mirrors the dashboard attention signals (WorkspaceService.activeSignals):
+  // delivery scope only, so BAU and leave records never match.
+  isUnestimated(t:Task){return !isBau(t)&&!(Number(t.estimatedHours)>0);}
+  isUnassigned(t:Task){return !isBau(t)&&!(t.assignments?.length);}
   get emergencyOptions(){return this.sprint.items.filter(t=>t.emergency&&t.id!==this.actionTask?.id);}
   get people(){return boardMembers(this.sprint.items);}
   get categories(){return [...new Set(this.sprint.items.map(t=>t.taskCategory))].sort();}
   get subtypes(){return [...new Set(this.sprint.items.filter(t=>!this.filters.category||t.taskCategory===this.filters.category).map(t=>t.taskSubtype).filter((t):t is string=>!!t))].sort((a,b)=>taskSubtypeLabel(a).localeCompare(taskSubtypeLabel(b),'tr'));}
-  get filtered(){return this.onlyBlocked||this.onlyEmergency||Object.values(this.filters).some(Boolean);}
+  get filtered(){return this.onlyBlocked||this.onlyEmergency||this.onlyUnestimated||this.onlyUnassigned||Object.values(this.filters).some(Boolean);}
   get selected(){return this.sprint.items.find(t=>t.id===this.selectedId)||null;}
   get canEdit(){return this.editable&&this.sprint.status==='active'&&!this.sprint.closureFrozen;}
   get lanes(){const items=this.items;return this.columns.map(c=>({...c,items:items.filter(t=>!isBau(t)&&t.status===c.key),total:this.sprint.items.filter(t=>!isBau(t)&&t.status===c.key).length}));}
   changed(){if(!this.destroyed)this.cdr.detectChanges();}
   categoryChanged(){this.filters.subtype='';this.changed();}
-  reset(){this.filters=emptyBoardFilters();this.onlyBlocked=false;this.onlyEmergency=false;this.changed();}
+  reset(){this.filters=emptyBoardFilters();this.onlyBlocked=false;this.onlyEmergency=false;this.onlyUnestimated=false;this.onlyUnassigned=false;this.changed();}
   open(item:Task){this.selectedId=item.id;this.changed();}
   close(){this.selectedId=null;this.changed();}
   startAction(task:Task,action:'block'|'unblock'|'remove'){if((action==='remove'?!this.removable(task):!this.canTask(task))||this.busy||this.actionBusy)return;this.selectedId=null;this.actionTask=task;this.action=action;this.reason='';this.replacementTaskId='';this.confirmed=false;this.actionError='';this.changed();}
