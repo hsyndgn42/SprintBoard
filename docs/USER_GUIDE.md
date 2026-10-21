@@ -1,6 +1,6 @@
 # SprintBoard kullanıcı kılavuzu
 
-18 Ekim 2026 sürümü. Bu kılavuz ilk ayarlardan sprint kapanışına kadar admin ve ekip üyesinin günlük işlemlerini anlatır. Örnek sayılar açıklama içindir; canlı kayıtları değiştirmez.
+22 Ekim 2026 sürümü. Bu kılavuz ilk ayarlardan sprint kapanışına, şifre değişikliği ve admin kurtarmaya kadar admin ve ekip üyesinin günlük işlemlerini anlatır. Örnek sayılar açıklama içindir; canlı kayıtları değiştirmez.
 
 ## İçindekiler
 
@@ -21,6 +21,7 @@
 15. [Sprint kapatma ve tekrar eden işler](#sprint-kapatma-ve-tekrar-eden-isler)
 16. [Slack kullanımı](#slack-kullanimi)
 17. [Yedekleme ve sorun giderme](#yedekleme-ve-sorun-giderme)
+18. [Şifre değiştirme ve admin kurtarma](#sifre-degistirme-ve-admin-kurtarma)
 
 <a id="ilk-kurulum-ve-ilk-giris"></a>
 ## İlk kurulum ve ilk giriş
@@ -47,7 +48,7 @@
 
 Henüz hesap açılmamışsa **Yönetici hesabını oluştur** ekranı gelir. Kullanıcı adı ve en az 12 karakterlik parola belirleyin. Hazır veya ortak varsayılan parola yoktur. Parolayı ekiple paylaşmak yerine her kullanıcı için ayrı hesap açın.
 
-Üst sağdaki baş harflerinizden kendi parolanızı değiştirebilirsiniz. Admin parolası unutulduysa [yerel hesap kurtarma kılavuzunu](account-recovery.md) kullanın; canlı DB’yi sıfırlamayın.
+Üst sağdaki baş harflerinizden kendi parolanızı değiştirebilirsiniz. Admin parolası unutulduysa [yerel hesap kurtarma bölümünü](#sifre-degistirme-ve-admin-kurtarma) kullanın; canlı DB’yi sıfırlamayın.
 
 <a id="ilk-ayarlar"></a>
 ## İlk ayarlar
@@ -292,13 +293,34 @@ Mesai kaydında görev seçildiğinde görevin o andaki Roadmap bağlantısı sa
 
 ### Sprint Review
 
-Sprintin **Review** sekmesi o sprintin anlık durumunu gösterir: teslimat sonucu, Size/SP dağılımı, iş tipleri, acil kapsam, defect çözümü, mesai ve dış destek.
+Sprintin **Review** sekmesi o sprinti bir anlatı sırasıyla gösterir: sprint kimliği, yönetici özeti, planlanan/tamamlanan karşılaştırması, teslim edilen işler, tamamlanmayanlar, kapsam değişimi, riskler ve istisnalar, detaylı döküm ve metrik tanımları. Üstteki **Bölümler** çipleriyle doğrudan ilgili bölüme atlayabilirsiniz.
 
 - Teslimat oranı BAU hariçtir. BAU işler Review’de otomatik Done kabul edilir.
 - Göreli tahmin dağılımı BAU hariç gösterilir.
 - Mesai o sprintin gerçekleşen/planlanan saatleridir; tüm dönemlerin bakiyesi değildir.
 - Dış Support / Architecture kişi saatleri Defect Support rezervinden farklıdır.
-- **Sprint özeti HTML indir** çevrimdışı sunulabilir dosya oluşturur. Slack’e gönderilen Review HTML’i aynı sprint için ayrıca kişi mesai ve izin özetlerini içerir.
+
+#### Yönetici özeti ve metriklerin okunması
+
+Her kartın altında o metriğin formülü, birimi ve kapsamı yazar.
+
+- **`0` ile `—` aynı şey değildir.** `0` gerçekten sıfır olduğunu, kesik çerçeveli `—` ise verinin kayıtlı olmadığını gösterir. Örneğin kapsam takibi yapılmamış bir sprintte "Kapsama eklenen" `—` olur; "hiç eklenmedi" anlamına gelmez.
+- Paydası sıfır olan oranlar hesaplanmaz, `—` gösterilir. Teslimat işi olmayan bir sprintte Done oranı üretilmez.
+- Birleşik bir "sağlık skoru" **üretilmez**. Renkler durum yargısı değil, kategori ayrımı içindir.
+- **Riskler ve istisnalar** yalnız kayıtlı koşullardan türetilir (blokajlı iş, atanmamış iş, tahminsiz iş, prod defect, kapsam takibinin kapalı olması). Sebep, sorumlu, performans yorumu veya aksiyon önerisi üretilmez.
+
+#### Toplantıda sunma
+
+- **Sunum modu** düğmesi ekranı tam ekran toplantı görünümüne alır. Uygulama menüsü gizlenir; sprint, takım ve tarih bilgisi üst şeritte kalır. Bölümler otomatik açılır.
+- Çıkmak için **Sunumdan çık (Esc)** düğmesini veya `Esc` tuşunu kullanın. Çıkışta odak yeniden giriş düğmesine döner.
+- Slayt otomatik ilerlemez; bilgi hover ile gizlenmez. İşletim sisteminde "hareketi azalt" seçiliyse geçiş efektleri uygulanmaz.
+
+#### Dışarı aktarma ve yazdırma
+
+- **Sprint özeti HTML indir** çevrimdışı açılabilen, tek dosyalık bir rapor üretir. Dış CSS, font, JavaScript veya internet bağlantısı gerektirmez; uygulama çalışmıyorken de açılır.
+- Veri bulunmayan bölümler bu çıktıdan çıkarılır; boş kart basılmaz.
+- **PDF / Yazdır** A4 düzeninde çıktı verir. Düğmeler ve menü basılmaz, arka plan açık renge döner.
+- Slack’e gönderilen Review HTML’i aynı sprint için ayrıca kişi mesai ve izin özetlerini içerir.
 - Fotoğraflar çıktıya gömülür; eski HTML dosyası kendiliğinden güncellenmez. Son durumu göstermek için yeniden üretin.
 
 ### Rapor sekmeleri
@@ -450,6 +472,42 @@ Tam ZIP ile JSON dışa aktarımı aynı değildir. Hesaplar ve entegrasyonlarla
 | Slack mesajı gelmedi | Bağlı durumu, botun kanal üyeliği, izinler, kanal kimliği, yeni ana mesaj ve şablon formatı. |
 | HTML eski bilgi gösteriyor | Yeni dosya üretin veya Slack’ten yeniden gönderin; eski dosya sabit çıktıdır. |
 | Veri eksilmiş gibi görünüyor | Yeni iş girmeden servis/DB yolunu kontrol edin. DB silmeyin ve eski seed ile yeniden kurmayın; tam yedekle karşılaştırma isteyin. |
-| Giriş yapılamıyor | Kullanıcı etkinliği, parola ve süreli giriş engeli. Admin kurtarma için ayrı kılavuzu kullanın. |
+| Giriş yapılamıyor | Kullanıcı etkinliği, parola ve süreli giriş engeli. Şifre unutulduysa aşağıdaki [Şifre değiştirme ve admin kurtarma](#sifre-degistirme-ve-admin-kurtarma) bölümünü kullanın. |
 
 Kayıt sayısı arttığında sayfalama ve filtreleri kullanın. Ekranda yalnız ilk sayfanın görünmesi verinin kaybolduğu anlamına gelmez.
+
+<a id="sifre-degistirme-ve-admin-kurtarma"></a>
+## Şifre değiştirme ve admin kurtarma
+
+### Oturum açıkken kendi şifrenizi değiştirme
+
+Üst bardaki baş harflerinize tıklayın (**Şifremi değiştir**). ADMIN ve USER aynı formu kullanır. Mevcut şifre, yeni şifre ve tekrarı gerekir. Yeni şifre en az 12 karakter, UTF-8 olarak en fazla 72 bayttır ve eskisinden farklı olmalıdır. USER bu işlemle başka hesabı veya ürün verisini değiştirme yetkisi kazanmaz.
+
+Başarılı değişiklikte bu oturum hemen kapanır; diğer oturumlar sonraki isteklerinde reddedilir. Önceden gösterilmiş ekran içeriği uzaktan silinmez. Yeni şifreyle yeniden giriş yapın.
+
+Hesap başına varsayılan 15 dakikada en fazla 5 değişiklik isteği vardır (başarılı, geçersiz form veya yanlış mevcut şifre dahil). Bu sayaç giriş sayacından ayrıdır ve veritabanında tutulur; çıkıp giriş yapmak veya servisi yeniden başlatmak sıfırlamaz. Engelde HTTP 429 ve `Retry-After` döner. Ayarlar’daki hesap geçmişine başarılı değişiklik, giriş geçmişine reddedilen değişiklik yazılır; şifreler kayda alınmaz.
+
+### Şifre unutulduğunda: yalnız yerel ürün sahibi
+
+Bu **web üzerinden kimlik doğrulamasız sıfırlama değildir.** HTTP kurtarma ucu, gizli varsayılan şifre veya kurtarma hesabı yoktur. Yetki sınırı, veritabanı dosyasına işletim sistemi düzeyinde erişimdir: o dosyayı okuyup değiştirebilen kişi zaten tüm ürün verisine ve parola özetlerine erişebilir. Bu nedenle DB klasörü, JAR ve yedekler yalnız ürün sahibinin OS hesabına açık olmalıdır. Araç ek bir OS doğrulaması veya PIN sormaz; mevcut oturumun dosya yetkilerine güvenir. Merkezi kimlik/OCP kurtarma çözümü değildir.
+
+1. SprintBoard servisini normal biçimde kapatın. Açık veritabanının kilidini bırakmadan kurtarma çalışmaz. **Kilit dosyasını silmeyin; başka Java uygulamalarını kapatmayın.**
+2. Kendi etkileşimli PowerShell/terminalinizde proje köküne geçip çalıştırın:
+
+   ```powershell
+   java -jar target\sprintboard-service-0.1.0.jar --recover-admin
+   ```
+
+3. Mevcut `.mv.db` dosyasının tam yolunu girin. Varsayılan kurulumda bu, proje kökündeki `service\data\sprintboard.mv.db` dosyasıdır. `SPRINTBOARD_DB_PATH` ile farklı bir konum kullanıyorsanız onun yolunu girin; araç varsayılan dosyayı tahmin etmez. Yalnız bu ürünün `sa` / boş DB parolalı, yerel dosya kurulumu desteklenir.
+4. Mevcut **etkin ADMIN** kullanıcı adını, ardından tam `RECOVER kullanıcıadı` onayını girin. USER, pasif veya var olmayan hesaplar kabul edilmez; hesap oluşturulmaz ve rol değiştirilmez.
+5. Yeni şifreyi iki kez girin. Terminal şifreyi göstermez. Şifreyi komut satırı argümanına, ortam değişkenine, dosyaya veya sohbete yazmayın. Yönlendirilmiş giriş / etkileşimsiz çalıştırma reddedilir.
+6. Araç, şifreyi değiştirmeden önce DB’nin yanına benzersiz `admin-recovery-<id>.zip` yedeğini H2 `BACKUP TO` ile alır. Yedek oluşmazsa hesap güncellenmez. Başarıda yalnız ilgili şifre özeti ve oturum sürümü değişir; `ADMIN_RECOVERED` denetim kaydı aynı transaction’a yazılır. Ürün verileri, diğer hesaplar ve giriş sınırları korunur.
+7. Başarı mesajını ve yedek yolunu gördükten sonra servisi normal biçimde açıp yeni şifreyle giriş yapın. Daha önce giriş sınırına takıldıysanız kalan süreyi bekleyin; kurtarma o sayacı silmez.
+
+Başarısızlıkta sırayla kontrol edin: servis kapalı mı, yol doğru mu, OS erişimi var mı, hesap etkin ADMIN mi, onay metni doğru mu, şifre kuralları sağlanıyor mu. Sonuçtan emin değilseniz kurtarmayı tekrar tekrar çalıştırmayın; normal başlatıp yeni şifreyle bir kez deneyin. Başarısız bir işlemin yedeği klasörde kalabilir; **yedeğin varlığı tek başına kurtarmanın başarılı olduğu anlamına gelmez.**
+
+### Kurtarma yedeğini koruma ve geri dönüş
+
+Bu ZIP **şifrelenmiş değildir**; tüm ürün verisini ve parola özetlerini içerir. JSON ürün yedeğiyle karıştırmayın, Git’e veya ekibe göndermeyin, özel erişimli bir klasörde saklayın.
+
+Geri dönüş ancak açık bir geri yükleme kararıyla yapılmalıdır: servisi kapatın, mevcut `.mv.db` dosyasını farklı güvenli bir adla koruyun, ZIP’i ayrı ve boş bir klasöre açın, beklenen `.mv.db` dosyasını doğrulayın ve **servis kapalıyken** doğru konuma koyun. Aynı uygulama sürümüyle başlatın. Tüm ürün ve hesap durumu yedek anına döner, eski parola yeniden geçerli olur ve sonraki kayıtlar kaybolur. Canlı dosyanın üzerine ZIP açmayın; otomatik canlı geri yükleme yapılmaz.

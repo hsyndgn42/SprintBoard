@@ -13,6 +13,9 @@ const root = path.join(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const presentation = read('frontend/src/app/pages/presentation-html.ts');
 const reportTab = read('frontend/src/app/pages/report-tab-html.ts');
+// Sprint review definitions are shared with the review screen so the exported
+// file and the app can never disagree about what a metric means.
+const reviewSummaryModel = read('frontend/src/app/pages/review-summary.model.ts');
 
 const failures = [];
 const check = (label, condition) => { if (!condition) failures.push(label); };
@@ -49,16 +52,22 @@ check('a definitions section exists', /function definitions/.test(presentation))
 check('definition terms and meanings are escaped',
   /<dt>\$\{h\(term\)\}<\/dt><dd>\$\{h\(meaning\)\}<\/dd>/.test(presentation));
 check('both documents define their terms',
-  (presentation.match(/\$\{definitions\(\[/g) || []).length === 2);
+  (presentation.match(/\$\{definitions\(/g) || []).length === 2);
+check('sprint review definitions come from the shared constant',
+  /\$\{definitions\(REVIEW_DEFINITIONS\)\}/.test(presentation)
+  && /export const REVIEW_DEFINITIONS/.test(reviewSummaryModel));
 for (const term of ['Teslimat işi', 'Teslimat oranı', 'Planlanan efor', 'Göreli tahmin']) {
-  check(`term defined: ${term}`, presentation.includes(`'${term}'`));
+  check(`term defined: ${term}`,
+    presentation.includes(`'${term}'`) || reviewSummaryModel.includes(`'${term}'`));
 }
 check('zero-denominator behaviour is documented, not hidden',
-  /oran hesaplanmaz ve — gösterilir/.test(presentation));
+  /oran hesaplanmaz ve — gösterilir/.test(presentation)
+  || /oran hesaplanmaz ve — gösterilir/.test(reviewSummaryModel));
 check('per-person figures are explicitly not a ranking',
   /performans ölçüsü değildir/.test(presentation));
 check('planned effort is never presented as actual time',
-  /Gerçekleşen süre değildir/.test(presentation));
+  /Gerçekleşen süre değildir/.test(presentation)
+  || /Gerçekleşen süre veya performans ölçüsü değildir/.test(reviewSummaryModel));
 
 // --- the file must stay standalone and safe ------------------------------
 check('CSP is still declared', /Content-Security-Policy/.test(presentation));
