@@ -778,3 +778,57 @@
   background: var(--sb-warning-bg);
   border-color: var(--sb-warning);
 }
+
+/* ==========================================================================
+   Settings accordion
+   --------------------------------------------------------------------------
+   Eight equally weighted disclosures with no visual rhythm. Full
+   re-categorisation would require restructuring the template across an
+   @if/@else boundary, so this pass improves scannability only.
+   ========================================================================== */
+
+.main-content .settings-section {
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-lg);
+  background: var(--sb-surface);
+  margin-bottom: var(--sb-space-3);
+  overflow: hidden;
+}
+
+.main-content .settings-section > summary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sb-space-3);
+  padding: var(--sb-space-4) var(--sb-space-5);
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--sb-text);
+  list-style: none;
+}
+
+.main-content .settings-section > summary::-webkit-details-marker { display: none; }
+
+.main-content .settings-section > summary small {
+  color: var(--sb-text-muted);
+  font-weight: 600;
+  flex: 1 1 auto;
+}
+
+/* Explicit open/closed affordance (the native marker is suppressed). */
+.main-content .settings-section > summary::after {
+  content: "⌄";
+  flex: 0 0 auto;
+  color: var(--sb-text-muted);
+  transition: transform var(--sb-duration-base) var(--sb-easing);
+}
+
+.main-content .settings-section[open] > summary::after { transform: rotate(180deg); }
+
+.main-content .settings-section > summary:hover { background: var(--sb-surface-muted); }
+
+.main-content .settings-section[open] > summary {
+  border-bottom: 1px solid var(--sb-border);
+  background: var(--sb-surface-muted);
+}
+
+.main-content .settings-section > :not(summary) { padding: 0 var(--sb-space-5) var(--sb-space-4); }

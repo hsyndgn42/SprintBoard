@@ -17,6 +17,7 @@ import { SubtypeSettingsComponent } from './subtype-settings.component';
 import { BackupComponent } from './backup.component';
 import { AccountsComponent } from './accounts.component';
 import { ApiService, BauTemplate, CalendarDay, MemberReportRow, ProductSettings, ReportRow, TaskCategory, TaskSubtype, TeamMember, WorkTypeReportRow, formatDate } from '../api.service';
+import { SbToastService } from '../shared/sb-toast';
 import { TASK_CATEGORIES, TASK_CATEGORY_COLORS, taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
 
 interface MemberReportSummary {
@@ -61,7 +62,8 @@ export class ReportsComponent implements OnInit {
   get typePeriod(){const s=this.typeSprintOptions.find(r=>r.id===this.selectedTypeSprint);return s?s.name+' / '+s.status:'Tüm sprintler (aktif, planlanan ve tamamlanan)';}
   get memberSortLabel(){return ({tasks:'İş sayısı',effort:'Efor',delivery:'Done oranı',name:'İsim'} as Record<string,string>)[this.memberSort];}
   get memberScope(){return this.memberPeriod+' · '+(this.memberQuery||'Tüm kişiler')+' · Sıralama: '+this.memberSortLabel;}
-  exportCsv(kind:'sprints'|'members'|'types'){if(this.loading||this.error)return;const text=kind==='members'?memberReportCsv(this.memberSummary,this.settings,this.memberPeriod):kind==='types'?workTypeReportCsv(this.filteredWorkTypeRows):sprintReportCsv(this.rows,this.settings);downloadText(text,'text/csv;charset=utf-8','sprintboard-'+kind+'.csv');}
+  exportCsv(kind:'sprints'|'members'|'types'){if(this.loading||this.error)return;const text=kind==='members'?memberReportCsv(this.memberSummary,this.settings,this.memberPeriod):kind==='types'?workTypeReportCsv(this.filteredWorkTypeRows):sprintReportCsv(this.rows,this.settings);const file='sprintboard-'+kind+'.csv';downloadText(text,'text/csv;charset=utf-8',file);this.toast.success(file+' indirildi.');}
+  private toast = inject(SbToastService);
   private api = inject(ApiService);
   private cdr = inject(ChangeDetectorRef);
   rows: ReportRow[] = [];
