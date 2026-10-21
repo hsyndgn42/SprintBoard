@@ -54,7 +54,10 @@ check('the adopting form implements OnDestroy', /implements OnInit,OnDestroy/.te
 
 // --- in-app navigation gets the same protection ---------------------------
 check('the guard is wired to the settings route',
-  /path: 'settings', component: SettingsComponent, canDeactivate: \[unsavedChangesGuard\]/.test(routes));
+  /path: 'settings',[^}]*canDeactivate: \[unsavedChangesGuard\]/.test(routes));
+check('read-only routes are left unguarded',
+  routes.split('\n').filter(l => /canDeactivate/.test(l)).length === 1);
+
 check('the guard is imported', /import \{ unsavedChangesGuard \} from '\.\/shared\/dirty-state'/.test(routes));
 check('read-only routes are not guarded',
   !/path: 'reports'[^}]*canDeactivate/.test(routes) && !/path: 'overview'[^}]*canDeactivate/.test(routes));
