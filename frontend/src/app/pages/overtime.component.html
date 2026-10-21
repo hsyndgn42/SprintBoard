@@ -20,7 +20,7 @@
     <header><span class="eyebrow">SPRINT BAZLI MESAİ</span><h2>{{person.memberName}}</h2></header>
     <div class="modal-body">
       @if(person.rows.length){
-        <app-list-pager #detailPager [items]="person.rows" label="Sprint mesaileri" /><div class="table-wrap"><table><thead><tr><th>Sprint</th><th>Mesai (saat)</th><th>Kullanılan hakediş (gün)</th>@if(hasUnmatchedUsage){<th>İzinle eşleşmeyen kullanım (saat)</th>}</tr></thead><tbody>
+        <app-list-pager #detailPager [items]="person.rows" label="Sprint mesaileri" /><div class="table-wrap"><table><thead><tr><th scope="col">Sprint</th><th scope="col">Mesai (saat)</th><th scope="col">Kullanılan hakediş (gün)</th>@if(hasUnmatchedUsage){<th scope="col">İzinle eşleşmeyen kullanım (saat)</th>}</tr></thead><tbody>
           @for(row of detailPager.rows;track row.key){<tr><td><strong>{{row.name}}</strong></td><td>{{number(row.earnedHours)}}</td><td>{{number(row.usedDays)}}</td>@if(hasUnmatchedUsage){<td>{{number(row.unmatchedUsedHours)}}</td>}</tr>}
         </tbody></table></div>
         @if(hasUnmatchedUsage){<p class="data-note">İzinle eşleşmeyen saatler gün sayısına çevrilmez. Negatif değer, eski kullanım ile izin kaydının farklı sprintlerde bulunduğunu gösterebilir.</p>}
