@@ -61,7 +61,17 @@ export class ReportsComponent implements OnInit {
   loading=true;defectReady=signal(false);viewTime=new Intl.DateTimeFormat('tr-TR',{dateStyle:'medium',timeStyle:'short'}).format(new Date());
   get memberPeriod(){return this.rows.find(r=>r.id===this.selectedSprint)?.name||'Tüm tamamlanan sprintler';}
   get typePeriod(){const s=this.typeSprintOptions.find(r=>r.id===this.selectedTypeSprint);return s?s.name+' / '+s.status:'Tüm sprintler (aktif, planlanan ve tamamlanan)';}
-  get memberSortLabel(){return ({tasks:'İş sayısı',effort:'Efor',delivery:'Done oranı',name:'İsim'} as Record<string,string>)[this.memberSort];}
+  get activeTabLabel(){return this.tabs.find(t=>t.id===this.activeTab)?.label||'';}
+  // Each tab answers a different question over a different slice, so the
+  // scope line is resolved per tab rather than once for the page.
+  get activeScope(){
+    switch(this.activeTab){
+      case 'delivery': return 'Tüm tamamlanan sprintler (' + this.rows.length + ')';
+      case 'members': return this.memberScope;
+      case 'types': return this.typePeriod;
+      default: return 'Bölüm kendi filtre kapsamını kullanır';
+    }
+  }  get memberSortLabel(){return ({tasks:'İş sayısı',effort:'Efor',delivery:'Done oranı',name:'İsim'} as Record<string,string>)[this.memberSort];}
   get memberScope(){return this.memberPeriod+' · '+(this.memberQuery||'Tüm kişiler')+' · Sıralama: '+this.memberSortLabel;}
   exportCsv(kind:'sprints'|'members'|'types'){if(this.loading||this.error)return;const text=kind==='members'?memberReportCsv(this.memberSummary,this.settings,this.memberPeriod):kind==='types'?workTypeReportCsv(this.filteredWorkTypeRows):sprintReportCsv(this.rows,this.settings);const file='sprintboard-'+kind+'.csv';downloadText(text,'text/csv;charset=utf-8',file);this.toast.success(file+' indirildi.');}
   private toast = inject(SbToastService);
