@@ -329,7 +329,24 @@ async function main() {
     if(process.env.SPRINTBOARD_SETUP!=='1'||base!=='http://127.0.0.1:4183')throw Error('October import QA requires disposable 4183');
     await require('./test-october-import-ui.cjs')({evaluate,command,navigate,setFieldValue,sleep,events});ws.close();return;
   }
-  if (!output.includes('TOPLAM SPRİNT') || !output.includes('14')) throw new Error('Overview did not show historical sprint data');
+  // Dataset-agnostic overview check. This used to assert the page text contained
+  // "14", which only held for the original author's live database. The intent is
+  // to prove the overview renders real sprint data once authenticated, so assert
+  // that the total-sprint metric exists and shows a valid non-negative integer.
+  let totalSprints = '';
+  for (let i = 0; i < 40; i++) {
+    totalSprints = await evaluate(`(() => {
+      const card = [...document.querySelectorAll('.overview-metrics article.metric')]
+        .find(node => (node.querySelector('small')?.textContent || '').trim().toLocaleLowerCase('tr') === 'toplam sprint');
+      if (!card) return '';
+      return (card.querySelector('strong')?.textContent || '').trim();
+    })()`);
+    if (totalSprints) break;
+    await sleep(250);
+  }
+  if (!totalSprints) throw new Error('Overview did not render the "Toplam sprint" metric');
+  if (!/^\d+$/.test(totalSprints)) throw new Error('Overview total sprint metric is not a non-negative integer: ' + JSON.stringify(totalSprints));
+  console.log('Overview total sprint metric:', totalSprints);
     if(process.env.SPRINTBOARD_SETTINGS_SCREENSHOT){
     await navigate('settings','İş alt türleri');
     for(let i=0;i<40&&!await evaluate('document.querySelectorAll(".subtype-row-setting").length>0');i++)await sleep(100);
