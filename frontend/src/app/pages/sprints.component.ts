@@ -181,7 +181,8 @@ export class SprintsComponent implements OnInit {
     @if(showEdit && sprint){<app-sprint-edit-dialog [sprint]="sprint" (cancel)="setEditOpen(false)" (saved)="sprintEdited($event)" />}
     @if(showComplete && sprint){<app-sprint-close-dialog [sprintId]="sprint.id" (cancel)="closeComplete()" (completed)="completed()" />}
     @if (showAddTask && sprint) { @defer(on immediate){<app-sprint-add-dialog [sprintId]="sprint.id" (cancel)="closeAddTask()" (added)="taskAdded()" />} }
-    @if (assignmentTask) { <div class="modal-layer" role="presentation"><div class="modal assignment-modal" role="dialog" aria-modal="true" aria-labelledby="assignment-title"><header><h2 id="assignment-title">Atamaları düzenle</h2><p>{{ assignmentTask.name }} · kişi başı efor girin veya efor tüketmeyen X desteği seçin.</p></header>
+    @if (assignmentTask) { <div class="modal-layer" role="presentation"><div class="modal assignment-modal" role="dialog" aria-modal="true" aria-labelledby="assignment-title"><header><h2 id="assignment-title">Atamaları düzenle</h2><p>{{ assignmentTask.name }} · kişi başı efor girin veya efor tüketmeyen X desteği seçin.</p>
+      <p class="assignment-budget">Görev tahmini <strong>{{ assignmentTask.estimatedHours || 0 }} sa</strong> · Atanan <strong>{{ assignedEstimate() }} sa</strong>@if (assignmentVariance() > 0) { <span class="over">+{{ assignmentVariance() }} sa tahminin üzerinde</span> } @else if (assignmentVariance() < 0) { <span class="under">{{ assignmentVariance() }} sa tahminin altında</span> }</p></header>
       <div class="modal-body assignment-list">@for (member of members; track member.id) { <div class="assignment-row" [class.selected]="assigned(member.id)"><label class="assignment-person"><input type="checkbox" [checked]="assigned(member.id)" (change)="toggleAssignment(member.id)"><span>{{ member.name }}@if (!member.active) { <small>(geçmiş atama)</small> }</span></label>
         @if (assigned(member.id)) { <div class="assignment-controls"><select [attr.aria-label]="member.name + ' atama türü'" [(ngModel)]="assignmentModes[member.id]" (ngModelChange)="refreshAssignmentPreview()"><option value="hours">Efor (saat)</option><option value="support">X · Support</option></select>
           @if (assignmentModes[member.id] === 'hours') { <label class="assignment-hours"><span class="sr-only">{{ member.name }} tahmini saat</span><input type="number" min="0" max="1000" step="0.5" [attr.aria-label]="member.name + ' tahmini saat'" [(ngModel)]="assignmentHours[member.id]" (ngModelChange)="refreshAssignmentPreview()"><span>sa</span></label> } @else { <span class="muted assignment-no-effort">Efor yok</span> }</div> }</div> }
@@ -367,7 +368,17 @@ export class SprintDetailComponent implements OnInit, OnDestroy {
     finally { this.saving = false; this.cdr.detectChanges(); }
   }
   assigned(memberId: string): boolean { return Object.prototype.hasOwnProperty.call(this.assignmentHours, memberId); }
-  toggleAssignment(memberId: string): void { if (this.assigned(memberId)) { delete this.assignmentHours[memberId]; delete this.assignmentModes[memberId]; } else { this.assignmentHours[memberId] = 0; this.assignmentModes[memberId] = 'hours'; } this.assignmentError = ''; this.refreshAssignmentPreview(); this.cdr.detectChanges(); }
+  toggleAssignment(memberId: string): void { if (this.assigned(memberId)) { delete this.assignmentHours[memberId]; delete this.assignmentModes[memberId]; } else { this.assignmentHours[memberId] = this.unallocatedEstimate(); this.assignmentModes[memberId] = 'hours'; } this.assignmentError = ''; this.refreshAssignmentPreview(); this.cdr.detectChanges(); }
+  /** The part of the task estimate nobody has taken yet, so the first assignee
+   *  starts from the whole task and later ones from what is left. It is only a
+   *  starting value: the field stays editable in both directions. */
+  private unallocatedEstimate(): number { return Math.max(0, (Math.max(0, Number(this.assignmentTask?.estimatedHours) || 0)) - this.assignedEstimate()); }
+  /** Hours currently handed out in the dialog; X support consumes none. */
+  assignedEstimate(): number { return Object.entries(this.assignmentHours).reduce((total, [id, hours]) => total + (this.assignmentModes[id] === 'support' ? 0 : Number(hours) || 0), 0); }
+  /** Positive when more effort is allocated than estimated. Shown rather than
+   *  silently corrected: overwriting the estimate would destroy the only
+   *  record of how good the original estimate was. */
+  assignmentVariance(): number { return this.assignedEstimate() - (Math.max(0, Number(this.assignmentTask?.estimatedHours) || 0)); }
   closeAssignments(): void { this.assignmentTask = null; this.assignmentError = ''; this.cdr.detectChanges(); }
   async saveAssignments(): Promise<void> {
     if (!this.assignmentTask || !this.sprint || this.saving) return;
