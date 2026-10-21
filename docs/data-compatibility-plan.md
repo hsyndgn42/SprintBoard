@@ -16,7 +16,7 @@ başlanmadan önce hazırlanmıştır.
 |---|---|---|---|
 | D-1 | `WorkspaceService.overview()` yanıtına yeni alanlar | Salt-okunur, katkısal | **Yok** |
 | D-2 | `WorkspaceService.calendarCapacity()` içinde istek-kapsamlı önbellek | Saf optimizasyon | **Yok** |
-| D-3 | `V45__report_read_indexes.sql` — yalnız `CREATE INDEX IF NOT EXISTS` | Forward-only migration | **Yalnız index** |
+| D-3 | ~~`V45__report_read_indexes.sql`~~ — **iptal**, H2 yabancı anahtarları zaten indexliyor (§4) | — | **Yok** |
 
 Bunların dışında backend'e dokunulmayacaktır. Özellikle:
 
@@ -115,7 +115,40 @@ Uygulama durumu tutulmaz, paylaşılan/dağıtık önbellek eklenmez.
 
 ---
 
-## 4. D-3 — `V45__report_read_indexes.sql`
+## 4. D-3 — `V45__report_read_indexes.sql` — **UYGULANMADI (gerekçeli iptal)**
+
+> **Karar (uygulama aşaması bulgusu): D-3 iptal edilmiştir. Migration yazılmamış,
+> `schemaVersion` 44'te bırakılmıştır.**
+>
+> Plan hazırlanırken bu üç indexin eksik olduğu varsayılmıştı. Uygulamadan önce kolon
+> adları ve mevcut indexler doğrulanırken, varsayımın yanlış olduğu görüldü.
+>
+> **Kanıt.** İzole bir H2 2.3.232 veritabanında `assignment` tablosunun gerçek tanımı
+> (`V1__initial_schema.sql`'deki haliyle) oluşturulup `INFORMATION_SCHEMA.INDEX_COLUMNS`
+> okundu:
+>
+> ```
+> AUTO-INDEX: PRIMARY_KEY_5      on ID
+> AUTO-INDEX: CONSTRAINT_INDEX_5  on TASK_ID
+> AUTO-INDEX: CONSTRAINT_INDEX_5A on MEMBER_ID
+> ```
+>
+> H2, **her yabancı anahtar kolonu için otomatik olarak index oluşturur**. Dolayısıyla:
+>
+> | Planlanan index | Durum |
+> |---|---|
+> | `idx_assignment_task` | `CONSTRAINT_INDEX_5` ile **birebir gereksiz** |
+> | `idx_assignment_member` | `CONSTRAINT_INDEX_5A` ile **birebir gereksiz** |
+> | `idx_leave_record_member_sprint` | `member_id` zaten otomatik indexli; `leave_record` üye×sprint başına tek satır ölçeğinde olduğundan bileşik index için ölçülebilir bir kazanç gösterilemedi |
+>
+> Talimat "index yalnızca kanıt destekliyorsa eklenir" diyor. Burada kanıt tersini
+> gösterdiği için index eklemek, yazma maliyetini ve dosya boyutunu hiçbir okuma kazancı
+> olmadan artırırdı. Gereksiz bir `schemaVersion` artışından ve migration testi
+> yükünden de kaçınılmıştır.
+>
+> Aşağıdaki özgün plan, karar kaydı olarak **tarihsel amaçla** bırakılmıştır.
+
+### 4.0 (özgün plan — uygulanmadı)
 
 ### 4.1 İçerik
 
