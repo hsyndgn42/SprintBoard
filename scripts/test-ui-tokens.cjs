@@ -39,4 +39,48 @@ for (const alias of LEGACY_ALIASES) {
 // Reduced-motion must stay honoured.
 assert.match(css, /@media \(prefers-reduced-motion: reduce\)/, 'reduced-motion block missing');
 
-console.log(`design tokens OK (${REQUIRED_TOKENS.length} tokens, ${LEGACY_ALIASES.length} aliases)`);
+// --- second iteration: professional platform scales -----------------------
+// Typography, data-visualisation, print and density scales are what keep
+// dashboards, reports and printed output looking like one product. Losing
+// one of them regresses silently into per-page hard-coded values again.
+const SCALE_TOKENS = [
+  '--sb-font-2xl', '--sb-font-3xl', '--sb-font-display',
+  '--sb-leading-tight', '--sb-leading-normal',
+  '--sb-weight-medium', '--sb-weight-semibold', '--sb-weight-bold',
+  '--sb-tracking-eyebrow',
+  '--sb-space-9', '--sb-space-10',
+  '--sb-print-ink', '--sb-print-muted', '--sb-print-line',
+  '--sb-control-h', '--sb-row-pad-y',
+  '--sb-dialog-sm', '--sb-dialog-md', '--sb-dialog-lg',
+];
+
+for (const token of SCALE_TOKENS) {
+  assert.match(css, new RegExp(`${token}\\s*:`), `missing scale token ${token}`);
+}
+
+// The categorical ramp must stay complete: the distribution bar and legend
+// cycle through all eight slots, so a gap would silently repeat a colour.
+for (let i = 1; i <= 8; i += 1) {
+  assert.match(css, new RegExp(`--sb-viz-${i}\\s*:\\s*#`), `missing data-visualisation token --sb-viz-${i}`);
+}
+assert.match(css, /--sb-viz-track\s*:/, 'missing --sb-viz-track');
+
+// Shared primitives must exist, otherwise pages fall back to bespoke markup.
+const REQUIRED_PRIMITIVES = [
+  '.sb-metrics', '.sb-metric__label', '.sb-metric__value', '.sb-metric__unit',
+  '.sb-bar__seg', '.sb-legend__swatch', '.sb-context', '.sb-definitions',
+  '.sb-skeleton',
+];
+
+for (const primitive of REQUIRED_PRIMITIVES) {
+  assert.ok(css.includes(primitive), `missing shared primitive ${primitive}`);
+}
+
+// The skeleton animates, so reduced-motion coverage has to be global rather
+// than opt-in per component.
+assert.match(css, /animation-duration:\s*\.01ms\s*!important/, 'reduced-motion must neutralise animations globally');
+
+console.log(
+  `design tokens OK (${REQUIRED_TOKENS.length} tokens, ${LEGACY_ALIASES.length} aliases, `
+  + `${SCALE_TOKENS.length} scale tokens, 8 viz colours, ${REQUIRED_PRIMITIVES.length} primitives)`,
+);
