@@ -879,8 +879,24 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
   public Map<String, Object> editBacklog(String id, Map<String,Object> input) {
     var rows=jdbc.queryForList("SELECT * FROM backlog_item WHERE id=? FOR UPDATE",id);
     if(rows.isEmpty()) return null;
-    if(!"Ready".equals(rows.getFirst().get("STATE")) || jdbc.queryForObject("SELECT COUNT(*) FROM sprint_task WHERE backlog_id=?",Integer.class,id)>0)
-      throw new IllegalArgumentException("Yalnız henüz sprinte alınmamış hazır işler bu ekrandan düzenlenebilir.");
+    // Work can still be corrected while its sprint is only planned: nothing has
+    // started, so no flow record, blocker or closure depends on these values.
+    // Once the sprint is active the task is the team's commitment and the
+    // sprint screens own it. Anything admitted to a sprint must be mirrored
+    // into sprint_task below, otherwise the two tables drift apart silently.
+    var linked=jdbc.queryForList("SELECT t.id,t.sprint_id,t.external_id,s.status sprint_status FROM sprint_task t JOIN sprint s ON s.id=t.sprint_id WHERE t.backlog_id=? FOR UPDATE",id);
+    if(linked.isEmpty()){
+      if(!"Ready".equals(rows.getFirst().get("STATE")))
+        throw new IllegalArgumentException("Yalnız havuzdaki hazır işler bu ekrandan düzenlenebilir.");
+    } else {
+      var task=linked.getFirst();
+      if(!"planned".equals(task.get("SPRINT_STATUS")))
+        throw new IllegalArgumentException("Sprint başladıktan sonra iş bu ekrandan düzenlenemez; sprint ekranından yönetin.");
+      if(closures.read(String.valueOf(task.get("SPRINT_ID")))!=null)
+        throw new IllegalArgumentException("Kapanış kaydı sabitlenmiş sprintin işleri değiştirilemez.");
+      if(String.valueOf(task.get("EXTERNAL_ID")).startsWith("BAU-AUTO:"))
+        throw new IllegalArgumentException("Otomatik BAU ve izin kayıtları kendi ekranlarından yönetilir.");
+    }
     String title=text(input,"title"),criteria=text(input,"criteria"),roadmapId=text(input,"roadmapId");
     if(title.isBlank()||title.length()>300) throw new IllegalArgumentException("Backlog başlığı 1–300 karakter olmalı.");
     if(criteria.length()>10000) throw new IllegalArgumentException("Kabul kriterleri en fazla 10.000 karakter olabilir.");
@@ -893,8 +909,30 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
     if("SIZE_AND_HOURS".equals(mode)&&size==null)throw new IllegalArgumentException("Size seçilmelidir.");
     if("POINTS_AND_HOURS".equals(mode)&&(points==null||points<=0))throw new IllegalArgumentException("Pozitif Story Point girilmelidir.");
     var taxonomy=taxonomy(input,rows.getFirst().get("TASK_CATEGORY"),rows.getFirst().get("TASK_SUBTYPE"));
+    String subtype=taxonomy.get("subtype").isBlank()?null:taxonomy.get("subtype");
+    boolean taxonomyChanged=!Objects.equals(rows.getFirst().get("TASK_CATEGORY"),taxonomy.get("category"))
+        ||!Objects.equals(rows.getFirst().get("TASK_SUBTYPE"),subtype);
+    if(!linked.isEmpty()&&taxonomyChanged){
+      String taskId=String.valueOf(linked.getFirst().get("ID"));
+      // Same rule the sprint screen enforces: a reserve link is only valid
+      // between a defect and a Defect Support reserve, so the work type cannot
+      // change underneath it.
+      if(jdbc.queryForObject("SELECT COUNT(*) FROM defect_reserve_link WHERE task_id=? OR reserve_task_id=?",Integer.class,taskId,taskId)>0)
+        throw new IllegalArgumentException("İş tipini değiştirmeden önce rezerv bağlantılarını kaldırın.");
+    }
     jdbc.update("UPDATE backlog_item SET title=?,criteria=?,roadmap_id=?,estimated_hours=?,size_code=?,story_points=?,task_category=?,task_subtype=?,work_kind=?,type=? WHERE id=?",
-        title,criteria,roadmapId.isBlank()?null:roadmapId,hours,size,points,taxonomy.get("category"),taxonomy.get("subtype").isBlank()?null:taxonomy.get("subtype"),taxonomy.get("workKind"),taxonomy.get("legacyType"),id);
+        title,criteria,roadmapId.isBlank()?null:roadmapId,hours,size,points,taxonomy.get("category"),subtype,taxonomy.get("workKind"),taxonomy.get("legacyType"),id);
+    if(!linked.isEmpty()){
+      String taskId=String.valueOf(linked.getFirst().get("ID"));
+      // Mirror the edit so the sprint task never disagrees with the backlog
+      // item it was created from. Remaining hours track the estimate exactly
+      // as addTask sets them, since planned work has not been started.
+      jdbc.update("UPDATE sprint_task SET title=?,criteria=?,estimated_hours=?,remaining_hours=CASE WHEN status='done' THEN 0 ELSE ? END,story_points=?,size_code=?,task_category=?,task_subtype=?,work_kind=?,type=? WHERE id=?",
+          title,criteria,hours,hours,points,size,taxonomy.get("category"),subtype,taxonomy.get("workKind"),taxonomy.get("legacyType"),taskId);
+      if(points!=null)jdbc.update("UPDATE sprint SET story_points_available=true WHERE id=?",linked.getFirst().get("SPRINT_ID"));
+      if(taxonomyChanged)defects.resetVerification(id);
+      audit("task",taskId,"edited-from-backlog",map("backlogId",id,"title",title,"estimatedHours",hours,"taskCategory",taxonomy.get("category"),"taskSubtype",subtype));
+    }
     planning.save(id,input);
     saveDefectInput(id,input,taxonomy.get("category"));
     audit("backlog",id,"edited",map("title",title));
