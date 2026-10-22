@@ -18,7 +18,7 @@ import { TASK_CATEGORIES, availableSubtypes, defaultTaskSubtype } from '../task-
  <p class="data-note">Mevcut backlog işinin kişi atamalarını Planlama’dan yapabilirsiniz.</p>
 }@else{
  <label class="field">İş adı<input name="newTitle" [(ngModel)]="draft.title" required maxlength="300"></label>
- <label class="field">Kabul kriterleri / kapsam<textarea name="criteria" [(ngModel)]="draft.criteria" maxlength="10000" rows="3"></textarea></label>
+ <label class="field">Kapsam ve kabul ölçütü<textarea name="criteria" [(ngModel)]="draft.criteria" maxlength="10000" rows="3"></textarea></label>
  <div class="form-grid two"><label class="field">İş tipi<select name="category" [(ngModel)]="draft.taskCategory" (ngModelChange)="categoryChanged()">@for(c of categories;track c.value){<option [value]="c.value">{{c.label}}</option>}</select></label>
  <label class="field">Alt kırılım<select name="subtype" [(ngModel)]="draft.taskSubtype"><option value="">Alt kırılım yok</option>@for(s of subtypes;track s.value){<option [value]="s.value">{{s.label}}</option>}</select></label></div>
  <div class="form-grid two"><label class="field">Roadmap<select name="roadmap" [(ngModel)]="draft.roadmapId"><option value="">Roadmap hedefine bağlı değil</option>@for(r of roadmaps;track r.id){<option [value]="r.id">{{r.title}}</option>}</select></label>

@@ -906,7 +906,7 @@ async function main() {
     await clickButton('İşi ekle');
     for(let i=0;i<40&&await evaluate('!!document.querySelector(".modal-layer")');i++)await sleep(100);
     await clickButton('QA editable backlog');
-    if(!await evaluate('document.querySelector(".modal").innerText.includes("Kabul kriterleri")'))throw Error('Backlog detail missing criteria');
+    if(!await evaluate('document.querySelector(".modal").innerText.includes("Kapsam ve kabul ölçütü")'))throw Error('Backlog detail missing criteria');
     await clickButton('İşi düzenle');
     await setFieldValue('.modal input[name="title"]','QA edited backlog');
     await setFieldValue('.modal textarea[name="criteria"]','Validated acceptance criteria');

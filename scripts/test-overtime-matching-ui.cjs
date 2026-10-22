@@ -9,7 +9,7 @@ module.exports=async({evaluate,command,navigate,clickButton,setFieldValue,sleep,
  await navigate('overtime','Fazla mesai');await wait('!!document.querySelector("app-slack-overtime-inbox")');
  async function open(reason){await evaluate(`[...document.querySelectorAll('app-slack-overtime-inbox .entry-head')].find(e=>e.textContent.includes(${JSON.stringify(reason)})).click()`);await wait('!!document.querySelector("app-overtime-plan-picker select:not([disabled])")');}
  if(source.status==='PENDING')for(let i=0;i<3;i++){
-  await open('QA-MATCH-'+i);await setFieldValue('[aria-label="Mesai karar notu"]','QA admin doğruladı');await evaluate(`document.querySelector('[aria-label="Mesai eşleştirme onayı"]').click()`);
+  await open('QA-MATCH-'+i);await setFieldValue('[aria-label="Mesai karar gerekçesi"]','QA admin doğruladı');await evaluate(`document.querySelector('[aria-label="Mesai eşleştirme onayı"]').click()`);
   assert(await evaluate('[...document.querySelectorAll("app-slack-overtime-inbox button")].find(b=>b.textContent.includes("Onayla ve hakedişe ekle")).disabled'));
   await setFieldValue('[aria-label="Mesai plan durumu"]',i<2?'PLANNED':'UNPLANNED');
   if(i<2){await setFieldValue('[aria-label="İlgili mesai planı"]',plan.id);await sleep(100);const text=await evaluate('document.querySelector(".plan-preview").innerText');assert(text.includes(i===0?'8 sa':'20 sa'));}

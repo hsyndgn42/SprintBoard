@@ -44,7 +44,7 @@
     @if(isBau(item)){<p class="data-note">BAU otomatik Done kabul edilir; teslimat oranına dahil edilmez.</p>}
     @if(isLeave(item)){<p class="data-note">İzin kapasiteden düşer; görev eforuna ikinci kez eklenmez.</p>}
     @defer(on immediate){<app-sprint-journal [sprint]="sprint" [focusTask]="item.id" />}
-    <h3>Kabul kriterleri / kapsam</h3><p class="board-detail-text">{{ item.criteria || 'Kabul kriterleri belirtilmemiş.' }}</p>
+    <h3>Kapsam ve kabul ölçütü</h3><p class="board-detail-text">{{ item.criteria || 'Kapsam ve kabul ölçütü belirtilmemiş.' }}</p>
     <h3>Kişi atamaları</h3><div class="board-detail-assignments">@for(a of item.assignments;track a.memberId){<div><strong>{{ a.memberName }}</strong><span>{{ isLeave(item)?(a.leaveDays||0)+' gün · '+((a.leaveDays||0)*settings.hoursPerDay)+' sa izin':a.supportOnly?'X · efor tüketmez':a.estimatedHours+' sa' }}</span></div>}@empty{<p class="data-note">Henüz atama yapılmamış.</p>}</div>
     <h3>Durum notu / Undone gerekçesi</h3><p class="board-detail-text">{{ item.statusNote || 'Durum notu eklenmemiş.' }}</p>
     @if(item.blocker?.version){<h3>{{ item.blocker?.blocked?'Açık engel':'Son engel çözümü' }}</h3><p class="board-detail-text">{{ item.blocker?.reason }}</p>}

@@ -123,12 +123,12 @@ Roadmap durumu elle yönetilir. Bir hedefi tamamlandı yapmak bağlı işleri ve
 ### Yeni iş
 
 1. **Backlog → Yeni iş** düğmesini açın.
-2. İş adı, kabul kriterleri/kapsam, iş tipi ve gerekli alt türü girin.
+2. İş adı, kapsam ve kabul ölçütü, iş tipi ve gerekli alt türü girin.
 3. Roadmap seçin veya **Roadmap hedefine bağlı değil** bırakın.
 4. Size ya da Story Point, tahmini saat, öncelik ve varsa bağımlılıkları doldurun.
 5. Kaydedin. İş havuzda görünür; bu aşamada kişi atamak zorunlu değildir.
 
-Kabul kriteri, göreli tahmin veya bağımlılık eksiklikleri hazırlık uyarısı oluşturabilir. Sprinte alırken bunları düzeltin veya sunulan uyarıyı bilinçli olarak onaylayın.
+Kapsam ve kabul ölçütü, göreli tahmin veya bağımlılık eksiklikleri hazırlık uyarısı oluşturabilir. Sprinte alırken bunları düzeltin veya sunulan uyarıyı bilinçli olarak onaylayın.
 
 ### Görünüm seçimi
 
@@ -233,7 +233,7 @@ Defect için efor kaynağını ayrıca seçin. Rezervden karşılanan bölüm il
 
 ### Ekip üyesi talebi
 
-Üyeye bağlı USER, **İzinler → İzin talebi** üzerinden aktif sprintini, türü, sprint içindeki tarihleri, gün sayısını ve açıklamasını girip **Onaya gönder** seçer. Admin, izin taleplerinden onaylar veya reddeder ve karar notu girer.
+Üyeye bağlı USER, **İzinler → İzin talebi** üzerinden aktif sprintini, türü, sprint içindeki tarihleri, gün sayısını ve açıklamasını girip **Onaya gönder** seçer. Admin, izin taleplerinden onaylar veya reddeder ve karar gerekçesi girer.
 
 Bekleyen/reddedilen talep kapasiteyi veya bakiyeyi etkilemez. Onaydan sonra izin kaydı oluşur; mesai izniyse kullanım da tek kez düşer. Aynı talebi ayrıca doğrudan izin olarak kaydetmeyin.
 
@@ -257,7 +257,7 @@ Planlı mesai kapasiteyi artırır; gerçekleşen mesai veya hakediş oluşturma
 
 ### Gerçekleşen mesai ve admin onayı
 
-Kişi çalışmayı yaptıktan sonra uygulamadaki **Mesai talebi** ile veya Slack mesai kanalından bildirir. Admin onay ekranında kişiyi/sprinti, saati ve ilgili görevi kontrol eder; **planlı mesaiyle eşleştirir** veya **plansız** olarak ayırır. Karar notuyla onayladığında gerçekleşen mesai ve hakediş oluşur.
+Kişi çalışmayı yaptıktan sonra uygulamadaki **Mesai talebi** ile veya Slack mesai kanalından bildirir. Admin onay ekranında kişiyi/sprinti, saati ve ilgili görevi kontrol eder; **planlı mesaiyle eşleştirir** veya **plansız** olarak ayırır. Karar gerekçesiyle onayladığında gerçekleşen mesai ve hakediş oluşur.
 
 Admin ayrıca **Fazla mesai → Mesai kaydı** ile istediği aktif üye için doğrudan giriş yapabilir. Aynı çalışma hem talepten onaylanıp hem doğrudan kaydedilmemelidir. Plan/gerçekleşen eşleştirmesi gereken durumlarda onay akışını kullanın.
 
