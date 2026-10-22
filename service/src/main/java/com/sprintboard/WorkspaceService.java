@@ -899,7 +899,7 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
     }
     String title=text(input,"title"),criteria=text(input,"criteria"),roadmapId=text(input,"roadmapId");
     if(title.isBlank()||title.length()>300) throw new IllegalArgumentException("Backlog başlığı 1–300 karakter olmalı.");
-    if(criteria.length()>10000) throw new IllegalArgumentException("Kabul kriterleri en fazla 10.000 karakter olabilir.");
+    if(criteria.length()>10000) throw new IllegalArgumentException("Kapsam ve kabul ölçütü en fazla 10.000 karakter olabilir.");
     if(!roadmapId.isBlank()&&jdbc.queryForObject("SELECT COUNT(*) FROM roadmap_item WHERE id=?",Integer.class,roadmapId)==0) throw new IllegalArgumentException("Roadmap kaydı bulunamadı.");
     double hours=number(input,"estimatedHours");
     if(!Double.isFinite(hours)||hours<0)throw new IllegalArgumentException("Efor geçerli ve negatif olmayan bir saat değeri olmalı.");
@@ -1142,7 +1142,7 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
     if(!List.of("active","planned").contains(states.getFirst()))throw new IllegalArgumentException("Kapanmış sprinte iş eklenemez.");
     if(!Boolean.TRUE.equals(input.get("readinessAcknowledged")))throw new IllegalArgumentException("Yeni işin kapsamını ve atamalarını onaylayın.");
     double hours=number(input,"estimatedHours");if(!Double.isFinite(hours)||hours<0||hours>10000)throw new IllegalArgumentException("Geçerli efor girin.");
-    if(text(input,"criteria").length()>10000)throw new IllegalArgumentException("Kabul kriterleri en fazla 10.000 karakter.");
+    if(text(input,"criteria").length()>10000)throw new IllegalArgumentException("Kapsam ve kabul ölçütü en fazla 10.000 karakter.");
     if("LEAVE".equals(input.get("taskSubtype")))throw new IllegalArgumentException("İzinleri İzinler sayfasından girin.");
     var backlog=createBacklog(input);String backlogId=backlog.get("id").toString();
     var add=new LinkedHashMap<String,Object>(input);add.put("backlogId",backlogId);

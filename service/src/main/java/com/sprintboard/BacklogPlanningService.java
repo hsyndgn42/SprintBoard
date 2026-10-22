@@ -61,7 +61,7 @@ public class BacklogPlanningService {
     List<String> warnings=new ArrayList<>();
     if("UNSET".equals(item.get("priority")))warnings.add("Öncelik belirlenmemiş.");
     // Legacy owner fields remain backup-compatible, but are not part of backlog readiness.
-    if(String.valueOf(item.getOrDefault("criteria","")).isBlank())warnings.add("Kabul kriterleri girilmemiş.");
+    if(String.valueOf(item.getOrDefault("criteria","")).isBlank())warnings.add("Kapsam ve kabul ölçütü girilmemiş.");
     if("SIZE_AND_HOURS".equals(mode)&&item.get("size")==null)warnings.add("Ekip standardına göre Size eksik.");
     if("POINTS_AND_HOURS".equals(mode)&&(!(item.get("storyPoints") instanceof Number n)||n.doubleValue()<=0))warnings.add("Ekip standardına göre Story Point eksik.");
     if(!"BAU".equals(item.get("taskCategory"))&&item.get("estimatedHours") instanceof Number n&&n.doubleValue()<=0)warnings.add("Planlanan efor 0 saat; yalnız X destek olup olmadığını kontrol edin.");

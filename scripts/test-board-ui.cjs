@@ -22,7 +22,7 @@ module.exports=async({evaluate,command,navigate,clickButton,setFieldValue,sleep,
   await setFieldValue('[name=boardQuery]','qa-no-match-98271');await check([],'Empty query');if(!await evaluate('document.querySelector(".board-empty").innerText.includes("Filtrelere uygun")'))throw Error('Empty state absent');await clickButton('Tüm görevleri göster');
   const selector='[data-task-id="'+task.id+'"] .board-task-title';
   await click(selector);await wait('!!document.querySelector(".board-detail")','Detail missing');
-  if(!await evaluate('document.querySelector(".board-detail").innerText.includes('+JSON.stringify(task.criteria||'Kabul kriterleri belirtilmemiş.')+')'))throw Error('Criteria missing');
+  if(!await evaluate('document.querySelector(".board-detail").innerText.includes('+JSON.stringify(task.criteria||'Kapsam ve kabul ölçütü belirtilmemiş.')+')'))throw Error('Criteria missing');
   if(!await evaluate('document.querySelector(".board-detail").contains(document.activeElement) && !!document.querySelector(".topbar").closest("[inert]")'))throw Error('Detail focus/background');
   for(const [key,code,virtual,modifiers] of [['Tab','Tab',9,0],['Tab','Tab',9,8],[' ','Space',32,0]]){await command('Input.dispatchKeyEvent',{type:'keyDown',key,code,windowsVirtualKeyCode:virtual,modifiers});await command('Input.dispatchKeyEvent',{type:'keyUp',key,code,windowsVirtualKeyCode:virtual});}
   await wait('document.querySelector(".board-references").open','Record identities inaccessible by keyboard: '+await evaluate('document.activeElement.outerHTML'));
