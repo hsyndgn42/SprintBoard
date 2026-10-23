@@ -1,4 +1,4 @@
-import { isBau, effectiveTaskStatus } from '../task-lifecycle';
+import { isBau, effectiveTaskStatus, startedWork } from '../task-lifecycle';
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, inject } from '@angular/core';
 import { AuthService } from '../auth.service';
 import { ActivatedRoute } from '@angular/router';
@@ -70,6 +70,7 @@ export class SprintBoardComponent implements OnChanges,OnDestroy {
   startAction(task:Task,action:'block'|'unblock'|'remove'){if((action==='remove'?!this.removable(task):!this.canTask(task))||this.busy||this.actionBusy)return;this.selectedId=null;this.actionTask=task;this.action=action;this.reason='';this.replacementTaskId='';this.confirmed=false;this.actionError='';this.changed();}
   cancelAction(){if(this.actionBusy)return;this.actionTask=null;this.changed();}
   removable(task:Task){return this.canEdit&&task.status!=='done'&&!task.externalId?.startsWith('BAU-AUTO:');}
+  startedWork=startedWork;
   async saveAction(){const task=this.actionTask;if(!task||this.actionBusy||!this.reason.trim()||this.action==='remove'&&!this.confirmed)return;this.actionBusy=true;this.actionError='';this.changed();try{
     if(this.action==='remove')await this.api.post('/tasks/'+encodeURIComponent(task.id)+'/remove',{reason:this.reason,confirmed:this.confirmed,fingerprint:task.flowFingerprint,replacementTaskId:this.replacementTaskId});
     else await this.api.put((this.auth.isAdmin()?'/tasks/':'/self/tasks/')+encodeURIComponent(task.id)+'/blocker',{reason:this.reason,blocked:this.action==='block',version:task.blocker?.version??0});
