@@ -131,8 +131,8 @@ public class ApiController {
     return found(workspace.linkBacklog(id, input));
   }
   @PutMapping("/backlog/{id}") public ResponseEntity<?> editBacklog(@PathVariable String id, @RequestBody Map<String,Object> input) { return found(workspace.editBacklog(id,input)); }
-  @PostMapping("/backlog/{id}/repeat") public ResponseEntity<?> repeatBacklog(@PathVariable String id) {
-    Object result = workspace.repeatBacklog(id);
+  @PostMapping("/backlog/{id}/repeat") public ResponseEntity<?> repeatBacklog(@PathVariable String id, @RequestBody(required = false) Map<String, Object> input) {
+    Object result = workspace.repeatBacklog(id, input == null ? Map.of() : input);
     return result == null ? ResponseEntity.notFound().build() : ResponseEntity.status(201).body(result);
   }
   @PostMapping("/sprints") public ResponseEntity<?> createSprint(@RequestBody Map<String, Object> input) {

@@ -8,8 +8,10 @@ import { ModalAccessibilityDirective } from '../modal-accessibility.directive';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { ApiService, BacklogItem, TeamMember, Overview, ProductSettings, RoadmapItem, TaskCategory, TaskSubtype, statusText } from '../api.service';
+import { ApiService, BacklogItem, TeamMember, Overview, ProductSettings, RoadmapItem, SprintSummary, TaskCategory, TaskSubtype, statusText } from '../api.service';
 import { SprintAddDialogComponent } from './sprint-add-dialog.component';
+import { BacklogRepeatDialogComponent } from './backlog-repeat-dialog.component';
+import { addTargets } from './sprint-target.model';
 import { DefectFieldsComponent } from './defect-fields.component';
 import { emptyDefect,defectSummary } from '../defect-model';
 import { AuthService } from '../auth.service';
@@ -18,7 +20,7 @@ import { SbStateComponent } from '../shared/sb-state.component';
 
 @Component({
   standalone: true,
-  imports: [WorkItemActionComponent,SlackInboxComponent,SlackBacklogInboxComponent,FoldDirective, BacklogHistoryComponent, ModalAccessibilityDirective, FormsModule, RouterLink, SprintAddDialogComponent, DefectFieldsComponent, SbStateComponent],
+  imports: [WorkItemActionComponent,SlackInboxComponent,SlackBacklogInboxComponent,FoldDirective, BacklogHistoryComponent, ModalAccessibilityDirective, FormsModule, RouterLink, SprintAddDialogComponent, BacklogRepeatDialogComponent, DefectFieldsComponent, SbStateComponent],
   template: `
     <div class="page-head"><div><span class="eyebrow">İŞ HAVUZU</span><h1>Backlog</h1><p>İş havuzunu ve sprintlerdeki işleri tek yerden yönetin.</p></div>
       @if (auth.isAdmin()) { <div class="page-actions"><button class="btn primary" (click)="openCreate()">+ Yeni iş</button></div> }</div>
@@ -47,7 +49,7 @@ import { SbStateComponent } from '../shared/sb-state.component';
         </select> } @else { <span>{{ item.roadmapTitle || 'Roadmap hedefine bağlı değil' }}</span> }</td>
         <td data-label="Durum"><span class="status" [class.done]="item.taskStatus === 'done'" [class.undone]="item.taskStatus === 'undone'" [class.doing]="item.taskStatus === 'doing'" [class.todo]="item.taskStatus === 'todo' && !plannedOnly(item)" [class.planned]="plannedOnly(item)" [class.active]="item.state === 'IN_SPRINT' && !plannedOnly(item)">{{ backlogState(item) }}</span>@if (plannedOnly(item)) { <small>{{ item.sprintName }} · sprint başlayınca Yapılacak olur</small> }@if (item.readiness.eligible) { <small [class.readiness-warning]="!item.readiness.ready">{{ item.readiness.ready ? 'Planlamaya hazır' : 'Kontrol gerekli · ' + item.readiness.warnings.length }}</small> }@if (item.dependencies.length) { <small>{{ item.dependencies.length }} bağımlılık · {{ openDependencies(item) }} açık</small> }</td>
         <td data-label="Sprint">@if (item.sprintId) { <a class="table-link" [routerLink]="['/sprints', item.sprintId, 'summary']">{{ item.sprintName || 'Sprint görevi' }} →</a><small>{{ item.sprintStatus==='active'?'Aktif sprint':item.sprintStatus==='planned'?'Planlanan sprint':'Kapanmış sprint' }}</small> } @else { <span class="muted">Henüz yok</span> }</td>
-        <td data-label="İşlemler"><div class="table-actions">@if (auth.isAdmin() && !item.taskId && item.state === 'Ready') { <button class="btn small" (click)="edit(item)">Düzenle</button> <button class="btn small danger" (click)="openDelete(item)">Sil</button> } @if (auth.isAdmin() && !item.taskId && item.state === 'Ready' && activeId) { <button class="btn small" (click)="addToActive(item)">Aktif sprinte al</button> }
+        <td data-label="İşlemler"><div class="table-actions">@if (auth.isAdmin() && !item.taskId && item.state === 'Ready') { <button class="btn small" (click)="edit(item)">Düzenle</button> <button class="btn small danger" (click)="openDelete(item)">Sil</button> } @if (auth.isAdmin() && !item.taskId && item.state === 'Ready' && sprintTargetCount) { <button class="btn small" (click)="addToSprint(item)">Sprinte al</button> }
           @else if (auth.isAdmin() && item.taskId) { <button class="btn small" (click)="repeat(item)">Yeni iş olarak tekrarla</button> } @else { <span class="muted">—</span> }</div></td>
       </tr> }</tbody></table></div> }
     @else if (filtersActive()) { <sb-state variant="no-results" title="Bu filtrede iş yok" message="Toplam {{ items.length }} kayıt var ama hiçbiri seçili filtrelerle eşleşmiyor." actionLabel="Filtreleri temizle" (action)="clearFilters()" /> }
@@ -56,6 +58,7 @@ import { SbStateComponent } from '../shared/sb-state.component';
     @if (error && !formOpen) { <sb-state variant="error" title="Backlog işlemi tamamlanamadı" [detail]="error" message="Listeyi yeniden yükleyerek güncel durumu görebilirsin." actionLabel="Yeniden yükle" (action)="load()" /> }
     @if (savedMessage) { <p class="inline-success" role="status">{{ savedMessage }}</p> }
     @if(deleteItem){@defer(on immediate){<app-work-item-action action="delete" [id]="deleteItem.id" [title]="deleteItem.title" (cancel)="closeDelete()" (saved)="deleted()" />}}
+    @if(repeatItem){@defer(on immediate){<app-backlog-repeat-dialog [itemId]="repeatItem.id" [title]="repeatItem.title" (cancel)="closeRepeat()" (repeated)="repeatDone($event)" />}}
     @if (detail; as item) { <div class="modal-layer"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="backlog-detail-title"><header><span class="eyebrow">BACKLOG İŞİ</span><h2 id="backlog-detail-title">{{ item.title }}</h2><p>{{ taxonomyLabel(item.taskCategory,item.taskSubtype) }} · {{ relativeEstimate(item) }} · {{ item.estimatedHours }} sa</p></header><div class="modal-body"><span class="status">{{ backlogState(item) }}</span><h3>Planlama</h3><p>{{ priorityLabel(item.priority) }}</p>@if(item.dependencies.length) { <h3>Önce tamamlanması gereken işler</h3><ul>@for (d of item.dependencies; track d.id) { <li>{{ d.title }} — {{ d.done ? 'Done' : 'Tamamlanmadı' }}</li> }</ul> }@if(item.readiness.eligible) { <h3>Hazırlık kontrolü</h3>@if(item.readiness.ready) { <p class="inline-success">Planlamaya hazır</p> } @else { <ul>@for(w of item.readiness.warnings;track w) { <li>{{ w }}</li> }</ul> } }@if(item.taskCategory==='DEFECT'){<h3>Defect bilgileri</h3><p>{{ defectSummary(item.defect) }}</p><p>İlgili iş: {{ item.defect?.relatedTitle || 'Bağlantı yok' }}</p><p>Bildiren: {{ item.defect?.reporterName || (item.defect?.reporterId ? 'Ad soyad bekleniyor' : 'Kayıt yok') }}</p>@if(item.defect?.sourceUrl){<a [href]="item.defect?.sourceUrl" target="_blank" rel="noopener noreferrer">Kaynak Slack mesajı ↗</a>}}<h3>Kapsam ve kabul ölçütü</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">{{ item.criteria || 'Kapsam ve kabul ölçütü belirtilmemiş.' }}</p><h3>Roadmap hedefi</h3><p>@if(item.roadmapId) { <a class="table-link" [routerLink]="['/roadmap',item.roadmapId]">{{ item.roadmapTitle }} →</a> } @else { Roadmap hedefine bağlı değil }</p>@if (item.repeatOfId) { <p class="data-note">Önceki bir işin devamı / tekrarı olarak açılmıştır.</p> }@if (item.taskId) { <p class="data-note">@if (plannedOnly(item)) { Bu iş <strong>{{ item.sprintName }}</strong> sprintine planlandı ama sprint henüz başlamadı; buradan düzenleyebilirsiniz ve değişiklik sprint görevine de işlenir. Sprint başladıktan sonra yalnız sprint ekranından yönetilir. } @else { Bu işin sprint görevi var. Tarihsel kayıt korunur; durum ve atamaları sprint ekranından yönetin. }</p> }@defer(on immediate){<app-backlog-history [itemId]="item.id" />}</div><footer><button data-modal-dismiss class="btn" (click)="closeDetail()">Kapat</button>@if (item.sprintId) { <a class="btn primary" [routerLink]="['/sprints',item.sprintId,'planning']">Sprint görevine git</a> }@if (auth.isAdmin() && (plannedOnly(item) || (!item.taskId && item.state === 'Ready'))) { <button class="btn primary" (click)="edit(item)">İşi düzenle</button> }</footer></section></div> }
     @if (formOpen) { <div class="modal-layer"><form class="modal" (ngSubmit)="create()"><header><h2>{{ editingId ? 'Backlog işini düzenle' : 'Backlog işi ekle' }}</h2><p>İş bir roadmap hedefine bağlanabilir.</p></header>
       <div class="modal-body form-grid"><label class="field">İş adı<input name="title" [(ngModel)]="draft.title" required maxlength="300"></label>
@@ -70,7 +73,7 @@ import { SbStateComponent } from '../shared/sb-state.component';
         @else { <label class="field">Story Point<input name="storyPoints" type="number" min="0.5" step="0.5" [(ngModel)]="draft.storyPoints" required><small>Göreli büyüklüktür; saatten otomatik hesaplanmaz.</small></label> }
       @if(draft.taskCategory==='DEFECT'){<app-defect-fields [(value)]="draft.defect" (valueChange)="refresh()" [items]="items" [members]="members" [itemId]="editingId" />}
       @if (error) { <p class="notice warn" role="alert">{{ error }}</p> }</div><footer><button data-modal-dismiss type="button" class="btn" (click)="closeForm()">Vazgeç</button><button type="submit" class="btn primary" [disabled]="saving">{{ editingId ? 'Değişiklikleri kaydet' : 'İşi ekle' }}</button></footer></form></div> }
-    @if(addItemId && activeId) { @defer(on immediate){<app-sprint-add-dialog [sprintId]="activeId" [backlogId]="addItemId" (cancel)="closeAdd()" (added)="taskAdded()" />} }
+    @if(addItemId) { @defer(on immediate){<app-sprint-add-dialog [backlogId]="addItemId" (cancel)="closeAdd()" (added)="taskAdded($event)" />} }
   `,
   styles: [`.backlog-title-link{display:block;border:0;background:none;padding:0;text-align:left;color:#195da8;font:inherit;font-weight:750;cursor:pointer;white-space:normal;overflow-wrap:anywhere}.backlog-title-link:hover{text-decoration:underline}.backlog-title-link:focus-visible{outline:2px solid #1565c0;outline-offset:4px}h3{margin-top:20px}.priority-badge{display:inline-block;padding:4px 8px;border-radius:6px;background:#edf2fa;color:#35516f;font-size:12px;font-weight:700}.priority-badge.urgent{background:#feecec;color:#9d2424}.priority-badge.high{background:#fff4df;color:#805215}.readiness-warning{color:#805215}.dependency-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px;width:100%;text-align:left;overflow-wrap:anywhere}.dependency-options{max-height:180px;overflow:auto}.dependency-options button{border:1px solid #dce5f1;background:#f8fbff;cursor:pointer}`],
 })
@@ -82,6 +85,7 @@ export class BacklogComponent implements OnInit {
   items: BacklogItem[] = [];
   roadmap: RoadmapItem[] = [];
   activeId: string | null = null;
+  sprintTargetCount = 0;
   members: TeamMember[] = [];
   priorities = [{value:'UNSET',label:'Belirlenmemiş'},{value:'URGENT',label:'Acil'},{value:'HIGH',label:'Yüksek'},{value:'NORMAL',label:'Normal'},{value:'LOW',label:'Düşük'}];
   priorityFilter=''; readinessFilter=''; sort='priority'; dependencyQuery=''; addItemId='';
@@ -197,8 +201,9 @@ export class BacklogComponent implements OnInit {
   async ngOnInit(): Promise<void> { await this.load();const id=this.route.snapshot.queryParamMap.get('item');if(id){const item=this.items.find(i=>i.id===id);if(item)this.openDetail(item);else{this.error='Bağlı backlog işi bulunamadı.';this.cdr.detectChanges();}} }
   async load(): Promise<void> {
     try {
-      const [items, roadmap, overview, settings, members] = await Promise.all([this.api.get<BacklogItem[]>('/backlog'), this.api.get<RoadmapItem[]>('/roadmap'), this.api.get<Overview>('/overview'), this.api.get<ProductSettings>('/settings'), this.api.get<TeamMember[]>('/team')]);
+      const [items, roadmap, overview, settings, members, sprints] = await Promise.all([this.api.get<BacklogItem[]>('/backlog'), this.api.get<RoadmapItem[]>('/roadmap'), this.api.get<Overview>('/overview'), this.api.get<ProductSettings>('/settings'), this.api.get<TeamMember[]>('/team'), this.api.get<SprintSummary[]>('/sprints')]);
       this.members=members; this.items = items; this.roadmap = roadmap; this.activeId = overview.activeSprint?.id || null; this.settings = settings;
+      this.sprintTargetCount = addTargets(sprints).length;
       this.page = Math.min(this.page, this.totalPages);
     } catch (error) { this.error = String(error); }
     finally { this.cdr.detectChanges(); }
@@ -229,12 +234,13 @@ export class BacklogComponent implements OnInit {
     catch (error) { this.error = String(error); }
     finally { this.saving = false; this.cdr.detectChanges(); }
   }
-  addToActive(item: BacklogItem): void { this.addItemId=item.id; this.refresh(); }
+  addToSprint(item: BacklogItem): void { this.detail=null; this.error=''; this.savedMessage=''; this.addItemId=item.id; this.refresh(); }
   closeAdd():void { this.addItemId=''; this.refresh(); }
-  async taskAdded():Promise<void> { this.closeAdd(); await this.load(); }
-  async repeat(item: BacklogItem): Promise<void> {
-    try { await this.api.post(`/backlog/${encodeURIComponent(item.id)}/repeat`); await this.load(); }
-    catch (error) { this.error = String(error); }
-    finally { this.cdr.detectChanges(); }
+  async taskAdded(sprintName:string=''):Promise<void> { this.closeAdd(); this.savedMessage = sprintName ? `İş ${sprintName} sprintine eklendi.` : 'İş sprinte eklendi.'; await this.load(); }
+  repeat(item: BacklogItem): void {
+    this.detail = null; this.error = ''; this.savedMessage = ''; this.repeatItem = item; this.cdr.detectChanges();
   }
+  repeatItem: BacklogItem | null = null;
+  closeRepeat(): void { this.repeatItem = null; this.cdr.detectChanges(); }
+  async repeatDone(message: string): Promise<void> { this.closeRepeat(); this.savedMessage = message; await this.load(); }
 }

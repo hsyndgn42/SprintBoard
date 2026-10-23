@@ -948,10 +948,22 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
     return map("id", id, "roadmapId", roadmapId.isBlank() ? null : roadmapId);
   }
   @Transactional
-  public Map<String, Object> repeatBacklog(String id) {
+  public Map<String, Object> repeatBacklog(String id) { return repeatBacklog(id, Map.of()); }
+  /** Sprint closing repeats carried work into the pool; the Backlog screen can instead send it
+   *  straight into a sprint that has not started yet, so the copy and the sprint task share one transaction. */
+  @Transactional
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> repeatBacklog(String id, Map<String, Object> input) {
     List<Map<String, Object>> rows = jdbc.queryForList("SELECT * FROM backlog_item WHERE id=?", id);
     if (rows.isEmpty()) return null;
     Map<String, Object> row = rows.getFirst();
+    String sprintId = text(input, "sprintId");
+    if (!sprintId.isBlank()) {
+      var states = jdbc.queryForList("SELECT status FROM sprint WHERE id=? FOR UPDATE", String.class, sprintId);
+      if (states.isEmpty()) throw new IllegalArgumentException("Sprint bulunamadı.");
+      if (!"planned".equals(states.getFirst()))
+        throw new IllegalArgumentException("Tekrarlanan iş yalnız henüz başlamamış bir sprinte eklenebilir. Aktif sprint için işi havuza alıp “Aktif sprinte al” adımını kullanın.");
+    }
     String nextId = id("backlog");
     jdbc.update("INSERT INTO backlog_item(id,roadmap_id,title,criteria,work_kind,type,state,estimated_hours,story_points,external_id,repeat_of_id,created_at,size_code,task_category,task_subtype) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", nextId, row.get("ROADMAP_ID"), row.get("TITLE"),
         row.get("CRITERIA"), row.get("WORK_KIND"), row.get("TYPE"), "Ready", row.get("ESTIMATED_HOURS"),
@@ -959,8 +971,15 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
     jdbc.update("UPDATE backlog_item SET priority=?,owner_id=? WHERE id=?",row.get("PRIORITY"),row.get("OWNER_ID"),nextId);
     jdbc.update("INSERT INTO backlog_dependency(backlog_id,depends_on_id) SELECT ?,depends_on_id FROM backlog_dependency WHERE backlog_id=?",nextId,id);
     if("DEFECT".equals(row.get("TASK_CATEGORY")))defects.copy(id,nextId);
-    audit("backlog", nextId, "repeated", map("repeatOfId", id));
-    return map("id", nextId, "repeatOfId", id);
+    audit("backlog", nextId, "repeated", map("repeatOfId", id, "sprintId", sprintId.isBlank() ? null : sprintId));
+    if (sprintId.isBlank()) return map("id", nextId, "repeatOfId", id, "sprintId", null, "taskId", null, "readinessWarnings", List.of());
+    var check = (Map<String, Object>) readiness(nextId).get("readiness");
+    // The copy was created in this transaction, so its readiness cannot have drifted; the operator
+    // still sees any warning in the response rather than having them silently swallowed.
+    var task = addTask(sprintId, map("backlogId", nextId, "readinessAcknowledged", true,
+        "readinessFingerprint", check.get("fingerprint"), "reason", text(input, "reason")));
+    return map("id", nextId, "repeatOfId", id, "sprintId", sprintId, "taskId", task.get("id"),
+        "readinessWarnings", check.getOrDefault("warnings", List.of()));
   }
   @Transactional
   public Map<String, Object> createSprint(Map<String, Object> input) {
