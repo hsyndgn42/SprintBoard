@@ -21,17 +21,26 @@ Güncelleme: 22 Ekim 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındad
 - [x] Defect eforunun rezerv/ek plan yükünden ayrı gösterimi; Pano’da sayfalama olmadan tüm görev kartları.
 - [x] Özel geçmiş veri olmadan boş kurulum; GitHub kaynakları ve ayrı özel Windows hazır paket.
 
+- [x] Raporlarda kişi dağılımı grafiği artık tablonun sıralamasını izliyor; kendi iç sıralamasını dayatmıyordu ve aktif çalışan biri geçmişi daha ağır kişilerin arkasında gizlenebiliyordu. Varsayılan ilk 8 kişi, “Tümünü göster” ile filtredeki herkes açılır; kaç kişinin gizlendiği başlıkta yazar.
+- [x] Review’deki “Detaylı döküm” bölümü ekrandan ve indirilen sprint özeti HTML’inden kaldırıldı; anlatı bölümleri aynı işleri zaten gösterdiği için tekrar ediyordu. Yalnız o bölümü besleyen arama/tür/sonuç filtreleri de birlikte kaldırıldı.
+
 ### Arayüz
 
 - [x] Review bölüm geçişlerinde rotayı koruma; efor düzenleme açıklamasını planlanan sprint davranışıyla eşleştirme.
 - [x] Roadmap detayında filtreli bağlı işler, sonuç/planlama/tür grafikleri ve ayrı efor–mesai özeti.
+- [x] Üst barda onay bildirimi zili: Slack defect/iş isteği/mesai kuyrukları ile izin ve mesai talepleri tek sayıda toplanır, kuyruğa tıklayınca ilgili sayfaya gidilir. Yalnızca adminlere görünür; dakikada bir ve sekme öne geldiğinde yenilenir.
+- [x] “Yeni iş olarak tekrarla” artık popup ile sorar: yeni iş havuza ya da henüz başlamamış bir sprinte eklenir, sonuç başarı mesajıyla bildirilir. Aktif sprint listelenmez; kapsam değişimi gerekçesiz kaydedilmez.
+- [x] Havuzdaki işi sprinte alma artık aktif sprintle sınırlı değil: popup aktif ve planlanan sprintleri listeler, aktif seçilirse gerekçe zorunlu kalır, sonuç hedef sprint adıyla bildirilir.
+- [x] Sprinte iş eklerken canlı kapasite uyarısı: kapasite, atanmış ve henüz kimseye atanmamış efor ayrı gösterilir, aşım olursa açıkça uyarılır. Kaydetmeyi engellemez; efor düzeltmesi ya da planlı mesai ile yer açılabilir. Kapasite kaydı yoksa sıfır sayılmaz, hesaplanamadığı söylenir.
+- [x] Henüz başlamamış sprintte işi backlog havuzuna geri gönderme: planlama notu ve onay istenir, iş Undone sayılmaz ve kapsam değişimi olarak kaydedilmez. Aktif sprintte bu akış Pano’da kalır.
+- [x] Aktif sprintte çalışılmış bir işi (Todo dışı ya da engelli) geri gönderirken uyarı: atamalar silindiği için harcanan saatler kapasitede boş görünür ve iş teslimat oranının paydasından düşer. Engellemez; doğru yolu somut olarak gösterir — Undone kapat, eforu harcanana çek, kalan kapasiteyi başka işe ya da izne aç.
 
 - [x] Tasarım token’ları (`--sb-*`), paylaşılan yükleme/boş/hata durumları ve ayar kategorileri.
 - [x] Ana sayfa (dashboard) yeniden tasarımı ve genel bakış sinyalleri.
 - [x] Rapor bağlamı, dönem ve veri tazeliği gösterimi; rapor çıktılarında metodoloji ve metrik tanımları.
 - [x] Varsayılan olarak kaçışlı (escape) HTML tablo üretimi ve erişilebilir tablo başlıkları.
 - [x] Ağır route’ların lazy yüklenmesi ve initial bundle küçültmesi.
-- [x] **Sprint Review anlatısı:** yönetici özeti, planlanan/tamamlanan, teslim edilen, tamamlanmayan, kapsam değişimi, riskler ve detaylı döküm sırası; bölüm gezinmesi.
+- [x] **Sprint Review anlatısı:** yönetici özeti, planlanan/tamamlanan, teslim edilen, tamamlanmayan, kapsam değişimi ve riskler sırası; bölüm gezinmesi.
 - [x] **Sunum (toplantı) modu:** tam ekran görünüm, Esc ile çıkış, odak geri dönüşü, otomatik ilerleme yok, `prefers-reduced-motion` desteği.
 - [x] **Standalone Review HTML’i:** dış CSS/font/JS/CDN ve ağ isteği olmadan açılan tek dosya; boş bölümler atlanır.
 - [x] A4 yazdırma düzeni; `0` ile “veri yok” (`—`) ayrımı ve birleşik sağlık skoru üretmeme kuralı.
