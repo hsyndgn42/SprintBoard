@@ -18,6 +18,9 @@ import { BackupComponent } from './backup.component';
 import { AccountsComponent } from './accounts.component';
 import { ApiService, BauTemplate, CalendarDay, MemberReportRow, ProductSettings, ReportRow, TaskCategory, TaskSubtype, TeamMember, WorkTypeReportRow, formatDate } from '../api.service';
 import { SbToastService } from '../shared/sb-toast';
+
+/** Keeps the bar chart readable by default; the operator can open it up to the full filtered list. */
+const CHART_MEMBER_LIMIT = 8;
 import { SbStateComponent } from '../shared/sb-state.component';
 import { TASK_CATEGORIES, TASK_CATEGORY_COLORS, taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
 
@@ -44,6 +47,7 @@ interface WorkSubtypeSummary {
   styleUrl: './reports.component.css',
 })
 export class ReportsComponent implements OnInit {
+  readonly chartMemberLimit = CHART_MEMBER_LIMIT;
   overtimeReady=signal(false);scopeReady=signal(false);
   readonly tabs=[{"id":"scope","label":"Acil işler / kapsam"},{"id":"delivery","label":"Sprint teslimatı"},{"id":"members","label":"Kişi dağılımı"},{"id":"context","label":"Katılım bağlamı"},{"id":"types","label":"İş tipleri"},{"id":"roadmap","label":"Roadmap eforu"},{"id":"capacity","label":"Kapasite trendi"},{"id":"defects","label":"Defect"},{"id":"overtime","label":"Mesai"}];
   activeTab='delivery';
@@ -112,7 +116,12 @@ export class ReportsComponent implements OnInit {
   get memberTaskTotal(): number { return this.memberSummary.reduce((sum, row) => sum + row.taskCount, 0); }
   get memberEffortTotal(): number { return this.memberSummary.reduce((sum, row) => sum + row.effortHours, 0); }
   get memberDoneRate(): number { const done = this.memberSummary.reduce((sum, row) => sum + row.done, 0); const total = this.memberSummary.reduce((sum, row) => sum + row.taskCount, 0); return total ? Math.round(done * 100 / total) : 0; }
-  get chartMembers(): MemberReportSummary[] { return [...this.memberSummary].sort((a, b) => b.taskCount - a.taskCount).slice(0, 8); }
+  /** The chart follows the table's own ordering: re-sorting it here silently ignored the operator's choice and
+   *  could hide a currently active person behind people who merely carry more history. */
+  showAllChartMembers = false;
+  get chartMembers(): MemberReportSummary[] { return this.showAllChartMembers ? this.memberSummary : this.memberSummary.slice(0, CHART_MEMBER_LIMIT); }
+  get hiddenChartMembers(): number { return Math.max(0, this.memberSummary.length - this.chartMembers.length); }
+  toggleChartMembers(): void { this.showAllChartMembers = !this.showAllChartMembers; this.cdr.detectChanges(); }
   get filteredWorkTypeRows(): WorkTypeReportRow[] { return this.workTypeRows.filter(row => !this.selectedTypeSprint || row.sprintId === this.selectedTypeSprint); }
   get typeSprintOptions(): { id: string; name: string; status: string; number: number }[] {
     const sprints = new Map<string, { id: string; name: string; status: string; number: number }>();
