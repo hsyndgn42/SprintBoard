@@ -22,7 +22,7 @@
 
     <nav class="review-jump" aria-label="Review bölümleri">
       <span>Bölümler:</span>
-      @for(section of sections;track section.id){<a [href]="'#'+section.id">{{section.label}}</a>}
+      @for(section of sections;track section.id){<button type="button" [attr.aria-controls]="section.id" (click)="goToSection(section.id)">{{section.label}}</button>}
     </nav>
 
     <section id="review-summary" class="card card-pad review-summary" aria-labelledby="review-summary-title">

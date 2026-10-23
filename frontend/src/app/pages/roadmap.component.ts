@@ -1,3 +1,4 @@
+import { RoadmapDetailComponent } from './roadmap-detail.component';
 import { ListPagerComponent } from '../list-pager.component';
 import { ModalAccessibilityDirective } from '../modal-accessibility.directive';
 import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
@@ -11,18 +12,14 @@ import { TASK_CATEGORIES, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, 
 
 @Component({
   standalone: true,
-  imports: [ListPagerComponent, ModalAccessibilityDirective, FormsModule, RouterLink],
+  imports: [RoadmapDetailComponent, ListPagerComponent, ModalAccessibilityDirective, FormsModule, RouterLink],
   template: `
     @if (loading) { <div class="loading">Roadmap yükleniyor…</div> } @else if (selected) {
       <div class="page-head"><div><span class="eyebrow">{{ kindLabel(selected.kind) }} · {{ selected.referenceId || 'Referans ID yok' }}</span><h1>{{ selected.title }}</h1><p>{{ selected.description || 'Bu hedefe bağlı backlog işlerini yönetin.' }}</p></div>
-        <div class="page-actions"><a class="btn" routerLink="/roadmap">← Tüm hedefler</a>@if (auth.isAdmin()) { <button class="btn" (click)="editTarget()">Düzenle</button><button class="btn primary" (click)="openBacklogForm()">Backlog işi ekle</button> }</div></div>
-      <section class="metric-grid"><div class="card metric"><small>Bağlı backlog işi</small><strong>{{ linked.length }}</strong><span>Bir hedef, çok sayıda iş</span></div>
-        <div class="card metric good"><small>Done görev</small><strong>{{ selected.doneCount }}</strong><span>Sprint teslimatları</span></div>
-        <div class="card metric"><small>Hedef durumu</small><strong style="font-size:18px">{{ statusLabel(selected.status) }}</strong><span>{{ selected.targetDate ? formatDate(selected.targetDate) : 'Hedef tarihi yok' }}</span></div><div class="card metric"><small>Öncelik</small><strong style="font-size:18px">{{ priorityLabel(selected.priority) }}</strong><span>Roadmap düzeyindeki öncelik</span></div></section><p class="data-note">Hedef durumu elle yönetilir; işlerin tamamlanma yüzdesinden bağımsızdır. Durum değişikliği bağlı işleri veya sprintleri kapatmaz.</p>
-      <div class="card card-pad"><div class="section-head"><h2>Hedefe bağlı işler</h2><small>{{ linked.length }} kayıt</small></div>
-        <app-list-pager #linkedPager [items]="linked" label="Hedef işleri" />@if (linked.length) { <div class="list">@for (item of linkedPager.rows; track item.id) { <div class="list-row"><span><strong>{{ item.title }}</strong><small>{{ taxonomyLabel(item.taskCategory,item.taskSubtype) }} · {{ settings.estimationMode === 'SIZE_AND_HOURS' ? (item.size ? 'Size ' + item.size : 'Size yok') : (item.storyPoints != null ? item.storyPoints + ' SP' : 'SP yok') }} · {{ item.estimatedHours }} sa efor</small></span><span class="status" [class.done]="item.taskStatus === 'done'">{{ item.taskStatus || item.state }}</span></div> }</div> }
-        @else { <div class="empty"><strong>Henüz backlog işi yok</strong>Bu hedefi gerçekleştirecek ilk işi ekleyin.</div> }
-      </div>
+        <div class="page-actions"><a class="btn" routerLink="/roadmap">← Tüm hedefler</a>@if (auth.isAdmin()) { <button class="btn" (click)="editTarget()">Düzenle</button><button class="btn primary" (click)="openBacklogForm()">Backlog işi ekle</button> }<button type="button" class="btn ui-refresh" [disabled]="loading" (click)="load()">Yenile</button></div></div>
+      <dl class="sb-context"><div><dt>Hedef durumu</dt><dd>{{statusLabel(selected.status)}}</dd></div><div><dt>Öncelik</dt><dd>{{priorityLabel(selected.priority)}}</dd></div><div><dt>Hedef tarihi</dt><dd>{{selected.targetDate ? formatDate(selected.targetDate) : 'Belirtilmemiş'}}</dd></div></dl>
+      <p class="data-note">Hedef durumu elle yönetilir; bağlı işlerin sonucundan bağımsızdır.</p>
+      <app-roadmap-detail [roadmap]="selected" [items]="linked" [settings]="settings" />
     } @else if (missingTarget) {
       <section class="card empty"><h1>Roadmap hedefi bulunamadı</h1><p>Hedef kaldırılmış veya bağlantı geçersiz olabilir.</p><a class="btn" routerLink="/roadmap">Tüm hedeflere dön</a></section>
     } @else {
@@ -102,6 +99,7 @@ export class RoadmapComponent implements OnInit {
     this.cdr.detectChanges();
   }
   async load(): Promise<void> {
+    this.loading=true;this.error='';
     try {
       [this.items, this.backlog, this.settings] = await Promise.all([this.api.get<RoadmapItem[]>('/roadmap'), this.api.get<BacklogItem[]>('/backlog'), this.api.get<ProductSettings>('/settings')]);
       this.selectTarget();

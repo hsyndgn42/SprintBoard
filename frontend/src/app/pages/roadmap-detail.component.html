@@ -1,0 +1,68 @@
+<dl class="sb-context">
+  <div><dt>Kapsam</dt><dd>Yalnız {{roadmap.title}}</dd></div>
+  <div><dt>Bağlantı</dt><dd>Güncel roadmap bağlantıları · geçmiş işler dahil</dd></div>
+</dl>
+
+<section class="card card-pad" aria-labelledby="roadmap-work-title">
+  <div class="section-head"><div><span class="eyebrow">BAĞLI İŞLER</span><h2 id="roadmap-work-title">İş analizi ve görevler</h2></div><span class="muted" aria-live="polite">{{visible.length}} / {{linkedCount}} kayıt</span></div>
+  <div class="detail-filters">
+    <label class="field">İş ara<input type="search" [(ngModel)]="filters.query" (ngModelChange)="refreshFilters()" placeholder="İş adı, referans veya sprint"></label>
+    <label class="field">İş sonucu<select [(ngModel)]="filters.result" (ngModelChange)="refreshFilters()"><option value="">Tüm sonuçlar</option><option value="open">Açık işler (Done olmayan)</option><option value="done">Done / kapalı işler</option><option value="undone">Undone işler</option></select></label>
+    <label class="field">Planlama konumu<select [(ngModel)]="filters.stage" (ngModelChange)="refreshFilters()"><option value="">Havuz + tüm sprintler</option>@for(stage of stages;track stage.key){<option [value]="stage.key">{{stage.label}}</option>}</select></label>
+    <label class="field">Sprint<select [(ngModel)]="filters.sprintId" (ngModelChange)="refreshFilters()"><option value="">Tüm sprintler / havuz</option>@for(sprint of sprints;track sprint.id){<option [value]="sprint.id">{{sprint.name}}</option>}</select></label>
+    <label class="field">İş tipi<select [(ngModel)]="filters.category" (ngModelChange)="refreshFilters()"><option value="">Tüm türler</option>@for(category of categories;track category.value){<option [value]="category.value">{{category.label}}</option>}</select></label>
+    <button type="button" class="btn" [disabled]="!filtered" (click)="reset()">Filtreleri temizle</button>
+  </div>
+  <p class="data-note">Bu bölümdeki sayılar, grafikler ve liste aynı filtreleri kullanır. Kapalı iş = Done; kapanmış sprintteki Undone iş açık kalır. BAU dahildir; bu oran sprint teslimat oranı değildir.</p>
+  <div class="sb-metrics" aria-label="Filtrelenmiş iş özeti">
+    <div class="sb-metric"><span class="sb-metric__label">İş sayısı</span><strong class="sb-metric__value">{{analysis.total}}</strong></div>
+    <div class="sb-metric"><span class="sb-metric__label">Done / kapalı</span><strong class="sb-metric__value">{{analysis.done}}</strong><span class="sb-metric__hint">{{analysis.rate===null?'Oran hesaplanamadı':'%'+analysis.rate+' tamamlandı'}}</span></div>
+    <div class="sb-metric"><span class="sb-metric__label">Açık işler</span><strong class="sb-metric__value">{{analysis.open}}</strong><span class="sb-metric__hint">Havuz ve planlanan işler dahil</span></div>
+    <div class="sb-metric"><span class="sb-metric__label">Planlanan sprintte</span><strong class="sb-metric__value">{{analysis.planned}}</strong><span class="sb-metric__hint">Sprint henüz başlamadı</span></div>
+  </div>
+  @if(visible.length){
+    <details appFold open class="detail-charts"><summary><h3>İş dağılımları</h3></summary>
+      <div class="charts-grid">@for(chart of charts;track chart.key){<section class="chart-panel" [attr.aria-label]="chart.title"><h3>{{chart.title}}</h3>
+        <div class="sb-bar" aria-hidden="true">@for(row of chart.rows;track row.key;let index=$index){<span class="sb-bar__seg" [style.width.%]="percent(row.count,analysis.total)" [style.background]="color(row,index,chart.key==='result')"></span>}</div>
+        <ul class="count-legend">@for(row of chart.rows;track row.key;let index=$index){<li><i [style.background]="color(row,index,chart.key==='result')" aria-hidden="true"></i><span>{{row.label}}</span><strong>{{row.count}} <small>· %{{num(percent(row.count,analysis.total))}}</small></strong></li>}</ul>
+      </section>}</div>
+    </details>
+    <app-list-pager #tasksPager [items]="visible" label="Roadmap işleri" />
+    <div class="table-wrap"><table class="detail-table"><caption class="sr-only">Seçili roadmap için filtrelenmiş bağlı işler</caption><thead><tr><th scope="col">İş</th><th scope="col">Sonuç</th><th scope="col">Planlama konumu</th><th scope="col" class="numeric">İlk efor tahmini</th></tr></thead><tbody>
+      @for(item of tasksPager.rows;track item.id){<tr>
+        <td><button type="button" class="work-link" (click)="detail=item">{{item.title}}</button><small>{{taxonomy(item)}} · {{estimate(item)}}</small></td>
+        <td><span class="status" [class.done]="workResult(item)==='done'" [class.undone]="workResult(item)==='undone'" [class.doing]="workResult(item)==='doing'" [class.planned]="workResult(item)==='planned'">{{resultLabel(item)}}</span></td>
+        <td>@if(item.sprintId){<a [routerLink]="['/sprints',item.sprintId,'planning']">{{item.sprintName||'Sprint görevine git'}} →</a>}<small>{{stageLabel(item)}}</small></td>
+        <td class="numeric">{{num(item.estimatedHours)}} sa</td>
+      </tr>}
+    </tbody></table></div>
+    <p class="data-note">İlk efor tahmini, kişi atamalarının toplamı değildir. Atanan plan ve gerçekleşen mesai aşağıda ayrı gösterilir.</p>
+  }@else{
+    <sb-state [variant]="linkedCount?'no-results':'empty'" [title]="linkedCount?'Bu filtrelerde iş yok':'Henüz bağlı iş yok'" [message]="linkedCount?'Filtreleri değiştirerek diğer işleri görebilirsiniz.':'Roadmap’e bağlanan işler burada görünür.'" [actionLabel]="filtered?'Filtreleri temizle':''" (action)="reset()" />
+  }
+</section>
+
+<details appFold open class="card card-pad effort-section">
+  <summary class="section-head"><div><span class="eyebrow">TÜM DÖNEMLER · FİLTRELERDEN BAĞIMSIZ</span><h2>Roadmap eforu ve mesai</h2></div></summary>
+  @if(effortLoading){<sb-state variant="loading" title="Efor özeti yükleniyor" />}
+  @else if(effortError){<sb-state variant="error" [message]="effortError" actionLabel="Yeniden dene" (action)="loadEffort()" />}
+  @else if(effort;as row){
+    <div class="sb-metrics">
+      <div class="sb-metric"><span class="sb-metric__label">Atanan planlanan efor</span><strong class="sb-metric__value">{{num(row.assignedHours)}}<small class="sb-metric__unit">sa</small></strong></div>
+      <div class="sb-metric"><span class="sb-metric__label">Gerçekleşen mesai · ayrı</span><strong class="sb-metric__value">{{num(row.overtimeHours)}}<small class="sb-metric__unit">sa</small></strong></div>
+      <div class="sb-metric"><span class="sb-metric__label">Havuz tahmini · ayrı</span><strong class="sb-metric__value">{{num(row.poolEstimatedHours)}}<small class="sb-metric__unit">sa</small></strong></div>
+    </div>
+    <div class="effort-breakdown"><h3>Atanan eforun sonuç dağılımı</h3>
+      <div class="sb-bar" aria-hidden="true"><span [style.width.%]="percent(row.doneHours,row.assignedHours)" style="background:var(--sb-success)"></span><span [style.width.%]="percent(row.undoneHours,row.assignedHours)" style="background:var(--sb-danger)"></span><span [style.width.%]="percent(row.openHours,row.assignedHours)" style="background:var(--sb-info)"></span></div>
+      <ul class="sb-legend"><li>Done <strong>{{num(row.doneHours)}} sa</strong></li><li>Undone <strong>{{num(row.undoneHours)}} sa</strong></li><li>Açık <strong>{{num(row.openHours)}} sa</strong></li></ul>
+    </div>
+    <p class="data-note">Roadmap efor raporuyla aynı hesap. Planlanan efor harcanan süre değildir; mesai ve havuz tahmini plana eklenmez. X destek ve izin efora dahil değildir. Mesai kayıt anındaki roadmap bağlantısına aittir.</p>
+  }
+</details>
+
+@if(detail;as item){
+  <div class="modal-layer"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="roadmap-task-title"><header><span class="eyebrow">BAĞLI İŞ</span><h2 id="roadmap-task-title">{{item.title}}</h2><p>{{taxonomy(item)}} · {{resultLabel(item)}}</p></header>
+    <div class="modal-body"><h3>Kapsam ve kabul ölçütü</h3><p class="criteria">{{item.criteria||'Belirtilmemiş.'}}</p><p>{{estimate(item)}} · {{num(item.estimatedHours)}} sa ilk efor tahmini</p>@defer(on immediate){<app-backlog-history [itemId]="item.id" />}</div>
+    <footer><button type="button" data-modal-dismiss class="btn" (click)="detail=null">Kapat</button>@if(item.sprintId){<a class="btn primary" [routerLink]="['/sprints',item.sprintId,'planning']">Sprint görevine git</a>}</footer>
+  </section></div>
+}

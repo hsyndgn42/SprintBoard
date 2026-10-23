@@ -23,6 +23,9 @@ Güncelleme: 22 Ekim 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındad
 
 ### Arayüz
 
+- [x] Review bölüm geçişlerinde rotayı koruma; efor düzenleme açıklamasını planlanan sprint davranışıyla eşleştirme.
+- [x] Roadmap detayında filtreli bağlı işler, sonuç/planlama/tür grafikleri ve ayrı efor–mesai özeti.
+
 - [x] Tasarım token’ları (`--sb-*`), paylaşılan yükleme/boş/hata durumları ve ayar kategorileri.
 - [x] Ana sayfa (dashboard) yeniden tasarımı ve genel bakış sinyalleri.
 - [x] Rapor bağlamı, dönem ve veri tazeliği gösterimi; rapor çıktılarında metodoloji ve metrik tanımları.

@@ -6,7 +6,8 @@ import {OvertimeTrendRow} from './operational-trends.model';
 import {DefectSupportReviewComponent} from './defect-support-review.component';
 import {ScopeSummaryComponent} from './scope-summary.component';
 import { defectSummary } from '../defect-model';
-import { Component, Input, OnChanges, signal, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, OnChanges, signal, inject, ChangeDetectorRef, ElementRef } from '@angular/core';
+import { revealReviewSection } from './review-navigation';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService, TeamMember, ProductSettings, Sprint, SprintSummary, Task, formatDate, statusText } from '../api.service';
@@ -23,6 +24,8 @@ import {SprintFlowComponent} from './sprint-flow.component';
   host: { '(document:keydown)': 'onKeydown($event)' },
 })
 export class SprintReviewComponent implements OnChanges {
+  private hostElement = inject<ElementRef<HTMLElement>>(ElementRef);
+  goToSection(id: string){ revealReviewSection(this.hostElement.nativeElement, id); }
   private api=inject(ApiService);private cdr=inject(ChangeDetectorRef);
   overtimeRows:OvertimeTrendRow[]=[];overtimeReady=false;operations:ReviewOperations|undefined;
   team:TeamMember[]=[];teamReady=false;teamError='';
