@@ -24,6 +24,7 @@ import { defectSummary } from '../defect-model';
 import { SprintCloseDialogComponent } from './sprint-close-dialog.component';
 import { SprintAddDialogComponent } from './sprint-add-dialog.component';
 import { SprintBoardComponent } from './sprint-board.component';
+import { TaskRemoveDialogComponent } from './task-remove-dialog.component';
 
 @Component({
   standalone: true,
@@ -114,7 +115,7 @@ export class SprintsComponent implements OnInit {
 
 @Component({
   standalone: true,
-  imports: [FoldDirective,SprintEditDialogComponent,PlannedOvertimeListComponent,PlannedOvertimeDialogComponent,ListPagerComponent, WorkItemActionComponent,DefectReservesComponent,ReserveLinkComponent,ModalAccessibilityDirective, FormsModule, RouterLink, SprintJournalComponent, PlanningInsightsComponent, SprintBoardComponent, SprintReviewComponent, SprintAddDialogComponent, SprintCloseDialogComponent, DefectDialogComponent, RetroComponent],
+  imports: [FoldDirective,SprintEditDialogComponent,PlannedOvertimeListComponent,PlannedOvertimeDialogComponent,ListPagerComponent, WorkItemActionComponent,DefectReservesComponent,ReserveLinkComponent,ModalAccessibilityDirective, FormsModule, RouterLink, SprintJournalComponent, PlanningInsightsComponent, SprintBoardComponent, SprintReviewComponent, SprintAddDialogComponent, SprintCloseDialogComponent, DefectDialogComponent, RetroComponent, TaskRemoveDialogComponent],
   template: `
     @if (sprint; as current) {
       <div class="page-head sprint-detail-head"><div><span class="eyebrow">SPRİNT DETAYI</span><h1>{{ current.name }}</h1><p>{{ current.goal || 'Sprint hedefi belirtilmedi.' }}</p></div>
@@ -152,7 +153,7 @@ export class SprintsComponent implements OnInit {
               @for (item of planPager.rows; track item.id) { <tr [attr.data-planning-task]="item.id"><td><span class="task-swatch" [style.background]="taskColor(item)" aria-hidden="true"></span><strong class="task-title">{{ item.name }}</strong><small class="table-subtext">{{ taxonomyLabel(item) }}</small></td>
                 <td><span class="estimate-badge">{{ relativeEstimate(item) }}</span></td><td>@if (item.workKind === 'LEAVE') { <strong>{{ leaveHours(item) }} sa</strong><small class="table-subtext">{{ leaveDays(item) }} gün · kapasiteden düşer</small> } @else { <strong>{{ item.planningHours ?? item.estimatedHours }} sa</strong>@if(item.taskSubtype==='DEFECT_SUPPORT'){<small class="table-subtext">Kalan rezerv · başlangıç {{item.estimatedHours}} sa</small>}@if(item.taskCategory==='DEFECT' && item.reserveTaskId){<small class="table-subtext">Rezervden karşılanan: {{ item.reserveCoveredHours ?? 0 }} sa</small><small class="table-subtext">Ek plan yükü: {{ item.extraPlanHours ?? 0 }} sa</small>} }</td>
                 <td class="assignment-cell">{{ assignmentNames(item) }}@if(item.taskCategory==='DEFECT'&&auth.isAdmin()&&current.status!=='completed'){@defer(on immediate){<app-reserve-link [task]="item" [sprint]="current" (updated)="load(current.id)" />}}@if(item.reserveTaskId){<small class="table-subtext">Defect Support rezervine bağlı</small>}</td><td><span class="status" [class.done]="effectiveStatus(item)==='done'" [class.undone]="effectiveStatus(item)==='undone'" [class.doing]="effectiveStatus(item)==='doing'" [class.todo]="effectiveStatus(item)==='todo'">{{ isBau(item)?'Done · otomatik':statusText(item.status) }}</span></td>
-                <td>@if(item.taskCategory==='DEFECT'){<small>{{ defectSummary(item.defect) }}</small>}<div class="table-actions">@if(auth.isAdmin() && current.status!=='completed' && item.taskCategory==='DEFECT'){<button class="btn small" (click)="openDefect(item)">Defect takibi</button>}@if (auth.isAdmin() && !current.closureFrozen) { @if(current.status!=='completed'){<button class="btn small" (click)="openRename(item)">Adı düzenle</button>} <button class="btn small" (click)="openClassification(item)">Türü düzenle</button> } @if (auth.isAdmin() && current.status !== 'completed' && item.workKind !== 'LEAVE') { <button class="btn small" (click)="openAssignments(item)">Atama düzenle</button> }</div></td></tr> }
+                <td>@if(item.taskCategory==='DEFECT'){<small>{{ defectSummary(item.defect) }}</small>}<div class="table-actions">@if(auth.isAdmin() && current.status!=='completed' && item.taskCategory==='DEFECT'){<button class="btn small" (click)="openDefect(item)">Defect takibi</button>}@if (auth.isAdmin() && !current.closureFrozen) { @if(current.status!=='completed'){<button class="btn small" (click)="openRename(item)">Adı düzenle</button>} <button class="btn small" (click)="openClassification(item)">Türü düzenle</button> } @if (auth.isAdmin() && current.status !== 'completed' && item.workKind !== 'LEAVE') { <button class="btn small" (click)="openAssignments(item)">Atama düzenle</button> } @if (removableInPlanning(item)) { <button class="btn small danger" (click)="openRemove(item)">Backlog’a geri gönder</button> }</div></td></tr> }
             </tbody></table></div>
           </details>
         }</div>
@@ -181,6 +182,7 @@ export class SprintsComponent implements OnInit {
     @if(showEdit && sprint){<app-sprint-edit-dialog [sprint]="sprint" (cancel)="setEditOpen(false)" (saved)="sprintEdited($event)" />}
     @if(showComplete && sprint){<app-sprint-close-dialog [sprintId]="sprint.id" (cancel)="closeComplete()" (completed)="completed()" />}
     @if (showAddTask && sprint) { @defer(on immediate){<app-sprint-add-dialog [sprintId]="sprint.id" (cancel)="closeAddTask()" (added)="taskAdded()" />} }
+    @if (removeTask) { @defer(on immediate){<app-task-remove-dialog [task]="removeTask" (cancel)="closeRemove()" (removed)="removed($event)" />} }
     @if (assignmentTask) { <div class="modal-layer" role="presentation"><div class="modal assignment-modal" role="dialog" aria-modal="true" aria-labelledby="assignment-title"><header><h2 id="assignment-title">Atamaları düzenle</h2><p>{{ assignmentTask.name }} · kişi başı efor girin veya efor tüketmeyen X desteği seçin.</p>
       <p class="assignment-budget">Görev tahmini <strong>{{ assignmentTask.estimatedHours || 0 }} sa</strong> · Atanan <strong>{{ assignedEstimate() }} sa</strong>@if (assignmentVariance() > 0) { <span class="over">+{{ assignmentVariance() }} sa tahminin üzerinde</span> } @else if (assignmentVariance() < 0) { <span class="under">{{ assignmentVariance() }} sa tahminin altında</span> }</p></header>
       <div class="modal-body assignment-list">@for (member of members; track member.id) { <div class="assignment-row" [class.selected]="assigned(member.id)"><label class="assignment-person"><input type="checkbox" [checked]="assigned(member.id)" (change)="toggleAssignment(member.id)"><span>{{ member.name }}@if (!member.active) { <small>(geçmiş atama)</small> }</span></label>
@@ -223,6 +225,13 @@ export class SprintDetailComponent implements OnInit, OnDestroy {
   openRename(task:Task){this.renameTask=task;this.cdr.detectChanges();}
   closeRename(){this.renameTask=null;this.cdr.detectChanges();}
   async renamed(){this.closeRename();if(this.sprint)await this.load(this.sprint.id);this.actionMessage='Görev adı güncellendi.';this.cdr.detectChanges();}
+  removeTask:Task|null=null;
+  /** Only a sprint that has not started: once it runs, pulling work out is a scope change and belongs to the board,
+   *  where the reason, the emergency swap and the Undone decision are handled together. */
+  removableInPlanning(task:Task){return this.auth.isAdmin()&&this.sprint?.status==='planned'&&!this.sprint.closureFrozen&&!task.externalId?.startsWith('BAU-AUTO:');}
+  openRemove(task:Task){if(!this.removableInPlanning(task))return;this.removeTask=task;this.cdr.detectChanges();}
+  closeRemove(){this.removeTask=null;this.cdr.detectChanges();}
+  async removed(message:string){this.closeRemove();if(this.sprint)await this.load(this.sprint.id);this.actionMessage=message;this.cdr.detectChanges();}
   defectTask:Task|null=null;defectSummary=defectSummary;
   openDefect(t:Task){this.defectTask=t;this.cdr.detectChanges();}
   closeDefect(){this.defectTask=null;this.cdr.detectChanges();}
