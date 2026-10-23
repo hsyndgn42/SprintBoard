@@ -41,10 +41,9 @@ module.exports=async({evaluate,command,navigate,clickButton,setFieldValue,sleep,
  await navigate('sprints/'+sprint.id+'/review','Sprintin şu anki fotoğrafı');await waitFor('!!document.querySelector(".external-support")');
  await waitFor('[...document.querySelectorAll("button")].some(b=>b.textContent==="Sprint özeti HTML indir"&&!b.disabled)');
  await disclosures('.review details[appFold]');
- await evaluate('document.querySelector(".task-results > summary").click()');
  const before=await evaluate('JSON.stringify([...document.querySelectorAll(".review details[appFold]")].map(d=>d.open))');
  await evaluate('window.dispatchEvent(new Event("beforeprint"))');assert(await evaluate('[...document.querySelectorAll(".review details[appFold]")].every(d=>d.open)'));
- await command('Emulation.setEmulatedMedia',{media:'print'});assert(await evaluate('document.querySelector(".result-row").checkVisibility()'));
+ await command('Emulation.setEmulatedMedia',{media:'print'});assert(await evaluate('[...document.querySelectorAll(".review details[appFold] > :not(summary)")].every(e=>e.checkVisibility())'));
  await command('Emulation.setEmulatedMedia',{media:''});await evaluate('window.dispatchEvent(new Event("afterprint"))');
  assert.equal(await evaluate('JSON.stringify([...document.querySelectorAll(".review details[appFold]")].map(d=>d.open))'),before);
  await evaluate('[...document.querySelectorAll(".review details[appFold]")].forEach(d=>d.open=false)');await shot('review-collapsed');

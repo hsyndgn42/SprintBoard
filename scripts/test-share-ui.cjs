@@ -8,8 +8,8 @@ module.exports=async({evaluate,command,navigate,clickButton,setFieldValue,sleep,
  async function reports(){await navigate('reports','Sprint karşılaştırması');await wait('[...document.querySelectorAll("main button")].some(b=>b.textContent.includes("Tüm raporlar PDF")&&!b.disabled)','Reports not ready');}
  await evaluate('window.__exportBlobs=[];window.__exportNames=[];window.__oldCreate=URL.createObjectURL;URL.createObjectURL=b=>{window.__exportBlobs.push(b);return window.__oldCreate(b)};HTMLAnchorElement.prototype.click=function(){window.__exportNames.push(this.download)};true');
  await review('legacy-sprint-14');const active=await api('/sprints/legacy-sprint-14');fs.writeFileSync(path.join(dir,'expected-tasks.json'),JSON.stringify(active.items.map(t=>t.name)));
- await setFieldValue('[data-testid=review-search]','NO_MATCH_FOR_PRINT');await pdf('review-active');
- await clickButton('Sprint özeti HTML indir');const html=await evaluate('window.__exportBlobs.at(-1).text()');fs.writeFileSync(path.join(dir,'sprint-summary.html'),html);assert.equal((html.match(/<tr>/g)||[]).length,active.items.length+1);assert(!html.includes('qa.share.admin'));assert(html.includes('kesin kapanış sonucu değildir'));
+ await pdf('review-active');
+ await clickButton('Sprint özeti HTML indir');const html=await evaluate('window.__exportBlobs.at(-1).text()');fs.writeFileSync(path.join(dir,'sprint-summary.html'),html);assert(html.includes('Teslimat işleri'));assert(!html.includes('qa.share.admin'));assert(html.includes('kesin kapanış sonucu değildir'));
  await review('legacy-sprint-13');await pdf('review-completed');
  const note=await api('/sprints/legacy-sprint-14/review-notes');const longText=Array.from({length:65},(_,i)=>'NOT '+(i+1)+': Türkçe karakter kontrolü İı Şş Ğğ Üü Öö Çç. Paydaş beklentileri ve test kapsamı birlikte değerlendirildi.').join('\n');
  await api('/sprints/legacy-sprint-14/review-notes',{...note,demoNotes:longText,decisions:'SON-NOT-KONTROL',stakeholderFeedback:'Paydaş geri bildirimi.',nextSteps:'Takip kararı.'});await review('legacy-sprint-14');await pdf('review-long-notes');

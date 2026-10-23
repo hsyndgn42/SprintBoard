@@ -293,7 +293,7 @@ Mesai kaydında görev seçildiğinde görevin o andaki Roadmap bağlantısı sa
 
 ### Sprint Review
 
-Sprintin **Review** sekmesi o sprinti bir anlatı sırasıyla gösterir: sprint kimliği, yönetici özeti, planlanan/tamamlanan karşılaştırması, teslim edilen işler, tamamlanmayanlar, kapsam değişimi, riskler ve istisnalar, detaylı döküm ve metrik tanımları. Üstteki **Bölümler** çipleriyle doğrudan ilgili bölüme atlayabilirsiniz.
+Sprintin **Review** sekmesi o sprinti bir anlatı sırasıyla gösterir: sprint kimliği, yönetici özeti, planlanan/tamamlanan karşılaştırması, teslim edilen işler, tamamlanmayanlar, kapsam değişimi, riskler ve istisnalar, metrik tanımları. Üstteki **Bölümler** çipleriyle doğrudan ilgili bölüme atlayabilirsiniz.
 
 - Teslimat oranı BAU hariçtir. BAU işler Review’de otomatik Done kabul edilir.
 - Göreli tahmin dağılımı BAU hariç gösterilir.

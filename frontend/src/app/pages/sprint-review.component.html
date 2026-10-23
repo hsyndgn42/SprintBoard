@@ -123,13 +123,6 @@
       </details>
     }</div>
 
-    <details id="review-appendix" appFold class="card card-pad task-results"><summary class="section-head"><div><span class="eyebrow">DETAYLI DÖKÜM</span><h2>Tüm sprint işleri</h2></div><span class="muted screen-count">{{ visibleTasks.length }} / {{ sprint.items.length }} kayıt</span><span class="muted print-count">{{ sprint.items.length }} kayıt</span></summary>
-      <div class="review-filters"><label class="field">Görev, kişi veya not ara<input [(ngModel)]="query" placeholder="Aramak için yazın" data-testid="review-search"></label><label class="field">İş tipi<select [(ngModel)]="category"><option value="">Tüm türler</option>@for (row of review.categories; track row.key) { <option [value]="row.key">{{ row.label }}</option> }</select></label><label class="field">Sonuç<select [(ngModel)]="status"><option value="">Tüm durumlar</option>@for (row of statusOptions; track row.key) { <option [value]="row.key">{{ row.label }}</option> }</select></label><button class="btn" (click)="reset()">Filtreleri temizle</button></div>
-      <p class="data-note">Filtreler yalnız aşağıdaki dökümü etkiler; üstteki özet ve grafikler sprintin tamamını kapsar. PDF tüm görevleri içerir.</p>
-<div class="result-list">@for (task of review.items; track task.id) { <article class="result-row" [class.filtered-out]="!visibleTasks.includes(task)"><div class="result-title"><strong>{{ task.name }}</strong><span class="status" [class.done]="task.status === 'done'" [class.undone]="task.status === 'undone'">{{ statusText(task.status) }}</span></div><div class="result-meta"><span>{{ taxonomy(task) }}</span><span>{{ estimate(task) }}</span><span>{{ isLeave(task) ? number(leaveHours(task)) + ' sa izin' : number(effort(task)) + ' sa planlanan' }}</span></div>@if(task.taskCategory==='DEFECT'){<p class="result-note">Defect: {{ defectSummary(task.defect) }}@if(task.defect?.reporterId){ · Bildiren: {{ task.defect?.reporterName || 'Ad soyad bekleniyor' }}}</p>}<p class="assignees">{{ assignmentText(task) }}</p>@if (task.statusNote) { <p class="result-note">{{ task.statusNote }}</p> }</article> }</div>
-      @if (!visibleTasks.length) { <p class="empty filter-empty">Gösterilecek görev yok. Filtreleri değiştirebilirsiniz.</p> }
-    </details>
-
     <details appFold class="card card-pad review-definitions"><summary class="section-head"><div><span class="eyebrow">YÖNTEM</span><h2>Tanımlar ve yöntem</h2></div></summary>
       <dl class="definition-list">@for(row of definitions;track row[0]){<div><dt>{{ row[0] }}</dt><dd>{{ row[1] }}</dd></div>}</dl>
       <p class="data-note">Aynı tanımlar indirilen HTML dosyasında da yer alır.</p>

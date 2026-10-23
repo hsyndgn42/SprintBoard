@@ -795,28 +795,8 @@ async function main() {
     let reviewText = await evaluate('document.querySelector("app-sprint-review").innerText');
     for (const label of ['Sonuç dağılımı', 'Size dağılımı', 'Eforun sonuçlara dağılımı', 'Test kapsamı', 'Defect kapsamı', 'İzin kapasite etkisi', 'Canlı görünüm'])
       if (!reviewText.includes(label)) throw new Error('Review section missing: ' + label);
-    const initialRows = await evaluate('document.querySelectorAll(".result-row:not(.filtered-out)").length');
-    if (initialRows < 20) throw new Error('Review does not contain all historical tasks');
-    await setFieldValue('[data-testid="review-search"]', 'no-match-review-928471');
-    await sleep(150);
-    if (await evaluate('document.querySelectorAll(".result-row:not(.filtered-out)").length') !== '') throw new Error('Review search did not hide nonmatching rows');
-    await command('Emulation.setEmulatedMedia', { media: 'print' });
-    if (await evaluate('[...document.querySelectorAll(".result-row")].filter(row => getComputedStyle(row).display !== "none").length') !== initialRows) throw new Error('Print omitted filtered tasks');
-    await command('Emulation.setEmulatedMedia', { media: '' });
-    await sleep(200);
-    await clickButton('Filtreleri temizle');
-    for (let i = 0; i < 30 && await evaluate('document.querySelectorAll(".result-row:not(.filtered-out)").length') !== initialRows; i++) await sleep(100);
-    if (await evaluate('document.querySelectorAll(".result-row:not(.filtered-out)").length') !== initialRows) {
-      const debugShot = await command('Page.captureScreenshot', { format: 'png' });
-      require('node:fs').writeFileSync(join(process.env.SPRINTBOARD_REVIEW_SCREENSHOT_DIR || tmpdir(), 'review-reset.png'), Buffer.from(debugShot.data, 'base64'));
-      throw new Error('Review reset failed: ' + await evaluate('JSON.stringify({query:document.querySelector("[data-testid=review-search]").value,rows:document.querySelectorAll(".result-row:not(.filtered-out)").length})'));
-    }
-    await setFieldValue('.review-filters select', 'BAU');
-    await sleep(100);
-    if (await evaluate('document.querySelectorAll(".result-row:not(.filtered-out)").length') !== 4) throw new Error('Review category filter failed');
     await navigate('sprints/legacy-sprint-13/review', 'Teslimatın büyük resmi');
     if (await evaluate('document.querySelector("app-sprint-review").innerText.includes("Canlı görünüm")')) throw new Error('Closed review still shows live status');
-    if (await evaluate('document.querySelectorAll(".result-row:not(.filtered-out)").length') < 20) throw new Error('Review filters leaked across sprint navigation');
     for (const width of [1440, 390]) {
       await command('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: false });
       await evaluate('window.scrollTo(0,0)');

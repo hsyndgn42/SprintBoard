@@ -38,8 +38,6 @@ const at = '2024-01-15T09:00:00.000Z';
 
   assert.ok(html.includes('id="exec-summary"'), 'executive summary section');
   assert.ok(html.includes('Yönetici özeti'), 'executive summary heading');
-  assert.ok(html.includes('id="appendix"'), 'detailed appendix section');
-  assert.ok(html.includes('Detaylı döküm'), 'appendix heading');
   assert.ok(html.includes('Tanımlar ve yöntem'), 'metric definitions');
   assert.ok(html.includes('Teslimat işleri'), 'delivered work');
   assert.ok(html.includes('Devreden / açık'), 'incomplete work');
@@ -47,16 +45,15 @@ const at = '2024-01-15T09:00:00.000Z';
   assert.ok(html.includes('Sprint 1'), 'sprint identity');
   assert.ok(html.includes('2024-01-01'), 'date range');
 
-  // every appendix record appears
+  // the narrative sections together still account for every task
   for (const id of ['teslim', 'devreden', 'bug']) {
-    assert.ok(html.includes(id), `appendix lists ${id}`);
+    assert.ok(html.includes(id), `narrative lists ${id}`);
   }
 }
 
 // --- empty sections are omitted, not rendered as blank cards -------------
 {
   const html = editorialSprintHtml(sprint([]), settings, at);
-  assert.ok(!html.includes('id="appendix"'), 'no appendix when there are no records');
   assert.ok(!html.includes('Sprint ekibi'), 'no team showcase without team data');
   assert.ok(!html.includes('İş tipi dağılımı'), 'no work-type chart without work');
   assert.ok(html.includes('Bu sprintte görev yok'), 'the empty sprint is stated plainly');
@@ -136,7 +133,6 @@ const at = '2024-01-15T09:00:00.000Z';
   const html = editorialSprintHtml(sprint([task('a')]), settings, at);
   assert.ok(html.includes('@page{size:A4 portrait;margin:12mm}'), 'A4 page box');
   assert.ok(html.includes('thead{display:table-header-group}'), 'table headers repeat per page');
-  assert.ok(html.includes('.appendix{break-before:page}'), 'the appendix starts on its own page');
   assert.ok(/\.exec-grid article\{[^}]*break-inside:avoid/.test(html),
     'summary cards are not split across pages');
   assert.ok(html.includes('body{background:white'), 'print uses a light background');

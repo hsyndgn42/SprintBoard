@@ -29,7 +29,6 @@ const order = [
   'review-pending',   // what was not
   'review-scope',     // what changed
   'review-exceptions',// what needs attention
-  'review-appendix',  // the detail behind it all
 ];
 let cursor = -1;
 for (const id of order) {

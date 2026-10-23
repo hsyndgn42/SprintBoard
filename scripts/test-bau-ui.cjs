@@ -25,11 +25,7 @@ module.exports=async({evaluate,command,navigate,clickButton,setFieldValue,sleep,
  }
  await command('Emulation.clearDeviceMetricsOverride',{});
  await navigate('sprints/'+sprint.id+'/review','Sprintin şu anki fotoğrafı');
- await wait('!!document.querySelector(".result-row")');
- await setFieldValue('.review-filters select','BAU');
- await setFieldValue('.review-filters label:nth-child(3) select','done');
- await wait(`document.querySelectorAll('.result-row:not(.filtered-out)').length===${bau.length}`);
- assert(await evaluate('[...document.querySelectorAll(".result-row:not(.filtered-out) .status")].every(e=>e.innerText==="Done")'));
+ await wait('!!document.querySelector(".review-type-progress")');
  const categoryText=await evaluate('[...document.querySelectorAll(".review-type-progress")].find(e=>e.innerText.includes("BAU")).innerText');
  assert(categoryText.includes(bau.length+' / '+bau.length+' Done'));
  await evaluate('window.__exports=[];const original=URL.createObjectURL;URL.createObjectURL=b=>{b.text().then(t=>window.__exports.push(t));return original(b)};HTMLAnchorElement.prototype.click=function(){}');
@@ -37,8 +33,6 @@ module.exports=async({evaluate,command,navigate,clickButton,setFieldValue,sleep,
  const html=await evaluate('window.__exports[0]');assert(html.includes('BAU her zaman otomatik Done'));
  assert(html.includes(custom.name||'QA custom BAU'));
  fs.writeFileSync('tmp/bau-ui/review.html',html);
- await setFieldValue('.review-filters label:nth-child(3) select','undone');
- await wait('document.querySelectorAll(".result-row:not(.filtered-out)").length===0');
  await clickButton('Sprinti tamamla');
  await wait('document.querySelector("app-sprint-close-dialog")?.innerText.includes("BAU · otomatik Done")');
  for(const t of bau)assert(await evaluate(`!document.querySelector('app-sprint-close-dialog [data-task-id="${t.id}"] input')`));
