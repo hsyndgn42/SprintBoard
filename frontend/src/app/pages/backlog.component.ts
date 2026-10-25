@@ -48,7 +48,7 @@ import { SbStateComponent } from '../shared/sb-state.component';
           <option [ngValue]="null">Roadmap hedefine bağlı değil</option>@for (target of roadmap; track target.id) { <option [ngValue]="target.id">{{ target.referenceId ? target.referenceId + ' · ' : '' }}{{ target.title }}</option> }
         </select> } @else { <span>{{ item.roadmapTitle || 'Roadmap hedefine bağlı değil' }}</span> }</td>
         <td data-label="Durum"><span class="status" [class.done]="item.taskStatus === 'done'" [class.undone]="item.taskStatus === 'undone'" [class.doing]="item.taskStatus === 'doing'" [class.todo]="item.taskStatus === 'todo' && !plannedOnly(item)" [class.planned]="plannedOnly(item)" [class.active]="item.state === 'IN_SPRINT' && !plannedOnly(item)">{{ backlogState(item) }}</span>@if (plannedOnly(item)) { <small>{{ item.sprintName }} · sprint başlayınca Yapılacak olur</small> }@if (item.readiness.eligible) { <small [class.readiness-warning]="!item.readiness.ready">{{ item.readiness.ready ? 'Planlamaya hazır' : 'Kontrol gerekli · ' + item.readiness.warnings.length }}</small> }@if (item.dependencies.length) { <small>{{ item.dependencies.length }} bağımlılık · {{ openDependencies(item) }} açık</small> }</td>
-        <td data-label="Sprint">@if (item.sprintId) { <a class="table-link" [routerLink]="['/sprints', item.sprintId, 'summary']">{{ item.sprintName || 'Sprint görevi' }} →</a><small>{{ item.sprintStatus==='active'?'Aktif sprint':item.sprintStatus==='planned'?'Planlanan sprint':'Kapanmış sprint' }}</small> } @else { <span class="muted">Henüz yok</span> }</td>
+        <td data-label="Sprint">@if (item.sprintId) { <a class="table-link" [routerLink]="['/sprints', item.sprintId, 'summary']">{{ item.sprintName || 'Sprint görevi' }} →</a><small>{{ item.sprintStatus==='active'?'Aktif sprint':item.sprintStatus==='planned'?'Planlanan sprint':'Kapanmış sprint' }}</small> } @else { <span class="muted">Henüz yok</span> }@if (item.jiraKey) { <small>@if (jiraBaseUrl) { <a class="table-link" [href]="jiraBaseUrl + '/browse/' + item.jiraKey" target="_blank" rel="noopener noreferrer">{{ item.jiraKey }} ↗</a> } @else { {{ item.jiraKey }} }</small> } @else if (item.jiraState === 'PENDING') { <small>Jira PBI sırada…</small> } @else if (item.jiraState) { <small class="readiness-warning">Jira PBI açılamadı — {{ item.jiraError || 'bilinmeyen hata' }}</small>@if (auth.isAdmin()) { <button class="btn small" [disabled]="pbiBusy.has(item.id)" (click)="retryPbi(item)">Tekrar dene</button> } }</td>
         <td data-label="İşlemler"><div class="table-actions">@if (auth.isAdmin() && !item.taskId && item.state === 'Ready') { <button class="btn small" (click)="edit(item)">Düzenle</button> <button class="btn small danger" (click)="openDelete(item)">Sil</button> } @if (auth.isAdmin() && !item.taskId && item.state === 'Ready' && sprintTargetCount) { <button class="btn small" (click)="addToSprint(item)">Sprinte al</button> }
           @else if (auth.isAdmin() && item.taskId) { <button class="btn small" (click)="repeat(item)">Yeni iş olarak tekrarla</button> } @else { <span class="muted">—</span> }</div></td>
       </tr> }</tbody></table></div> }
@@ -90,6 +90,8 @@ export class BacklogComponent implements OnInit {
   priorities = [{value:'UNSET',label:'Belirlenmemiş'},{value:'URGENT',label:'Acil'},{value:'HIGH',label:'Yüksek'},{value:'NORMAL',label:'Normal'},{value:'LOW',label:'Düşük'}];
   priorityFilter=''; readinessFilter=''; sort='priority'; dependencyQuery=''; addItemId='';
   linkingIds = new Set<string>();
+  pbiBusy = new Set<string>();
+  jiraBaseUrl = '';
   query = '';
   filter = 'open';
   views=BACKLOG_VIEWS;
@@ -198,7 +200,7 @@ export class BacklogComponent implements OnInit {
   async deleted(){this.closeDelete();this.savedMessage='Backlog işi silindi. Denetim geçmişi korundu.';await this.load();}
   edit(item: BacklogItem): void { this.editingId=item.id; this.detail=null; this.draft={title:item.title,criteria:item.criteria,roadmapId:item.roadmapId || '',taskCategory:item.taskCategory,taskSubtype:item.taskSubtype,estimatedHours:item.estimatedHours,size:item.size || '',storyPoints:item.storyPoints,priority:item.priority,dependencyIds:item.dependencies.map(d=>d.id),defect:{...(item.defect||emptyDefect())}}; this.formOpen=true; this.error=''; this.cdr.detectChanges(); }
   private route=inject(ActivatedRoute);
-  async ngOnInit(): Promise<void> { await this.load();const id=this.route.snapshot.queryParamMap.get('item');if(id){const item=this.items.find(i=>i.id===id);if(item)this.openDetail(item);else{this.error='Bağlı backlog işi bulunamadı.';this.cdr.detectChanges();}} }
+  async ngOnInit(): Promise<void> { await this.load();await this.loadJira();const id=this.route.snapshot.queryParamMap.get('item');if(id){const item=this.items.find(i=>i.id===id);if(item)this.openDetail(item);else{this.error='Bağlı backlog işi bulunamadı.';this.cdr.detectChanges();}} }
   async load(): Promise<void> {
     try {
       const [items, roadmap, overview, settings, members, sprints] = await Promise.all([this.api.get<BacklogItem[]>('/backlog'), this.api.get<RoadmapItem[]>('/roadmap'), this.api.get<Overview>('/overview'), this.api.get<ProductSettings>('/settings'), this.api.get<TeamMember[]>('/team'), this.api.get<SprintSummary[]>('/sprints')]);
@@ -207,6 +209,19 @@ export class BacklogComponent implements OnInit {
       this.page = Math.min(this.page, this.totalPages);
     } catch (error) { this.error = String(error); }
     finally { this.cdr.detectChanges(); }
+  }
+  /** Only the key prefix is needed, so a failed Jira settings read must not break the backlog view. */
+  async loadJira(): Promise<void> {
+    try { const jira = await this.api.get<{baseUrl?:string}>('/jira/settings'); this.jiraBaseUrl = jira?.baseUrl || ''; }
+    catch { this.jiraBaseUrl = ''; }
+  }
+  async retryPbi(item: BacklogItem): Promise<void> {
+    if (this.pbiBusy.has(item.id)) return;
+    this.pbiBusy.add(item.id); this.error = ''; this.savedMessage = '';
+    this.cdr.detectChanges();
+    try { await this.api.post(`/jira/backlog/${encodeURIComponent(item.id)}/pbi`, {}); this.savedMessage = 'Jira PBI yeniden sıraya alındı; birkaç saniye içinde açılır.'; await this.load(); }
+    catch (error) { this.error = String(error); }
+    finally { this.pbiBusy.delete(item.id); this.cdr.detectChanges(); }
   }
   async openSlackItem(id:string){await this.load();const item=this.items.find(i=>i.id===id);if(item)this.openDetail(item);else{this.error='Bağlı iş bulunamadı; eski bir ürün yedeği geri yüklenmiş olabilir.';this.cdr.detectChanges();}}
   async link(item: BacklogItem, roadmapId: string | null): Promise<void> {

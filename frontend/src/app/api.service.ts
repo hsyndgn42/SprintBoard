@@ -58,6 +58,7 @@ export interface RoadmapItem {
 }
 export interface BacklogItem {
   sprintStatus?:string|null;sprintName?:string|null;
+  jiraKey?:string|null;jiraState?:string|null;jiraError?:string|null;
   defect?:DefectDetails;
   priority: 'UNSET' | 'URGENT' | 'HIGH' | 'NORMAL' | 'LOW'; ownerId: string | null; ownerName: string | null; ownerActive: boolean;
   dependencies: { id:string; title:string; status:string; done:boolean }[];

@@ -33,8 +33,9 @@ public class WorkspaceService {
   private final WorkScheduleService schedules;
   private final MemberCapacityService memberCapacity;
   private final ParticipationService participation;
+  private final JiraOutbox jiraOutbox;
 
-  public WorkspaceService(JdbcTemplate jdbc, ObjectMapper mapper, BacklogPlanningService planning, SprintClosureStore closures,DefectService defects,TaskSubtypeService subtypes,SprintFlowService flow) {
+  public WorkspaceService(JdbcTemplate jdbc, ObjectMapper mapper, BacklogPlanningService planning, SprintClosureStore closures,DefectService defects,TaskSubtypeService subtypes,SprintFlowService flow,JiraOutbox jiraOutbox) {
     this.jdbc = jdbc;
     this.schedules = new WorkScheduleService(jdbc,mapper);
     this.memberCapacity=new MemberCapacityService(jdbc);
@@ -45,6 +46,7 @@ public class WorkspaceService {
     this.defects = defects;
     this.subtypes = subtypes;
     this.flow = flow;
+    this.jiraOutbox = jiraOutbox;
   }
 
   private static Map<String, Object> map(Object... entries) {
@@ -377,10 +379,12 @@ public class WorkspaceService {
   }
   public List<Map<String, Object>> backlog() {
     var result = jdbc.query("""
-      SELECT b.*,t.id task_id,t.sprint_id,t.status task_status,s.status sprint_status,s.name sprint_name,r.title roadmap_title,m.name owner_name,m.active owner_active
+      SELECT b.*,t.id task_id,t.sprint_id,t.status task_status,s.status sprint_status,s.name sprint_name,r.title roadmap_title,m.name owner_name,m.active owner_active,
+             j.jira_issue_key,j.state jira_state,j.last_error jira_error
       FROM backlog_item b LEFT JOIN sprint_task t ON t.backlog_id=b.id
       LEFT JOIN sprint s ON s.id=t.sprint_id
       LEFT JOIN member m ON m.id=b.owner_id
+      LEFT JOIN jira_issue_link j ON j.local_kind='backlog' AND j.local_id=b.id
       LEFT JOIN roadmap_item r ON r.id=b.roadmap_id ORDER BY b.created_at DESC,b.id DESC
       """, (rs, row) -> map("id", rs.getString("id"), "roadmapId", rs.getString("roadmap_id"),
         "title", rs.getString("title"), "criteria", rs.getString("criteria"), "workKind", rs.getString("work_kind"),
@@ -389,6 +393,7 @@ public class WorkspaceService {
         "storyPoints", nullableDouble(rs, "story_points"), "size", rs.getString("size_code"), "externalId", rs.getString("external_id"),
         "repeatOfId", rs.getString("repeat_of_id"), "taskId", rs.getString("task_id"), "sprintId", rs.getString("sprint_id"),
         "sprintStatus",rs.getString("sprint_status"),"sprintName",rs.getString("sprint_name"),"taskStatus", rs.getString("task_status"), "roadmapTitle", rs.getString("roadmap_title"),
+        "jiraKey",rs.getString("jira_issue_key"),"jiraState",rs.getString("jira_state"),"jiraError",rs.getString("jira_error"),
         "priority",rs.getString("priority"),"ownerId",rs.getString("owner_id"),"ownerName",rs.getString("owner_name"),"ownerActive",rs.getBoolean("owner_active")));
     defects.enrich(result,"id");
     planning.enrich(result);
@@ -1127,6 +1132,8 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
       if ("CORE".equals(mode)) for (String memberId : members)
         jdbc.update("INSERT INTO assignment(id,task_id,member_id,estimated_hours,support_only) VALUES (?,?,?,?,false)",
             taskId + "-" + memberId, taskId, memberId, days * memberCapacity.forSprint(sprintId,memberId,schedules.forSprint(sprintId).hoursPerDay()).hoursPerDay());
+      // Past sprints are reconstructed from memory; sending them would create work Jira never saw.
+      if (!completed) jiraOutbox.enqueueBacklog(backlogId);
       if (completed && "TRAINING".equals(kind) && "legacy-sprint-10".equals(sprintId)) {
         for (String memberId : members)
           jdbc.update("INSERT INTO assignment(id,task_id,member_id,estimated_hours,support_only) VALUES (?,?,?,?,false)",
@@ -1195,6 +1202,7 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
         row.get("CRITERIA"), row.get("TYPE"), row.get("WORK_KIND"), "todo", row.get("ESTIMATED_HOURS"),
         row.get("ESTIMATED_HOURS"), row.get("STORY_POINTS"), row.get("EXTERNAL_ID"), row.get("SIZE_CODE"), row.get("TASK_CATEGORY"), row.get("TASK_SUBTYPE"));
     jdbc.update("UPDATE backlog_item SET state='IN_SPRINT' WHERE id=?", backlogId);
+    jiraOutbox.enqueueBacklog(backlogId);
     if (row.get("STORY_POINTS") != null) jdbc.update("UPDATE sprint SET story_points_available=true WHERE id=?", sprintId);
     if(input.containsKey("assignments"))replaceAssignments(newId,input);
     if(!text(input,"reserveTaskId").isBlank())DefectReserve.set(jdbc,newId,text(input,"reserveTaskId"));
@@ -1238,6 +1246,7 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
     audit("backlog",id,"deleted",map("item",snapshot));
     jdbc.update("DELETE FROM backlog_dependency WHERE backlog_id=?",id);
     jdbc.update("DELETE FROM defect_detail WHERE backlog_id=?",id);
+    jiraOutbox.forgetBacklog(id);
     jdbc.update("DELETE FROM backlog_item WHERE id=?",id);
     return map("id",id,"deleted",true);
   }
