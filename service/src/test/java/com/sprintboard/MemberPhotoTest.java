@@ -25,7 +25,7 @@ class MemberPhotoTest {
  @Test void uploadReplaceRemoveAndBackupRoundTrip()throws Exception{
   String id=w.createMember(Map.of("name","Photo QA")).get("id").toString();var before=m.valueToTree(b.exportData()).path("tables");
   String photo=png(16,16);w.saveMemberPhoto(id,Map.of("photoDataUrl",photo));assertTrue(w.team().stream().filter(r->id.equals(r.get("id"))).findFirst().orElseThrow().get("photoDataUrl").toString().startsWith("data:image/png;base64,"));
-  var export=m.valueToTree(b.exportData());assertEquals(40, export.path("schemaVersion").asInt());assertNotNull(b.preview(export));
+  var export=m.valueToTree(b.exportData());assertEquals(41, export.path("schemaVersion").asInt());assertNotNull(b.preview(export));
   before.properties().forEach(e->{if(!e.getKey().equals("member_photo"))assertEquals(e.getValue(),export.path("tables").path(e.getKey()),e.getKey());});
   w.saveMemberPhoto(id,Map.of("photoDataUrl",png(32,32)));w.saveMemberPhoto(id,Map.of("photoDataUrl",""));assertNull(w.team().stream().filter(r->id.equals(r.get("id"))).findFirst().orElseThrow().get("photoDataUrl"));
   var p=b.preview(export);b.restore(m.valueToTree(Map.of("backup",export,"confirmation","GERİ YÜKLE","currentFingerprint",p.get("currentFingerprint"),"backupFingerprint",p.get("backupFingerprint"))));assertNotNull(w.team().stream().filter(r->id.equals(r.get("id"))).findFirst().orElseThrow().get("photoDataUrl"));
@@ -42,7 +42,7 @@ class MemberPhotoTest {
   String sprint=w.createSprint(Map.of("name","Photo sprint","start","2027-06-07","end","2027-06-25")).get("id").toString();
   var people=w.reviewTeam(sprint);assertTrue(people.stream().anyMatch(p->core.equals(p.get("id"))));assertTrue(people.stream().anyMatch(p->arch.equals(p.get("id"))));assertFalse(people.stream().anyMatch(p->support.equals(p.get("id"))));assertTrue(people.stream().filter(p->List.of(core,arch).contains(p.get("id"))).allMatch(p->p.get("photoDataUrl")!=null));
  }
- @Test void oldBackupsRestoreWithoutInventingPhotos(){ObjectNode old=m.valueToTree(b.exportData());old.put("schemaVersion",29);BackupFixtureV40.removeMatching(old);((ObjectNode)old.path("tables")).remove(java.util.List.of("task_activity","overtime_request","leave_request","defect_reserve_link"));((ObjectNode)old.path("tables")).remove("member_photo");assertNotNull(b.preview(old));}
+ @Test void oldBackupsRestoreWithoutInventingPhotos(){ObjectNode old=m.valueToTree(b.exportData());old.put("schemaVersion",29);BackupFixtureV41.removeMatching(old);((ObjectNode)old.path("tables")).remove(java.util.List.of("task_activity","overtime_request","leave_request","defect_reserve_link"));((ObjectNode)old.path("tables")).remove("member_photo");assertNotNull(b.preview(old));}
  @Test void photoMutationRequiresAdminAndCsrf()throws Exception{
   String body=m.writeValueAsString(Map.of("photoDataUrl",png(8,8)));
   mvc.perform(put("/api/team/legacy-member-isa/photo").with(user("reader").roles("USER")).with(csrf()).contentType("application/json").content(body)).andExpect(status().isForbidden());

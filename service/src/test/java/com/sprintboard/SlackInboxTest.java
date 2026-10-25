@@ -71,7 +71,7 @@ class SlackInboxTest {
   var saved=mapper.valueToTree(backup.exportData());var preview=backup.preview(saved);
   backup.restore(mapper.valueToTree(Map.of("backup",saved,"confirmation","GERİ YÜKLE","currentFingerprint",preview.get("currentFingerprint"),"backupFingerprint",preview.get("backupFingerprint"))));
   assertEquals("U123456",defects.all().get(b).get("reporterId"));
-  var old=(com.fasterxml.jackson.databind.node.ObjectNode)saved.deepCopy();old.put("schemaVersion",34);BackupFixtureV40.removeMatching(old);
+  var old=(com.fasterxml.jackson.databind.node.ObjectNode)saved.deepCopy();old.put("schemaVersion",34);BackupFixtureV41.removeMatching(old);
   old.path("tables").path("defect_detail").forEach(row->((com.fasterxml.jackson.databind.node.ObjectNode)row).remove(List.of("reporter_id","reporter_team_id","source_url")));
   assertDoesNotThrow(()->backup.preview(old));
  }

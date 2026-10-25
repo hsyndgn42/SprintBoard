@@ -101,11 +101,11 @@ class LeaveRequestTest {
    String id=UUID.randomUUID().toString();
    mvc.perform(body(post("/api/self/leave-requests"),user,leave(id,"ANNUAL","2026-10-08"))).andExpect(status().isOk());decide(id,"APPROVED",200);
    db.update("UPDATE sprint SET status='completed' WHERE id<>'collab-sprint' AND status='active'");
-   ObjectNode exported=mapper.valueToTree(backups.exportData());assertEquals(40,exported.path("schemaVersion").asInt());
+   ObjectNode exported=mapper.valueToTree(backups.exportData());assertEquals(41,exported.path("schemaVersion").asInt());
    var preview=backups.preview(exported);var restore=new HashMap<String,Object>(preview);restore.put("backup",exported);restore.put("confirmation","GERİ YÜKLE");
    backups.restore(mapper.valueToTree(restore));
    assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM leave_request WHERE status='APPROVED' AND entry_id IS NOT NULL",Integer.class));
-   var old=exported.deepCopy();old.put("schemaVersion",31);BackupFixtureV40.removeMatching(old);((ObjectNode)old.path("tables")).remove("leave_request");((ObjectNode)old.path("tables")).remove("defect_reserve_link");assertDoesNotThrow(()->backups.preview(old));
+   var old=exported.deepCopy();old.put("schemaVersion",31);BackupFixtureV41.removeMatching(old);((ObjectNode)old.path("tables")).remove("leave_request");((ObjectNode)old.path("tables")).remove("defect_reserve_link");assertDoesNotThrow(()->backups.preview(old));
    ((ObjectNode)exported.path("tables").path("leave_request").get(0)).put("entry_id","missing");assertThrows(IllegalArgumentException.class,()->backups.preview(exported));
  }
 }

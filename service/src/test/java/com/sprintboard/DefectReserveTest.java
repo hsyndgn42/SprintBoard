@@ -87,10 +87,10 @@ class DefectReserveTest {
   assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM sprint_task WHERE backlog_id=?",Integer.class,next));
  }
  @Test void backupRoundTripAndOldV32Upgrade(){
-  ObjectNode old=m.valueToTree(backups.exportData());old.put("schemaVersion",32);BackupFixtureV40.removeMatching(old);((ObjectNode)old.path("tables")).remove("defect_reserve_link");
+  ObjectNode old=m.valueToTree(backups.exportData());old.put("schemaVersion",32);BackupFixtureV41.removeMatching(old);((ObjectNode)old.path("tables")).remove("defect_reserve_link");
   assertDoesNotThrow(()->backups.preview(old));
   String r=reserve();create("DEFECT","TEST_DEFECT",r,List.of(assignment(isa,10,false)));
-  ObjectNode saved=m.valueToTree(backups.exportData());assertEquals(40,saved.path("schemaVersion").asInt());
+  ObjectNode saved=m.valueToTree(backups.exportData());assertEquals(41,saved.path("schemaVersion").asInt());
   var p=backups.preview(saved);var request=m.createObjectNode();request.set("backup",saved);request.put("confirmation","GERİ YÜKLE");p.forEach((k,v)->request.set(k,m.valueToTree(v)));
   var expected=m.valueToTree(w.sprint(sprint));backups.restore(request);assertEquals(expected,m.valueToTree(w.sprint(sprint)));
   var bad=saved.deepCopy();((ObjectNode)bad.path("tables").path("defect_reserve_link").get(0)).put("reserve_task_id","missing");

@@ -41,10 +41,10 @@ class OvertimePlanMatchingTest {
   assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM overtime_plan_link",Integer.class));
  }
  @Test void backupRoundTripPreservesLinksAndV39DoesNotInventMatches(){
-  String plan=plan(16);actual(plan,8);actual(null,2);ObjectNode saved=mapper.valueToTree(backups.exportData());assertEquals(40,saved.path("schemaVersion").asInt());
+  String plan=plan(16);actual(plan,8);actual(null,2);ObjectNode saved=mapper.valueToTree(backups.exportData());assertEquals(41,saved.path("schemaVersion").asInt());
   var preview=backups.preview(saved);backups.restore(mapper.valueToTree(Map.of("backup",saved,"confirmation","GERİ YÜKLE","currentFingerprint",preview.get("currentFingerprint"),"backupFingerprint",preview.get("backupFingerprint"))));assertEquals(8d,row(plan).get("planActualHours"));
   var bad=saved.deepCopy();((ObjectNode)bad.path("tables").path("overtime_plan_link").get(0)).put("plan_id","missing");assertThrows(IllegalArgumentException.class,()->backups.preview(bad));
-  var old=saved.deepCopy();old.put("schemaVersion",39);BackupFixtureV40.removeMatching(old);var p=backups.preview(old);backups.restore(mapper.valueToTree(Map.of("backup",old,"confirmation","GERİ YÜKLE","currentFingerprint",p.get("currentFingerprint"),"backupFingerprint",p.get("backupFingerprint"))));
+  var old=saved.deepCopy();old.put("schemaVersion",39);BackupFixtureV41.removeMatching(old);var p=backups.preview(old);backups.restore(mapper.valueToTree(Map.of("backup",old,"confirmation","GERİ YÜKLE","currentFingerprint",p.get("currentFingerprint"),"backupFingerprint",p.get("backupFingerprint"))));
   assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM overtime_plan_link",Integer.class));assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM overtime_entry WHERE plan_classification<>'LEGACY'",Integer.class));assertEquals(10d,db.queryForObject("SELECT SUM(earned_hours) FROM overtime_entry WHERE member_id=?",Double.class,member));
  }
 }

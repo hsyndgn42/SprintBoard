@@ -118,7 +118,7 @@ class CollaborationTest {
   mvc.perform(body(post("/api/admin/overtime-requests/"+id+"/decision"),admin,Map.of("status","APPROVED","note","Uygun"))).andExpect(status().isOk());
   // Keep only the fixture active for full-workspace validation.
   db.update("UPDATE sprint SET status='completed' WHERE id<>'collab-sprint' AND status='active'");
-  ObjectNode export=mapper.valueToTree(backups.exportData());assertEquals(40,export.path("schemaVersion").asInt());assertFalse(export.path("tables").has("app_user"));
+  ObjectNode export=mapper.valueToTree(backups.exportData());assertEquals(41,export.path("schemaVersion").asInt());assertFalse(export.path("tables").has("app_user"));
   assertEquals(1,export.path("tables").path("task_activity").size());assertDoesNotThrow(()->backups.preview(export));
   var preview=backups.preview(export);var restore=new HashMap<String,Object>(preview);restore.put("backup",export);restore.put("confirmation","GERİ YÜKLE");
   String password=db.queryForObject("SELECT password_hash FROM app_user WHERE username='elcim.test'",String.class);

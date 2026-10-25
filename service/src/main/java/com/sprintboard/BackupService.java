@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class BackupService {
   private static final List<String> TABLES = List.of("task_subtype", "roadmap_item", "member", "member_photo", "sprint", "backlog_item", "sprint_task",
       "assignment", "leave_record", "overtime_snapshot", "sprint_retro", "non_working_day", "overtime_entry",
-      "product_setting", "sprint_member_allocation", "bau_template", "backlog_dependency", "sprint_closure", "defect_detail", "retro_action", "sprint_review_note", "sprint_flow", "task_blocker", "sprint_scope_event", "member_capacity_policy", "sprint_member_policy", "member_participation", "sprint_member_presence", "task_activity", "overtime_request", "leave_request", "defect_reserve_link", "overtime_plan_link");
+      "product_setting", "sprint_member_allocation", "bau_template", "backlog_dependency", "sprint_closure", "defect_detail", "retro_action", "sprint_review_note", "sprint_flow", "task_blocker", "sprint_scope_event", "member_capacity_policy", "sprint_member_policy", "member_participation", "sprint_member_presence", "task_activity", "overtime_request", "leave_request", "defect_reserve_link", "overtime_plan_link", "jira_issue_link", "jira_defect_inbox");
   private final JdbcTemplate jdbc;
   private final ObjectMapper mapper;
   private final Path directory;
@@ -61,9 +61,9 @@ public class BackupService {
   }
   @Transactional(readOnly = true, isolation = Isolation.SERIALIZABLE)
   public Map<String, Object> exportData() {
-    return Map.of("format", "sprintboard-data-backup", "formatVersion", 1, "schemaVersion", 40,
+    return Map.of("format", "sprintboard-data-backup", "formatVersion", 1, "schemaVersion", 41,
         "exportedAt", Instant.now().toString(), "tables", tableData(),
-        "excludes", List.of("Giriş hesapları ve parolalar", "Mevcut yerel denetim günlüğü", "Slack bağlantı ayarları, tokenlar ve onay kuyruğu (yerel entegrasyon kayıtları)"));
+        "excludes", List.of("Giriş hesapları ve parolalar", "Mevcut yerel denetim günlüğü", "Slack bağlantı ayarları, tokenlar ve onay kuyruğu (yerel entegrasyon kayıtları)", "Jira bağlantı ayarları ve tokenı"));
   }
   private String fingerprint(Object data) {
     try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(mapper.writeValueAsBytes(data))); }
@@ -71,7 +71,7 @@ public class BackupService {
   }
   private JsonNode validate(JsonNode document) {
     JsonNode backup = document.has("restore") ? document.get("restore") : document;
-    if (!backup.path("format").asText().equals("sprintboard-data-backup") || backup.path("formatVersion").asInt() != 1 || !Set.of(11,12,13,14,15,16,19,22,23,24,25,26,27,28,29,30,31,32,33,34,36,37,39,40).contains(backup.path("schemaVersion").asInt()))
+    if (!backup.path("format").asText().equals("sprintboard-data-backup") || backup.path("formatVersion").asInt() != 1 || !Set.of(11,12,13,14,15,16,19,22,23,24,25,26,27,28,29,30,31,32,33,34,36,37,39,40,41).contains(backup.path("schemaVersion").asInt()))
       throw new IllegalArgumentException("Bu dosya desteklenen tam yedek biçiminde değil. Ayarlar’dan yeni JSON yedeği alın; eski dışa aktarımlar otomatik geri yüklenmez.");
     if (backup.toString().getBytes(StandardCharsets.UTF_8).length > 20_000_000) throw new IllegalArgumentException("Yedek en fazla 20 MB olabilir.");
     if(backup.path("schemaVersion").asInt()==11) {
@@ -225,6 +225,17 @@ public class BackupService {
       }
       ((com.fasterxml.jackson.databind.node.ObjectNode)upgraded.path("tables")).putArray("overtime_plan_link");
       upgraded.put("schemaVersion",40);backup=upgraded;
+    }
+    if(backup.path("schemaVersion").asInt()==40){
+      // Without the Jira links a restore would resend work that already reached Jira.
+      var upgraded=(com.fasterxml.jackson.databind.node.ObjectNode)backup.deepCopy();
+      var data=(com.fasterxml.jackson.databind.node.ObjectNode)upgraded.path("tables");
+      for(String table:List.of("jira_issue_link","jira_defect_inbox")){
+        if(data.has(table))throw new IllegalArgumentException("V40 Jira bölümleri uyumsuz.");
+        data.putArray(table);
+      }
+      for(var row:data.path("roadmap_item"))if(!row.has("jira_epic_key"))((com.fasterxml.jackson.databind.node.ObjectNode)row).putNull("jira_epic_key");
+      upgraded.put("schemaVersion",41);backup=upgraded;
     }
     JsonNode tables = backup.path("tables");
     Set<String> names = new HashSet<>(); tables.fieldNames().forEachRemaining(names::add);
@@ -402,7 +413,7 @@ public class BackupService {
     Path safetyFile = directory.resolve("before-restore-" + UUID.randomUUID() + ".json");
     try {
       Files.createDirectories(directory);
-      var safety = Map.of("format","sprintboard-data-backup","formatVersion",1,"schemaVersion",40,"exportedAt",Instant.now().toString(),"tables",current);
+      var safety = Map.of("format","sprintboard-data-backup","formatVersion",1,"schemaVersion",41,"exportedAt",Instant.now().toString(),"tables",current);
       Files.write(safetyFile, mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(safety), StandardOpenOption.CREATE_NEW);
     } catch (Exception e) { throw new IllegalStateException("Güvenlik yedeği yazılamadı. Geri yükleme yapılmadı.", e); }
     replaceTables(jdbc, backup.get("tables"));
