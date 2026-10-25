@@ -51,7 +51,7 @@ public class JiraPbiService {
   }catch(JiraTransport.RateLimited waiting){
    defer(linkId,attempts,waiting.seconds,"Jira istek sınırı; otomatik yeniden denenecek.");
   }catch(JiraTransport.Rejected rejected){
-   fail(linkId,backlogId,message(rejected));
+   fail(linkId,backlogId,hint(message(rejected),epic));
   }catch(RuntimeException failure){
    if(attempts+1>=MAX_ATTEMPTS){fail(linkId,backlogId,message(failure));return;}
    defer(linkId,attempts,BACKOFF_SECONDS[Math.min(attempts,BACKOFF_SECONDS.length-1)],message(failure));
@@ -112,6 +112,14 @@ public class JiraPbiService {
    var details=new LinkedHashMap<String,Object>(detail);details.put("actor","system");
    db.update("INSERT INTO audit_event(occurred_at,entity_type,entity_id,action,detail_json) VALUES(?,?,?,?,?)",Timestamp.from(clock.instant()),"jira",backlogId,action,mapper.writeValueAsString(details));
   }catch(Exception ignored){/* an audit gap must not undo a successful send */}
+ }
+ /**
+  * Jira answers some epic-side problems while creating the PBI, so the message points at the epic
+  * that actually needs the fix rather than at the backlog item the person was looking at.
+  */
+ private static String hint(String reason,String epicKey){
+  if(!reason.toLowerCase(Locale.ROOT).contains("epic type"))return reason;
+  return reason+" — "+epicKey+" epic kaydında \"Epic Type\" alanı boş. Jira'da epic'i açıp alanı doldurun, sonra Tekrar dene deyin.";
  }
  private static String message(RuntimeException failure){
   String text=failure.getMessage();

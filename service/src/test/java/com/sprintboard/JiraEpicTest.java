@@ -77,6 +77,8 @@ class JiraEpicTest {
   assertEquals("238",fields.path("issuetype").path("id").asText());
   assertEquals("VBCRF",fields.path("project").path("key").asText());
   assertEquals("2",fields.path("priority").path("id").asText());
+  // Without an epic type Jira later refuses every PBI placed under this epic.
+  assertEquals("40423",fields.path("customfield_28797").get(0).path("id").asText());
   assertFalse(fields.path("description").asText().isBlank());
  }
 

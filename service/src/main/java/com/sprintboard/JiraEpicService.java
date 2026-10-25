@@ -60,6 +60,9 @@ public class JiraEpicService {
   fields.set("priority",mapper.createObjectNode().put("id",defaults.option("priorityByRoadmapPriority",text(roadmap,"priority"),"3")));
   // Epic Name is a separate required field from the summary and is capped at 255 characters.
   fields.put(defaults.text("epicNameFieldId","customfield_12874"),title.length()>255?title.substring(0,255):title);
+  // Jira accepts an epic without an epic type but then refuses to hang any PBI under it.
+  String epicType=defaults.text("epicTypeOptionId","40423");
+  if(!epicType.isBlank())fields.putArray(defaults.text("epicTypeFieldId","customfield_28797")).addObject().put("id",epicType);
   var extra=defaults.block("epicExtraFields");
   if(extra!=null)extra.fields().forEachRemaining(entry->fields.set(entry.getKey(),entry.getValue()));
   // The project links epics to a portfolio item through the TC task reference the roadmap already carries.
