@@ -17,7 +17,8 @@ import { TASK_CATEGORIES, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, 
     @if (loading) { <div class="loading">Roadmap yükleniyor…</div> } @else if (selected) {
       <div class="page-head"><div><span class="eyebrow">{{ kindLabel(selected.kind) }} · {{ selected.referenceId || 'Referans ID yok' }}</span><h1>{{ selected.title }}</h1><p>{{ selected.description || 'Bu hedefe bağlı backlog işlerini yönetin.' }}</p></div>
         <div class="page-actions"><a class="btn" routerLink="/roadmap">← Tüm hedefler</a>@if (auth.isAdmin()) { <button class="btn" (click)="editTarget()">Düzenle</button><button class="btn primary" (click)="openBacklogForm()">Backlog işi ekle</button> }<button type="button" class="btn ui-refresh" [disabled]="loading" (click)="load()">Yenile</button></div></div>
-      <dl class="sb-context"><div><dt>Hedef durumu</dt><dd>{{statusLabel(selected.status)}}</dd></div><div><dt>Öncelik</dt><dd>{{priorityLabel(selected.priority)}}</dd></div><div><dt>Hedef tarihi</dt><dd>{{selected.targetDate ? formatDate(selected.targetDate) : 'Belirtilmemiş'}}</dd></div></dl>
+      <dl class="sb-context"><div><dt>Hedef durumu</dt><dd>{{statusLabel(selected.status)}}</dd></div><div><dt>Öncelik</dt><dd>{{priorityLabel(selected.priority)}}</dd></div><div><dt>Hedef tarihi</dt><dd>{{selected.targetDate ? formatDate(selected.targetDate) : 'Belirtilmemiş'}}</dd></div>@if(auth.isAdmin() && (selected.jiraEpicKey || jiraBaseUrl)){<div><dt>Jira epic</dt><dd>@if(selected.jiraEpicKey){@if(jiraBaseUrl){<a [href]="jiraBaseUrl+'/browse/'+selected.jiraEpicKey" target="_blank" rel="noopener">{{selected.jiraEpicKey}}</a>}@else{{{selected.jiraEpicKey}}}}@else{<button type="button" class="btn" [disabled]="epicBusy" (click)="createEpic()">{{epicBusy?'Açılıyor…':'Jira\'da epic aç'}}</button>}</dd></div>}</dl>
+      @if(epicError){<p class="form-error" role="alert">{{epicError}}</p>}
       <p class="data-note">Hedef durumu elle yönetilir; bağlı işlerin sonucundan bağımsızdır.</p>
       <app-roadmap-detail [roadmap]="selected" [items]="linked" [settings]="settings" />
     } @else if (missingTarget) {
@@ -72,6 +73,9 @@ export class RoadmapComponent implements OnInit {
   selected: RoadmapItem | null = null;
   linked: BacklogItem[] = [];
   formOpen = false;
+  jiraBaseUrl = '';
+  epicBusy = false;
+  epicError = '';
   editingId: string | null = null;
   kindLabel(kind: string): string { return ({PROJECT:'Proje',FEATURE_SET:'Feature set',GENERAL:'Genel',UNSPECIFIED:'Tür belirtilmemiş'} as Record<string,string>)[kind] || kind; }
   setFormOpen(open: boolean): void { if(open){this.error='';this.editingId=null;this.formKind='roadmap';this.resetDraft();} this.formOpen=open; this.cdr.detectChanges(); }
@@ -102,9 +106,23 @@ export class RoadmapComponent implements OnInit {
     this.loading=true;this.error='';
     try {
       [this.items, this.backlog, this.settings] = await Promise.all([this.api.get<RoadmapItem[]>('/roadmap'), this.api.get<BacklogItem[]>('/backlog'), this.api.get<ProductSettings>('/settings')]);
+      await this.loadJira();
       this.selectTarget();
     } catch (error) { this.error = String(error); }
     finally { this.loading = false; this.cdr.detectChanges(); }
+  }
+  /** Only admins may read Jira settings; a missing or disabled integration simply hides the epic controls. */
+  private async loadJira(): Promise<void> {
+    this.jiraBaseUrl='';
+    if(!this.auth.isAdmin())return;
+    try { const jira=await this.api.get<{baseUrl:string;enabled:boolean}>('/admin/jira'); if(jira.enabled)this.jiraBaseUrl=jira.baseUrl; } catch { /* integration not reachable; epic controls stay hidden */ }
+  }
+  async createEpic(): Promise<void> {
+    if(!this.selected||this.epicBusy)return;
+    this.epicBusy=true;this.epicError='';
+    try { await this.api.post('/admin/jira/roadmap/'+encodeURIComponent(this.selected.id)+'/epic',{}); await this.load(); }
+    catch (error) { this.epicError=String(error); }
+    finally { this.epicBusy=false; this.cdr.detectChanges(); }
   }
   openBacklogForm(): void { this.resetDraft();this.editingId=null;this.error='';this.formKind = 'backlog'; this.formOpen = true; this.cdr.detectChanges(); }
   async save(): Promise<void> {

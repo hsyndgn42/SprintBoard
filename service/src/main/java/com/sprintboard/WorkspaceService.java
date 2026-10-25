@@ -372,7 +372,7 @@ public class WorkspaceService {
       (SELECT COUNT(*) FROM backlog_item b JOIN sprint_task t ON t.backlog_id=b.id WHERE b.roadmap_id=r.id AND t.status='done') done_count
       FROM roadmap_item r ORDER BY r.created_at DESC
       """, (rs, row) -> map("id", rs.getString("id"), "title", rs.getString("title"), "description", rs.getString("description"),
-        "kind",rs.getString("item_kind"),"referenceId",rs.getString("reference_id"),
+        "kind",rs.getString("item_kind"),"referenceId",rs.getString("reference_id"),"jiraEpicKey",rs.getString("jira_epic_key"),
         "status", rs.getString("status"), "priority", rs.getString("priority"), "targetDate", date(rs, "target_date"), "backlogCount", rs.getInt("backlog_count"), "doneCount", rs.getInt("done_count")));
   }
   public List<Map<String, Object>> backlog() {

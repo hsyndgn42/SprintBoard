@@ -52,7 +52,7 @@ export interface Overview {
   activeSprintTypeBreakdown?: OverviewTypeBreakdown[];
 }
 export interface RoadmapItem {
-  kind: 'PROJECT' | 'FEATURE_SET' | 'GENERAL' | 'UNSPECIFIED'; referenceId: string | null;
+  kind: 'PROJECT' | 'FEATURE_SET' | 'GENERAL' | 'UNSPECIFIED'; referenceId: string | null; jiraEpicKey?: string | null;
   id: string; title: string; description: string; status: 'planned' | 'active' | 'on_hold' | 'completed'; priority: 'UNSET' | 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'; targetDate: string | null;
   backlogCount: number; doneCount: number;
 }

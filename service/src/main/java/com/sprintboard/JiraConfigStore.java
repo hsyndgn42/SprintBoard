@@ -15,6 +15,8 @@ public class JiraConfigStore {
   "bauPoints":{"bau-meeting":8,"bau-support":8,"bau-training":8,"bau-leave":1},
   "pbiTypeByCategory":{"DEV":"30023","DESIGN":"30023","ANALYZE":"30023","TEST":"30023","DEFECT":"30025","BAU":"30024","OTHER":"30023"},
   "businessValueByPriority":{"CRITICAL":"30013","HIGH":"30013","NORMAL":"30013","LOW":"30013","UNSET":"30013"},
+  "priorityByRoadmapPriority":{"CRITICAL":"2","HIGH":"10000","NORMAL":"3","LOW":"4","UNSET":"3"},
+  "epicIssueTypeId":"238","epicNameFieldId":"customfield_12874",
   "kpiIssueKey":"RRCA-11438","checklistOptionId":"39621","fallbackEpicKey":""}""";
 
  private final JdbcTemplate db; private final JiraSecretVault vault;
