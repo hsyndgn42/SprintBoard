@@ -1,6 +1,7 @@
 package com.sprintboard;
 
 import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Locale;
 
 /**
@@ -36,5 +37,14 @@ final class JiraFieldDefaults {
   if(value.isNumber())return value.asInt();
   var fromBuiltIn=builtIn.path(group).path(key);
   return fromBuiltIn.isNumber()?fromBuiltIn.asInt():fallback;
+ }
+ /**
+  * Raw field block copied straight into the issue payload. Jira projects can make fields mandatory
+  * through behaviours that createmeta never reports, so new ones must be addable without a release.
+  */
+ ObjectNode block(String group){
+  var value=configured.path(group);
+  if(!value.isObject())value=builtIn.path(group);
+  return value.isObject()?((ObjectNode)value).deepCopy():null;
  }
 }

@@ -17,8 +17,9 @@ import { TASK_CATEGORIES, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, 
     @if (loading) { <div class="loading">Roadmap yükleniyor…</div> } @else if (selected) {
       <div class="page-head"><div><span class="eyebrow">{{ kindLabel(selected.kind) }} · {{ selected.referenceId || 'Referans ID yok' }}</span><h1>{{ selected.title }}</h1><p>{{ selected.description || 'Bu hedefe bağlı backlog işlerini yönetin.' }}</p></div>
         <div class="page-actions"><a class="btn" routerLink="/roadmap">← Tüm hedefler</a>@if (auth.isAdmin()) { <button class="btn" (click)="editTarget()">Düzenle</button><button class="btn primary" (click)="openBacklogForm()">Backlog işi ekle</button> }<button type="button" class="btn ui-refresh" [disabled]="loading" (click)="load()">Yenile</button></div></div>
-      <dl class="sb-context"><div><dt>Hedef durumu</dt><dd>{{statusLabel(selected.status)}}</dd></div><div><dt>Öncelik</dt><dd>{{priorityLabel(selected.priority)}}</dd></div><div><dt>Hedef tarihi</dt><dd>{{selected.targetDate ? formatDate(selected.targetDate) : 'Belirtilmemiş'}}</dd></div>@if(auth.isAdmin() && (selected.jiraEpicKey || jiraBaseUrl)){<div><dt>Jira epic</dt><dd>@if(selected.jiraEpicKey){@if(jiraBaseUrl){<a [href]="jiraBaseUrl+'/browse/'+selected.jiraEpicKey" target="_blank" rel="noopener">{{selected.jiraEpicKey}}</a>}@else{{{selected.jiraEpicKey}}}}@else{<button type="button" class="btn" [disabled]="epicBusy" (click)="createEpic()">{{epicBusy?'Açılıyor…':'Jira\'da epic aç'}}</button>}</dd></div>}</dl>
+      <dl class="sb-context"><div><dt>Hedef durumu</dt><dd>{{statusLabel(selected.status)}}</dd></div><div><dt>Öncelik</dt><dd>{{priorityLabel(selected.priority)}}</dd></div><div><dt>Hedef tarihi</dt><dd>{{selected.targetDate ? formatDate(selected.targetDate) : 'Belirtilmemiş'}}</dd></div>      @if(auth.isAdmin() && (selected.jiraEpicKey || jiraBaseUrl)){<div><dt>Jira epic</dt><dd>@if(selected.jiraEpicKey){@if(jiraBaseUrl){<a [href]="jiraBaseUrl+'/browse/'+selected.jiraEpicKey" target="_blank" rel="noopener">{{selected.jiraEpicKey}}</a>}@else{{{selected.jiraEpicKey}}}<button type="button" class="btn" [disabled]="epicBusy" (click)="unlinkEpic()">Bağlantıyı kaldır</button>}@else{<button type="button" class="btn" [disabled]="epicBusy" (click)="createEpic()">{{ epicBusy ? 'Açılıyor…' : 'Jira epic aç' }}</button><input class="epic-key" style="max-width:160px" [(ngModel)]="epicKeyDraft" [disabled]="epicBusy" placeholder="VBCRF-356" aria-label="Var olan epic anahtarı"><button type="button" class="btn" [disabled]="epicBusy || !epicKeyDraft.trim()" (click)="linkEpic()">Var olanı bağla</button>}</dd></div>}</dl>
       @if(epicError){<p class="form-error" role="alert">{{epicError}}</p>}
+            @if(selected.jiraEpicKey){<p class="data-note">Bağlantıyı kaldırmak Jira'daki epic'i silmez; yalnızca bu hedefle ilişkisini keser.</p>}
       <p class="data-note">Hedef durumu elle yönetilir; bağlı işlerin sonucundan bağımsızdır.</p>
       <app-roadmap-detail [roadmap]="selected" [items]="linked" [settings]="settings" />
     } @else if (missingTarget) {
@@ -38,7 +39,7 @@ import { TASK_CATEGORIES, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, 
         @if(!visible.length){<section class="card empty"><strong>Bu filtrelerde hedef bulunamadı</strong><button class="btn" (click)="resetFilters()">Filtreleri temizle</button></section>}
       }
       <app-list-pager #roadmapPager [items]="visible" label="Roadmap" />@if (visible.length) { <section class="roadmap-grid">@for (item of roadmapPager.rows; track item.id) {
-        <a class="card roadmap-card" [routerLink]="['/roadmap', item.id]"><div><div class="roadmap-badges"><span class="status" [class.planned]="item.status==='planned'" [class.doing]="item.status==='active'" [class.done]="item.status==='completed'">{{ statusLabel(item.status) }}</span>@if(item.priority!=='UNSET'){<span class="roadmap-priority" [class.critical]="item.priority==='CRITICAL'" [class.high]="item.priority==='HIGH'">{{ priorityLabel(item.priority) }} öncelik</span>}</div><span class="eyebrow">{{ kindLabel(item.kind) }} · {{ item.referenceId || 'Referans ID yok' }}</span><h2>{{ item.title }}</h2><p>{{ item.description || 'Açıklama eklenmedi.' }}</p></div>
+        <a class="card roadmap-card" [routerLink]="['/roadmap', item.id]"><div><div class="roadmap-badges"><span class="status" [class.planned]="item.status==='planned'" [class.doing]="item.status==='active'" [class.done]="item.status==='completed'">{{ statusLabel(item.status) }}</span>@if(item.priority!=='UNSET'){<span class="roadmap-priority" [class.critical]="item.priority==='CRITICAL'" [class.high]="item.priority==='HIGH'">{{ priorityLabel(item.priority) }} öncelik</span>}@if(item.jiraEpicKey){<span class="roadmap-priority">Epic {{ item.jiraEpicKey }}</span>}</div><span class="eyebrow">{{ kindLabel(item.kind) }} · {{ item.referenceId || 'Referans ID yok' }}</span><h2>{{ item.title }}</h2><p>{{ item.description || 'Açıklama eklenmedi.' }}</p></div>
           <div><div class="roadmap-bottom"><span>{{ item.doneCount }} / {{ item.backlogCount }} iş tamamlandı</span><strong>{{ item.backlogCount ? '%' + Math.round(item.doneCount / item.backlogCount * 100) : '—' }}</strong></div><div class="progress-track"><span [style.width.%]="item.backlogCount ? item.doneCount / item.backlogCount * 100 : 0"></span></div></div>
           <div class="roadmap-bottom"><span>{{ item.targetDate ? formatDate(item.targetDate) : 'Hedef tarihi yok' }}</span><span>Detayı gör →</span></div></a>
       }</section> }
@@ -76,6 +77,9 @@ export class RoadmapComponent implements OnInit {
   jiraBaseUrl = '';
   epicBusy = false;
   epicError = '';
+  epicKeyDraft = '';
+  async linkEpic(): Promise<void> { await this.runEpic(() => this.api.put('/admin/jira/roadmap/'+encodeURIComponent(this.selected!.id)+'/epic',{epicKey:this.epicKeyDraft.trim()})); }
+  async unlinkEpic(): Promise<void> { await this.runEpic(() => this.api.delete('/admin/jira/roadmap/'+encodeURIComponent(this.selected!.id)+'/epic')); }
   editingId: string | null = null;
   kindLabel(kind: string): string { return ({PROJECT:'Proje',FEATURE_SET:'Feature set',GENERAL:'Genel',UNSPECIFIED:'Tür belirtilmemiş'} as Record<string,string>)[kind] || kind; }
   setFormOpen(open: boolean): void { if(open){this.error='';this.editingId=null;this.formKind='roadmap';this.resetDraft();} this.formOpen=open; this.cdr.detectChanges(); }
@@ -118,9 +122,12 @@ export class RoadmapComponent implements OnInit {
     try { const jira=await this.api.get<{baseUrl:string;enabled:boolean}>('/admin/jira'); if(jira.enabled)this.jiraBaseUrl=jira.baseUrl; } catch { /* integration not reachable; epic controls stay hidden */ }
   }
   async createEpic(): Promise<void> {
+    await this.runEpic(() => this.api.post('/admin/jira/roadmap/'+encodeURIComponent(this.selected!.id)+'/epic',{}));
+  }
+  private async runEpic(call: () => Promise<unknown>): Promise<void> {
     if(!this.selected||this.epicBusy)return;
     this.epicBusy=true;this.epicError='';
-    try { await this.api.post('/admin/jira/roadmap/'+encodeURIComponent(this.selected.id)+'/epic',{}); await this.load(); }
+    try { await call(); this.epicKeyDraft=''; await this.load(); }
     catch (error) { this.epicError=String(error); }
     finally { this.epicBusy=false; this.cdr.detectChanges(); }
   }

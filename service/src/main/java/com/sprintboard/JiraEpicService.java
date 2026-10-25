@@ -9,7 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * Flow D: opens one Jira epic per roadmap, on demand.
+ * Flow D: one Jira epic per roadmap, either opened on demand or adopted from an existing issue.
  *
  * The link row is written before the call and updated afterwards. Jira has no idempotency key, so
  * the unique constraint on the pending row is what stops a double click from opening two epics.
@@ -25,6 +25,10 @@ public class JiraEpicService {
   if(config.projectKey().isBlank())throw new IllegalArgumentException("Jira proje anahtarı girilmemiş.");
   var roadmap=roadmap(roadmapId);
   if(!text(roadmap,"jira_epic_key").isBlank())throw new IllegalArgumentException("Bu roadmap için zaten epic var: "+text(roadmap,"jira_epic_key"));
+  // Jira resolves the TC task to a portfolio epic, so an invented reference is rejected on their side.
+  var defaults=new JiraFieldDefaults(mapper,config.fieldDefaults());
+  if(text(roadmap,"reference_id").isBlank()&&defaults.text("defaultTcTaskId","").isBlank())
+   throw new IllegalArgumentException("Bu roadmap hedefinde referans ID yok. Jira epic'i bir TC task'a bağlanmak zorunda; hedefi düzenleyip referans ID girin.");
 
   String linkId=reserve(roadmapId);
   try{
@@ -56,11 +60,63 @@ public class JiraEpicService {
   fields.set("priority",mapper.createObjectNode().put("id",defaults.option("priorityByRoadmapPriority",text(roadmap,"priority"),"3")));
   // Epic Name is a separate required field from the summary and is capped at 255 characters.
   fields.put(defaults.text("epicNameFieldId","customfield_12874"),title.length()>255?title.substring(0,255):title);
+  var extra=defaults.block("epicExtraFields");
+  if(extra!=null)extra.fields().forEachRemaining(entry->fields.set(entry.getKey(),entry.getValue()));
+  // The project links epics to a portfolio item through the TC task reference the roadmap already carries.
+  String tcField=defaults.text("tcTaskFieldId","customfield_10356"),tcTask=text(roadmap,"reference_id");
+  if(tcTask.isBlank())tcTask=defaults.text("defaultTcTaskId","");
+  if(!tcTask.isBlank())fields.put(tcField,tcTask);
   var body=mapper.createObjectNode();body.set("fields",fields);return body;
  }
 
+ /** Adopts an epic that already exists in Jira, such as a shared BAU epic, instead of opening a new one. */
+ public Map<String,Object> link(String roadmapId,String epicKey){
+  var config=configs.load();
+  if(!config.enabled())throw new IllegalArgumentException("Jira entegrasyonu kapalı. Ayarlardan etkinleştirin.");
+  String key=epicKey==null?"":epicKey.trim().toUpperCase(Locale.ROOT);
+  if(!key.matches("[A-Z][A-Z0-9_]{1,20}-[0-9]{1,10}"))throw new IllegalArgumentException("Epic anahtarı geçersiz. Örn. VBCRF-356");
+  var roadmap=roadmap(roadmapId);
+  if(!text(roadmap,"jira_epic_key").isBlank())throw new IllegalArgumentException("Bu roadmap için zaten epic var: "+text(roadmap,"jira_epic_key"));
+
+  var issue=transport.get(config.baseUrl(),configs.token(),"/rest/api/2/issue/"+key,Map.of("fields","issuetype,summary,project"));
+  var fields=issue.path("fields");
+  String issueType=fields.path("issuetype").path("id").asText(),expected=new JiraFieldDefaults(mapper,config.fieldDefaults()).text("epicIssueTypeId","238");
+  if(!expected.equals(issueType))throw new IllegalArgumentException(key+" bir epic değil: "+fields.path("issuetype").path("name").asText("bilinmeyen tür"));
+  String project=fields.path("project").path("key").asText();
+  if(!config.projectKey().equalsIgnoreCase(project))throw new IllegalArgumentException(key+" başka bir projede: "+project);
+  long issueId=issue.path("id").asLong();
+
+  adopt(roadmapId,issueId,key);
+  db.update("UPDATE roadmap_item SET jira_epic_key=? WHERE id=?",key,roadmapId);
+  audit(roadmapId,"epic-linked",Map.of("epicKey",key,"issueId",issueId));
+  return Map.of("roadmapId",roadmapId,"jiraEpicKey",key,"jiraIssueId",issueId,"summary",fields.path("summary").asText(""));
+ }
+
+ /** Only drops the local link; the Jira issue itself is left untouched because others may depend on it. */
+ public Map<String,Object> unlink(String roadmapId){
+  var roadmap=roadmap(roadmapId);
+  String key=text(roadmap,"jira_epic_key");
+  if(key.isBlank())throw new IllegalArgumentException("Bu roadmap bir epic'e bağlı değil.");
+  db.update("UPDATE roadmap_item SET jira_epic_key=NULL WHERE id=?",roadmapId);
+  db.update("DELETE FROM jira_issue_link WHERE local_kind='roadmap' AND local_id=?",roadmapId);
+  audit(roadmapId,"epic-unlinked",Map.of("epicKey",key));
+  return Map.of("roadmapId",roadmapId,"jiraEpicKey","","removedFromJira",false);
+ }
+
+ private void adopt(String roadmapId,long issueId,String key){
+  var existing=db.queryForList("SELECT id,state FROM jira_issue_link WHERE local_kind='roadmap' AND local_id=?",roadmapId);
+  if(existing.isEmpty()){
+   db.update("INSERT INTO jira_issue_link(id,local_kind,local_id,jira_issue_id,jira_issue_key,state,created_at,updated_at) VALUES(?,'roadmap',?,?,?,'SENT',?,?)",
+     "jiralink-"+UUID.randomUUID(),roadmapId,issueId,key,now(),now());
+   return;
+  }
+  if("PENDING".equals(String.valueOf(existing.getFirst().get("state"))))throw new IllegalArgumentException("Bu roadmap için epic açma isteği sürüyor.");
+  db.update("UPDATE jira_issue_link SET jira_issue_id=?,jira_issue_key=?,state='SENT',last_error='',updated_at=? WHERE id=?",
+    issueId,key,now(),String.valueOf(existing.getFirst().get("id")));
+ }
+
  private Map<String,Object> roadmap(String roadmapId){
-  var rows=db.queryForList("SELECT id,title,description,priority,jira_epic_key FROM roadmap_item WHERE id=?",roadmapId);
+  var rows=db.queryForList("SELECT id,title,description,priority,reference_id,jira_epic_key FROM roadmap_item WHERE id=?",roadmapId);
   if(rows.isEmpty())throw new IllegalArgumentException("Roadmap kaydı bulunamadı.");
   return rows.getFirst();
  }

@@ -20,5 +20,7 @@ public class JiraController {
   @PutMapping public ResponseEntity<?> save(@RequestBody Map<String,Object> input,HttpServletRequest request){secure(request);return response(settings.save(input));}
   @PostMapping("/test") public ResponseEntity<?> test(){return response(settings.test());}
   @PostMapping("/roadmap/{id}/epic") public ResponseEntity<?> createEpic(@PathVariable String id){return response(epics.create(id));}
+  @PutMapping("/roadmap/{id}/epic") public ResponseEntity<?> linkEpic(@PathVariable String id,@RequestBody Map<String,Object> input){return response(epics.link(id,String.valueOf(input.getOrDefault("epicKey",""))));}
+  @DeleteMapping("/roadmap/{id}/epic") public ResponseEntity<?> unlinkEpic(@PathVariable String id){return response(epics.unlink(id));}
   @DeleteMapping("/credentials") public ResponseEntity<?> forget(){return response(settings.forget());}
 }

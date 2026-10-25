@@ -17,6 +17,8 @@ public class JiraConfigStore {
   "businessValueByPriority":{"CRITICAL":"30013","HIGH":"30013","NORMAL":"30013","LOW":"30013","UNSET":"30013"},
   "priorityByRoadmapPriority":{"CRITICAL":"2","HIGH":"10000","NORMAL":"3","LOW":"4","UNSET":"3"},
   "epicIssueTypeId":"238","epicNameFieldId":"customfield_12874",
+  "epicExtraFields":{"customfield_30186":{"id":"33344"}},
+  "tcTaskFieldId":"customfield_10356","defaultTcTaskId":"",
   "kpiIssueKey":"RRCA-11438","checklistOptionId":"39621","fallbackEpicKey":""}""";
 
  private final JdbcTemplate db; private final JiraSecretVault vault;

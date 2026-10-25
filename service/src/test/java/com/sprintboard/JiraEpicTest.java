@@ -40,7 +40,10 @@ class JiraEpicTest {
  }
 
  void roadmap(String id,String title,String description,String priority){
-  db.update("INSERT INTO roadmap_item(id,title,description,status,created_at,item_kind,priority) VALUES(?,?,?,'active',CURRENT_TIMESTAMP,'PROJECT',?)",id,title,description,priority);
+  roadmap(id,title,description,priority,"TC-25142");
+ }
+ void roadmap(String id,String title,String description,String priority,String referenceId){
+  db.update("INSERT INTO roadmap_item(id,title,description,status,created_at,item_kind,priority,reference_id) VALUES(?,?,?,'active',CURRENT_TIMESTAMP,'PROJECT',?,?)",id,title,description,priority,referenceId);
  }
 
  JsonNode created(String key,long id)throws Exception{return mapper.readTree("{\"key\":\""+key+"\",\"id\":"+id+"}");}
@@ -75,6 +78,89 @@ class JiraEpicTest {
   assertEquals("VBCRF",fields.path("project").path("key").asText());
   assertEquals("2",fields.path("priority").path("id").asText());
   assertFalse(fields.path("description").asText().isBlank());
+ }
+
+ @Test void addsTheFieldsThatProjectBehavioursRequireButCreatemetaNeverReports()throws Exception{
+  enableIntegration();
+  roadmap("roadmap-1","KVKK zorunlu alan","aciklama","NORMAL");
+  when(transport.post(anyString(),anyString(),anyString(),any())).thenReturn(created("VBCRF-905",5L));
+
+  epics.create("roadmap-1");
+
+  var body=ArgumentCaptor.forClass(JsonNode.class);
+  verify(transport).post(anyString(),anyString(),anyString(),body.capture());
+  assertEquals("33344",body.getValue().path("fields").path("customfield_30186").path("id").asText());
+ }
+
+ @Test void passesTheRoadmapReferenceOnAsTheTcTaskAndRefusesWithoutOne()throws Exception{
+  enableIntegration();
+  roadmap("roadmap-1","Referansli hedef","aciklama","NORMAL","TC-25142");
+  roadmap("roadmap-2","Referanssiz hedef","aciklama","NORMAL",null);
+  when(transport.post(anyString(),anyString(),anyString(),any())).thenReturn(created("VBCRF-906",6L));
+
+  epics.create("roadmap-1");
+  var refused=assertThrows(IllegalArgumentException.class,()->epics.create("roadmap-2"));
+
+  assertTrue(refused.getMessage().contains("referans ID"));
+  var body=ArgumentCaptor.forClass(JsonNode.class);
+  verify(transport,times(1)).post(anyString(),anyString(),anyString(),body.capture());
+  assertEquals("TC-25142",body.getValue().path("fields").path("customfield_10356").asText());
+  assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM jira_issue_link WHERE local_id='roadmap-2'",Integer.class));
+ }
+
+ JsonNode epicIssue(String key,long id,String typeId,String project)throws Exception{
+  return mapper.readTree("{\"id\":"+id+",\"key\":\""+key+"\",\"fields\":{\"summary\":\"BAU 2026\",\"issuetype\":{\"id\":\""+typeId+"\",\"name\":\"Story\"},\"project\":{\"key\":\""+project+"\"}}}");
+ }
+
+ @Test void adoptsAnEpicThatAlreadyExistsInJira()throws Exception{
+  enableIntegration();
+  roadmap("roadmap-1","BAU hedefi","aciklama","NORMAL");
+  when(transport.get(anyString(),anyString(),eq("/rest/api/2/issue/VBCRF-356"),any())).thenReturn(epicIssue("VBCRF-356",777L,"238","VBCRF"));
+
+  var result=epics.link("roadmap-1","vbcrf-356");
+
+  assertEquals("VBCRF-356",result.get("jiraEpicKey"));
+  assertEquals("VBCRF-356",db.queryForObject("SELECT jira_epic_key FROM roadmap_item WHERE id='roadmap-1'",String.class));
+  var link=db.queryForMap("SELECT state,jira_issue_id FROM jira_issue_link WHERE local_id='roadmap-1'");
+  assertEquals("SENT",link.get("state"));
+  assertEquals(777L,((Number)link.get("jira_issue_id")).longValue());
+  verify(transport,never()).post(anyString(),anyString(),anyString(),any());
+ }
+
+ @Test void refusesToAdoptAnIssueThatIsNotAnEpicOrSitsInAnotherProject()throws Exception{
+  enableIntegration();
+  roadmap("roadmap-1","Hedef","aciklama","NORMAL");
+  when(transport.get(anyString(),anyString(),eq("/rest/api/2/issue/VBCRF-900"),any())).thenReturn(epicIssue("VBCRF-900",1L,"11500","VBCRF"));
+  when(transport.get(anyString(),anyString(),eq("/rest/api/2/issue/TDEF-5"),any())).thenReturn(epicIssue("TDEF-5",2L,"238","TDEF"));
+
+  assertThrows(IllegalArgumentException.class,()->epics.link("roadmap-1","VBCRF-900"));
+  assertThrows(IllegalArgumentException.class,()->epics.link("roadmap-1","TDEF-5"));
+  assertThrows(IllegalArgumentException.class,()->epics.link("roadmap-1","bozuk anahtar"));
+  assertNull(db.queryForObject("SELECT jira_epic_key FROM roadmap_item WHERE id='roadmap-1'",String.class));
+ }
+
+ @Test void unlinkingClearsTheLocalLinkWithoutTouchingJira()throws Exception{
+  enableIntegration();
+  roadmap("roadmap-1","Hedef","aciklama","NORMAL");
+  when(transport.get(anyString(),anyString(),anyString(),any())).thenReturn(epicIssue("VBCRF-356",777L,"238","VBCRF"));
+  epics.link("roadmap-1","VBCRF-356");
+
+  var result=epics.unlink("roadmap-1");
+
+  assertEquals(false,result.get("removedFromJira"));
+  assertNull(db.queryForObject("SELECT jira_epic_key FROM roadmap_item WHERE id='roadmap-1'",String.class));
+  assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM jira_issue_link WHERE local_id='roadmap-1'",Integer.class));
+  assertThrows(IllegalArgumentException.class,()->epics.unlink("roadmap-1"));
+ }
+
+ @Test void anAdoptedEpicBlocksOpeningANewOne()throws Exception{
+  enableIntegration();
+  roadmap("roadmap-1","Hedef","aciklama","NORMAL");
+  when(transport.get(anyString(),anyString(),anyString(),any())).thenReturn(epicIssue("VBCRF-356",777L,"238","VBCRF"));
+  epics.link("roadmap-1","VBCRF-356");
+
+  assertThrows(IllegalArgumentException.class,()->epics.create("roadmap-1"));
+  verify(transport,never()).post(anyString(),anyString(),anyString(),any());
  }
 
  @Test void refusesASecondEpicForTheSameRoadmap()throws Exception{

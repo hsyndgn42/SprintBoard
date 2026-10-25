@@ -426,9 +426,24 @@ kalır, kaldırılması gerekmez.
 ## 12. Uygulama sırası
 
 1. ~~**TLS truststore** (§8.5)~~ — **tamamlandı**, `Windows-ROOT` ile doğrulandı
-2. `V45` + `JiraConfigStore` + ayar ekranı (PAT, JQL, varsayılanlar)
-3. `JiraTransport` + `JiraFieldMapper` + testler
-4. **D** — Roadmap → Epic düğmesi
+2. ~~`V45` + `JiraConfigStore` + ayar ekranı (PAT, JQL, varsayılanlar)~~ — **tamamlandı**
+3. ~~`JiraTransport` + `JiraFieldMapper` + testler~~ — **tamamlandı** (`JiraFieldDefaults` adıyla)
+4. ~~**D** — Roadmap → Epic düğmesi~~ — **tamamlandı**; yeni epic açma ve var olan epic'i bağlama/çözme
 5. **A** — Backlog → PBI kuyruğu + roadmap zorunluluğu
 6. **B** — Defect gelen kutusu
 7. **C** — Sprint BAU PBI'ları
+
+### D akışında çıkan ek zorunlu alanlar
+
+`createmeta` epic için yalnızca `project`, `issuetype`, `summary`, `description`, `priority`,
+`customfield_12874` döndürüyor. Gerçekte proje davranışları iki alan daha dayatıyor:
+
+| Alan | Anlam | Değer |
+|---|---|---|
+| `customfield_30186` | KVKK Impact | `{"id":"33344"}` (No) |
+| `customfield_10356` | TC Task | Portfolio epic'e çözümlenen gerçek bir TC kaydı |
+
+TC Task uydurulamıyor; Jira değeri var olan bir kayda çözümlüyor. Bu yüzden roadmap'in
+`referenceId` alanı kullanılıyor ve boşsa istek Jira'ya hiç gönderilmiyor. KVKK gibi sabit
+alanlar `epicExtraFields` altından ayarlanabilir; yeni bir gizli zorunlu alan çıkarsa sürüm
+beklemeden eklenebilir.
