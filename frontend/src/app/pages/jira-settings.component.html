@@ -1,0 +1,63 @@
+<section class="card card-pad jira-settings">
+  <header class="jira-heading">
+    <div><span class="eyebrow">ENTEGRASYON</span><h2>Jira bağlantısı</h2></div>
+    <span class="status" [class.done]="status?.enabled">{{ status?.enabled ? 'Etkin' : 'Pasif' }}</span>
+  </header>
+
+  @if (status) {
+    <form (ngSubmit)="save()" autocomplete="off">
+      <section class="settings-block" aria-labelledby="jira-connection-title">
+        <div class="block-heading"><h3 id="jira-connection-title">Bağlantı bilgileri</h3><p>Sunucu adresi, kayıtların açılacağı proje ve kişisel erişim tokenı.</p></div>
+        <div class="jira-grid">
+          <label class="field">Jira adresi<input name="jiraBaseUrl" [(ngModel)]="baseUrl" maxlength="300" placeholder="https://itjira.ornek.local"></label>
+          <label class="field">Proje anahtarı<input name="jiraProjectKey" [(ngModel)]="projectKey" maxlength="40" placeholder="VBCRF"></label>
+          <label class="field"><span class="field-caption">Board kimliği <span class="optional">İsteğe bağlı</span></span><input name="jiraBoardId" [(ngModel)]="boardId" maxlength="40" placeholder="19233"></label>
+          <label class="field">Kişisel erişim tokenı<input type="password" name="jiraPat" [(ngModel)]="pat" maxlength="1024" autocomplete="new-password" [placeholder]="status.patConfigured ? 'Kaydedildi · değiştirmek için girin' : 'Jira profilinden üretilen token'"></label>
+        </div>
+        <p class="hint">Token şifreli saklanır ve ekrana geri getirilmez. Boş bırakırsanız kayıtlı token korunur.</p>
+        <label class="check"><input type="checkbox" name="jiraEnabled" [(ngModel)]="enabled"> Jira entegrasyonunu etkinleştir</label>
+        <p class="hint">Etkinleştirmek için adres, proje anahtarı ve token gerekir. Jira saniyede tek istek kabul ettiği için gönderimler sıraya alınır.</p>
+      </section>
+
+      <section class="settings-block" aria-labelledby="jira-defect-title">
+        <div class="block-heading"><h3 id="jira-defect-title">Defect sorgusu</h3><p>Gelen kutusuna düşecek Jira kayıtlarını belirleyen JQL.</p></div>
+        <label class="sr-only" for="jira-defect-jql">Defect JQL sorgusu</label>
+        <textarea id="jira-defect-jql" name="jiraDefectJql" [(ngModel)]="defectJql" rows="3" maxlength="2000" spellcheck="false"></textarea>
+        <p class="hint">Sorguyu kendi tokenınız çalıştırır; göremediğiniz kayıt gelmez. Squad alanı JQL'de kullanılamadığı için bileşen (component) üzerinden filtrelenir.</p>
+      </section>
+
+      <details class="settings-block jira-advanced">
+        <summary>Alan varsayılanları <small>Büyüklük–story point eşlemesi ve sabit Jira alanları</small></summary>
+        <label class="sr-only" for="jira-field-defaults">Jira alan varsayılanları</label>
+        <textarea id="jira-field-defaults" name="jiraFieldDefaults" [(ngModel)]="fieldDefaults" rows="10" maxlength="8000" spellcheck="false"></textarea>
+        <p class="hint">JSON olarak saklanır. Hatalı yazım kaydedilmez.</p>
+      </details>
+
+      <div class="form-actions">
+        <button class="btn primary" type="submit" [disabled]="busy">Kaydet</button>
+        <button class="btn" type="button" (click)="test()" [disabled]="busy || !status.patConfigured">Bağlantıyı test et</button>
+        @if (status.patConfigured && !confirmForget) { <button class="btn danger" type="button" (click)="setForget(true)" [disabled]="busy">Tokenı sil</button> }
+      </div>
+
+      @if (confirmForget) {
+        <p class="inline-warning" role="alert">Kayıtlı Jira tokenı silinecek ve entegrasyon kapanacak. Açılmış Jira kayıtları Jira'da kalır.
+          <button class="btn danger small" type="button" (click)="forget()" [disabled]="busy">Evet, sil</button>
+          <button class="btn small" type="button" (click)="setForget(false)" [disabled]="busy">Vazgeç</button>
+        </p>
+      }
+    </form>
+
+    @if (testResult) {
+      <dl class="jira-result">
+        <div><dt>Bağlanan kullanıcı</dt><dd>{{ testResult.user }}</dd></div>
+        @if (testResult.project) { <div><dt>Proje</dt><dd>{{ testResult.project }}</dd></div> }
+        @if (testResult.projectReachable === false) { <div><dt>Proje</dt><dd>{{ testResult.projectError }}</dd></div> }
+      </dl>
+    }
+
+    @if (message) { <p class="inline-success" role="status">{{ message }}</p> }
+    @if (error) { <p class="inline-error" role="alert">{{ error }}</p> }
+  } @else {
+    <p>Jira ayarları yükleniyor…</p>
+  }
+</section>

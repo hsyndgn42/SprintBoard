@@ -170,7 +170,7 @@ class AccountManagementTest {
 
   @Test void auditRecordsActorWithoutSecretsAndProductDataIsUnchanged() throws Exception {
     mvc.perform(get("/api/health")).andExpect(status().isOk())
-        .andExpect(jsonPath("$.schemaVersion").value(44)).andExpect(jsonPath("$.backupSchemaVersion").value(40));
+        .andExpect(jsonPath("$.schemaVersion").value(45)).andExpect(jsonPath("$.backupSchemaVersion").value(40));
     String before = mapper.readTree(mvc.perform(get("/api/export").session(admin)).andReturn().getResponse().getContentAsString()).path("tables").toString();
     active(false); active(false); reset(NEW_PASSWORD); active(true);
     String history = mvc.perform(get("/api/admin/account-events").session(admin)).andExpect(status().isOk())

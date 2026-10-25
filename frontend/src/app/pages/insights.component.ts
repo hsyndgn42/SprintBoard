@@ -1,6 +1,7 @@
 import {OvertimeTrendComponent} from './overtime-trend.component';
 import { ListPagerComponent } from '../list-pager.component';
 import {SlackSettingsComponent} from './slack-settings.component';
+import {JiraSettingsComponent} from './jira-settings.component';
 import {ScopeReportComponent} from './scope-report.component';
 import { ReportHtmlExportComponent } from './report-html-export.component';
 import { CapacityTrendComponent } from './capacity-trend.component';
@@ -205,7 +206,7 @@ export class ReportsComponent implements OnInit {
 
 @Component({
   standalone: true,
-  imports: [ListPagerComponent, SlackSettingsComponent, ModalAccessibilityDirective, FormsModule, BackupComponent, SubtypeSettingsComponent, AccountsComponent, WorkSettingsComponent, SbStateComponent],
+  imports: [ListPagerComponent, SlackSettingsComponent, JiraSettingsComponent, ModalAccessibilityDirective, FormsModule, BackupComponent, SubtypeSettingsComponent, AccountsComponent, WorkSettingsComponent, SbStateComponent],
   template: `
     <div class="page-head"><div><span class="eyebrow">YÖNETİM</span><h1>Ayarlar</h1><p>Sprint varsayılanları, erişim hesapları, tahmin yöntemi, takvim ve yedekleme.</p></div></div>
     <nav class="settings-nav" aria-label="Ayar kategorileri">
@@ -261,6 +262,8 @@ export class ReportsComponent implements OnInit {
     <section class="settings-group" id="settings-integrations" tabindex="-1" aria-labelledby="settings-integrations-heading">
       <div class="settings-group-head"><span class="eyebrow">ENTEGRASYON</span><h2 id="settings-integrations-heading">Bağlı servisler</h2><p>Dış servis bağlantıları ve bu servislere gönderilen mesaj şablonları.</p></div>
     <details class="settings-section"><summary>Slack entegrasyonu <small>Kanallar, bağlantı ve mesaj şablonları</small></summary>@defer (on idle) { <app-slack-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Slack</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
+    </details>
+    <details class="settings-section"><summary>Jira entegrasyonu <small>Sunucu, proje ve defect sorgusu</small></summary>@defer (on idle) { <app-jira-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Jira</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
     </details>
     </section>
     <section class="settings-group danger-zone" id="settings-admin" tabindex="-1" aria-labelledby="settings-admin-heading">
