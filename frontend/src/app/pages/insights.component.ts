@@ -9,7 +9,7 @@ import { WorkSettingsComponent } from './work-settings.component';
 import { ModalAccessibilityDirective } from '../modal-accessibility.directive';
 import { ChangeDetectorRef, Component, OnInit, inject, signal } from '@angular/core';
 import {downloadText,sprintReportCsv,memberReportCsv,workTypeReportCsv} from './share-export';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MemberContextComponent } from './member-context.component';
 import { RoadmapReportComponent } from './roadmap-report.component';
@@ -204,24 +204,27 @@ export class ReportsComponent implements OnInit {
   print(): void { if(!this.loading&&!this.error&&this.defectReady()&&this.roadmapReady()&&this.trendReady()&&this.scopeReady()&&this.overtimeReady())window.print(); }
 }
 
+const SETTINGS_TABS = ['team', 'delivery', 'integrations', 'admin'] as const;
+type SettingsTab = typeof SETTINGS_TABS[number];
+
 @Component({
   standalone: true,
-  imports: [ListPagerComponent, SlackSettingsComponent, JiraSettingsComponent, ModalAccessibilityDirective, FormsModule, BackupComponent, SubtypeSettingsComponent, AccountsComponent, WorkSettingsComponent, SbStateComponent],
+  imports: [ListPagerComponent, SlackSettingsComponent, JiraSettingsComponent, ModalAccessibilityDirective, FormsModule, RouterLink, BackupComponent, SubtypeSettingsComponent, AccountsComponent, WorkSettingsComponent, SbStateComponent],
   template: `
     <div class="page-head"><div><span class="eyebrow">YÖNETİM</span><h1>Ayarlar</h1><p>Sprint varsayılanları, erişim hesapları, tahmin yöntemi, takvim ve yedekleme.</p></div></div>
-    <nav class="settings-nav" aria-label="Ayar kategorileri">
-      <button type="button" (click)="jump('settings-team')">Ekip ve takvim</button>
-      <button type="button" (click)="jump('settings-delivery')">Sprint ve tahmin</button>
-      <button type="button" (click)="jump('settings-integrations')">Entegrasyonlar</button>
-      <button type="button" (click)="jump('settings-admin')">Yönetim ve veri</button>
+    <nav class="subtabs" aria-label="Ayar kategorileri">
+      <a [routerLink]="[]" [queryParams]="{tab:'team'}" [class.active]="tab==='team'">Ekip ve takvim</a>
+      <a [routerLink]="[]" [queryParams]="{tab:'delivery'}" [class.active]="tab==='delivery'">Sprint ve tahmin</a>
+      <a [routerLink]="[]" [queryParams]="{tab:'integrations'}" [class.active]="tab==='integrations'">Entegrasyonlar</a>
+      <a [routerLink]="[]" [queryParams]="{tab:'admin'}" [class.active]="tab==='admin'">Yönetim ve veri</a>
     </nav>
     @if (loading) {
       <sb-state variant="loading" title="Ayarlar yükleniyor" message="Ekip, tahmin ve entegrasyon ayarları hazırlanıyor." />
     } @else {
-    <section class="settings-group" id="settings-team" tabindex="-1" aria-labelledby="settings-team-heading">
+    @if (tab==='team') { <section class="settings-group" id="settings-team" tabindex="-1" aria-labelledby="settings-team-heading">
       <div class="settings-group-head"><span class="eyebrow">EKİP</span><h2 id="settings-team-heading">Ekip ve çalışma takvimi</h2><p>Günlük çalışma saati, çalışma haftası ve çalışılmayan günler. Bu ayarlar kapasite hesaplamalarının girdisidir.</p></div>
-    <details class="settings-section"><summary>Ekip ve çalışma düzeni <small>Günlük saat ve çalışma haftası</small></summary><app-work-settings #workSettings /></details>
-    <details class="settings-section"><summary>Çalışma takvimi <small>Tatiller ve çalışılmayan günler</small></summary><section class="card card-pad" style="margin-top:18px"><div class="section-head"><div><span class="eyebrow">ÇALIŞMA TAKVİMİ</span><h2>Çalışılmayan günler</h2></div><span class="muted">{{ calendarVisible.length }} / {{ days.length }} kayıt</span></div>
+    <section class="settings-section"><div class="settings-section-head"><h3>Ekip ve çalışma düzeni</h3><small>Günlük saat ve çalışma haftası</small></div><app-work-settings #workSettings /></section>
+    <section class="settings-section"><div class="settings-section-head"><h3>Çalışma takvimi</h3><small>Tatiller ve çalışılmayan günler</small></div><section class="card card-pad" style="margin-top:18px"><div class="section-head"><div><span class="eyebrow">ÇALIŞMA TAKVİMİ</span><h2>Çalışılmayan günler</h2></div><span class="muted">{{ calendarVisible.length }} / {{ days.length }} kayıt</span></div>
       <p class="data-note">Tüm kayıtlar tam gün çalışılmayan gün olarak uygulanır. Resmî yarım günler (arifeler ve 28 Ekim) ekip kararıyla tam gündür. Çalışma düzeninde zaten kapalı günler tekrar düşülmez; aynı tarihteki tatiller bir kez sayılır. İzin ve mesai hakedişinden düşülmez.</p>
       <div class="form-grid two calendar-controls"><label class="field">Takvim yılı<select [(ngModel)]="calendarYear"><option value="">Tüm yıllar</option>@for(year of calendarYears;track year){<option [value]="year">{{ year }}</option>}</select></label><label class="field">Kapsam filtresi<select [(ngModel)]="calendarScope"><option value="">Tüm kayıtlar</option><option value="team">Tüm ekip</option>@for(member of members;track member.id){<option [value]="member.id">{{ member.name }}</option>}</select></label></div>
       <div class="page-actions calendar-import"><button class="btn" [disabled]="saving" (click)="importHolidays(2027)">2027 tatillerini tamamla</button><button class="btn" [disabled]="saving" (click)="importHolidays(2028)">2028 tatillerini tamamla</button></div>
@@ -235,11 +238,11 @@ export class ReportsComponent implements OnInit {
       <app-list-pager #calendarPager [items]="calendarVisible" label="Takvim" />@if (calendarVisible.length) { <div class="list" style="margin-top:18px">@for (day of calendarPager.rows; track day.id) { <div class="list-row"><span><strong>{{ formatDate(day.date) }}</strong><small>{{ day.title }}</small></span><span class="status">{{ day.memberName || 'Tüm ekip' }}</span></div> }</div> }
     </section>
     @if (error) { <p class="notice warn" role="alert">{{ error }}</p> }
-    </details>
     </section>
-    <section class="settings-group" id="settings-delivery" tabindex="-1" aria-labelledby="settings-delivery-heading">
+    </section> }
+    @if (tab==='delivery') { <section class="settings-group" id="settings-delivery" tabindex="-1" aria-labelledby="settings-delivery-heading">
       <div class="settings-group-head"><span class="eyebrow">TESLİMAT</span><h2 id="settings-delivery-heading">Sprint, tahmin ve iş türleri</h2><p>Yeni sprintlerin nasıl kurulacağını ve işlerin nasıl tahmin edileceğini belirler. Değişiklikler geçmiş sprintleri etkilemez.</p></div>
-    <details class="settings-section"><summary>Tahmin yöntemi <small>Size / Story Point ve efor</small></summary><div class="settings-primary">
+    <section class="settings-section"><div class="settings-section-head"><h3>Tahmin yöntemi</h3><small>Size / Story Point ve efor</small></div><div class="settings-primary">
       <section class="card card-pad"><span class="eyebrow">TAHMİN YÖNTEMİ</span><h2>Göreli tahmin + efor</h2>
         <p class="muted">Kapasite ve kişi atamaları her iki yöntemde de saat/gün ile hesaplanır. Size veya Story Point yalnız işin göreli büyüklüğünü anlatır.</p>
         <div class="choice-list"><label><input type="radio" name="estimateMode" value="SIZE_AND_HOURS" [(ngModel)]="settings.estimationMode"><span><strong>Size + efor</strong><small>Ekip standardı. Small, Medium, Large veya X-Large; yanında kişi bazlı saat.</small></span></label>
@@ -248,31 +251,31 @@ export class ReportsComponent implements OnInit {
         @if (savedMessage) { <p class="inline-success" role="status">{{ savedMessage }}</p> }
       </section>
 
-    </div></details>
-    <details class="settings-section"><summary>BAU varsayılanları <small>Sprint iş şablonları</small></summary>
+    </div></section>
+    <section class="settings-section"><div class="settings-section-head"><h3>BAU varsayılanları</h3><small>Sprint iş şablonları</small></div>
     <section class="card card-pad" style="margin:18px 0"><div class="section-head"><div><span class="eyebrow">SPRİNT VARSAYILANLARI</span><h2>BAU iş şablonları</h2></div><button class="btn primary" (click)="openTemplate()">+ BAU işi ekle</button></div>
       <p class="data-note">Etkin şablonlar yeni sprint oluşturulduğunda, sprint adıyla ayrı backlog ve görev kayıtlarına dönüşür. Buradaki değişiklikler geçmiş veya mevcut sprint görevlerini değiştirmez. On Leave izin kayıtlarından görünür; kapasitede yalnız bir kez düşülür.</p>
       <app-list-pager #bauPager [items]="templates" label="BAU şablonları" /><div class="list" style="margin-top:14px">@for (template of bauPager.rows; track template.id) { <div class="list-row"><span><strong>{{ template.title }}</strong><small>{{ template.mode === 'LEAVE' ? 'İzinlerden türetilir · 0 saat görev eforu' : template.mode === 'CORE' ? 'Çekirdek ekip · kişi başı ' + template.daysPerMember + ' gün' : 'Elle atama · 0 saat başlangıç' }}</small></span>
         <span class="page-actions"><span class="status" [class.done]="template.active">{{ template.active ? 'Etkin' : 'Pasif' }}</span><button class="btn small" (click)="openTemplate(template)">Düzenle</button></span></div> }</div>
       @if (templateMessage) { <p class="inline-success" role="status">{{ templateMessage }}</p> }
     </section>
-    </details>
-    <details class="settings-section"><summary>İş türleri <small>Alt kırılım yönetimi</small></summary><app-subtype-settings #subtypeSettings /></details>
     </section>
-    <section class="settings-group" id="settings-integrations" tabindex="-1" aria-labelledby="settings-integrations-heading">
+    <section class="settings-section"><div class="settings-section-head"><h3>İş türleri</h3><small>Alt kırılım yönetimi</small></div><app-subtype-settings #subtypeSettings /></section>
+    </section> }
+    @if (tab==='integrations') { <section class="settings-group" id="settings-integrations" tabindex="-1" aria-labelledby="settings-integrations-heading">
       <div class="settings-group-head"><span class="eyebrow">ENTEGRASYON</span><h2 id="settings-integrations-heading">Bağlı servisler</h2><p>Dış servis bağlantıları ve bu servislere gönderilen mesaj şablonları.</p></div>
-    <details class="settings-section"><summary>Slack entegrasyonu <small>Kanallar, bağlantı ve mesaj şablonları</small></summary>@defer (on idle) { <app-slack-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Slack</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
-    </details>
-    <details class="settings-section"><summary>Jira entegrasyonu <small>Sunucu, proje ve defect sorgusu</small></summary>@defer (on idle) { <app-jira-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Jira</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
-    </details>
+    <section class="settings-section"><div class="settings-section-head"><h3>Slack entegrasyonu</h3><small>Kanallar, bağlantı ve mesaj şablonları</small></div>@defer (on idle) { <app-slack-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Slack</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
     </section>
-    <section class="settings-group danger-zone" id="settings-admin" tabindex="-1" aria-labelledby="settings-admin-heading">
+    <section class="settings-section"><div class="settings-section-head"><h3>Jira entegrasyonu</h3><small>Sunucu, proje ve defect sorgusu</small></div>@defer (on idle) { <app-jira-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Jira</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
+    </section>
+    </section> }
+    @if (tab==='admin') { <section class="settings-group danger-zone" id="settings-admin" tabindex="-1" aria-labelledby="settings-admin-heading">
       <div class="settings-group-head"><span class="eyebrow">YÖNETİM</span><h2 id="settings-admin-heading">Kullanıcılar ve veri güvenliği</h2><p>Erişim hesapları ile yedekleme. Geri yükleme mevcut verinin üzerine yazar; bu bölümdeki işlemler geri alınamaz.</p></div>
-    <details class="settings-section"><summary>Kullanıcılar ve erişim <small>Hesaplar ve işlem geçmişi</small></summary><app-accounts /></details>
-    <details class="settings-section"><summary>Yedekleme ve veri güvenliği <small>Son durum, zamanlama ve geri yükleme</small></summary>
-    <app-backup (restored)="load(); subtypeSettings.load(); workSettings.load()" />
-    </details>
+    <section class="settings-section"><div class="settings-section-head"><h3>Kullanıcılar ve erişim</h3><small>Hesaplar ve işlem geçmişi</small></div><app-accounts /></section>
+    <section class="settings-section"><div class="settings-section-head"><h3>Yedekleme ve veri güvenliği</h3><small>Son durum, zamanlama ve geri yükleme</small></div>
+    <app-backup (restored)="load()" />
     </section>
+    </section> }
     }
 
     @if (templateOpen) { <div class="modal-layer"><form class="modal" (ngSubmit)="saveTemplate()"><header><h2>{{ editingTemplateId ? 'BAU işini düzenle' : 'BAU işi ekle' }}</h2><p>Değişiklik yalnız daha sonra oluşturulan sprintlere uygulanır.</p></header>
@@ -287,19 +290,8 @@ export class ReportsComponent implements OnInit {
 })
 export class SettingsComponent implements OnInit {
   loading=true;
+  tab: SettingsTab = 'team';
 
-  /**
-   * Moves both the viewport and keyboard focus to a settings category.
-   * Focus matters as much as scrolling here: without it a keyboard user
-   * jumps visually but keeps tabbing from the nav, so the group carries
-   * tabindex="-1" purely as a focus target.
-   */
-  jump(id: string): void {
-    const target = document.getElementById(id);
-    if (!target) return;
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    target.focus({ preventScroll: true });
-  }
   private api = inject(ApiService);
   private cdr = inject(ChangeDetectorRef);
   settings: ProductSettings = { estimationMode: 'SIZE_AND_HOURS', hoursPerDay: 8 };
@@ -323,7 +315,17 @@ export class SettingsComponent implements OnInit {
   saving = false;
   error = '';
   formatDate = formatDate;
-  async ngOnInit(): Promise<void> { await this.load(); }
+  private route = inject(ActivatedRoute);
+  async ngOnInit(): Promise<void> {
+    // The tab lives in the URL so a refresh, a bookmark or a shared link all
+    // land on the same settings category instead of resetting to the first one.
+    this.route.queryParamMap.subscribe(params => {
+      const requested = params.get('tab') as SettingsTab;
+      this.tab = SETTINGS_TABS.includes(requested) ? requested : 'team';
+      this.cdr.detectChanges();
+    });
+    await this.load();
+  }
   async load(): Promise<void> { this.loading=true; try { [this.days, this.members, this.settings, this.templates] = await Promise.all([this.api.get<CalendarDay[]>('/calendar'), this.api.get<TeamMember[]>('/team'), this.api.get<ProductSettings>('/settings'), this.api.get<BauTemplate[]>('/bau-templates')]); this.error = ''; } catch (error) { this.error = String(error); } finally { this.loading=false; this.cdr.detectChanges(); } }
   openTemplate(template?: BauTemplate): void { this.editingTemplateId = template?.id || null; this.templateDraft = template ? { title: template.title, mode: template.mode, daysPerMember: template.daysPerMember, active: template.active } : { title: '', mode: 'MANUAL', daysPerMember: 0, active: true }; this.templateMessage = ''; this.templateOpen = true; this.cdr.detectChanges(); }
   setTemplateMode(mode: 'CORE' | 'MANUAL' | 'LEAVE'): void { this.templateDraft.mode = mode; this.templateDraft.daysPerMember = mode === 'CORE' ? 2 : 0; this.cdr.detectChanges(); }

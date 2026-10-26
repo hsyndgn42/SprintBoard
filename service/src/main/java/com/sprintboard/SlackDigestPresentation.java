@@ -8,14 +8,13 @@ final class SlackDigestPresentation {
  private SlackDigestPresentation(){}
  private static Map<String,Object> text(String value){return Map.of("type","plain_text","text",value,"emoji",true);}
  private static Map<String,Object> fields(String... values){return Map.of("type","section","fields",Arrays.stream(values).map(SlackDigestPresentation::text).toList());}
- static List<Map<String,Object>> blocks(String name,String time,List<Map<String,Object>> delivery,long done,double capacity,double plan,double support,double actual,double planned){
+ static List<Map<String,Object>> blocks(String name,String time,List<Map<String,Object>> delivery,long done,double actual,double planned){
   var result=new ArrayList<Map<String,Object>>();
   result.add(Map.of("type","header","text",text("📊 "+name.substring(0,Math.min(name.length(),110))+" · Sprint özeti")));
   result.add(Map.of("type","context","elements",List.of(text(time+" · Türkiye saati · Güncel durum"))));
   result.add(Map.of("type","divider"));
   String rate=delivery.isEmpty()?"—":num(100.0*done/delivery.size())+"%";
   result.add(fields("✅ Teslimat · BAU hariç\n"+done+" / "+delivery.size()+" Done", "📈 Tamamlanma\n"+rate,
-   "👥 Çekirdek kapasite / plan\n"+num(capacity)+" / "+num(plan)+" sa", "🤝 Dış Support planı\n"+num(support)+" sa",
    "🕒 Gerçekleşen mesai\n"+num(actual)+" sa", "🗓️ Planlanan mesai\n"+num(planned)+" sa"));
   result.add(Map.of("type","divider"));
   var defects=new ArrayList<String>();

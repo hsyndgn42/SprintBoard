@@ -111,12 +111,10 @@
   .main-content .result-meta > span:last-child { margin-left: auto; text-align: right; }
   .main-content .btn.ui-refresh { margin-left: auto; }
   .main-content .page-actions > .ui-refresh { order: 10; }
-  .main-content .settings-section { border-color: var(--ui-line); border-radius: 12px; margin: 16px 0; }
-  .main-content .settings-section > summary { position: relative; list-style: none; padding: 22px 56px 22px 24px; font-size: 16px; color: var(--ui-ink); }
-  .settings-section > summary::-webkit-details-marker { display: none; }
-  .main-content .settings-section > summary::after { content: ''; position: absolute; right: 26px; top: 27px; width: 8px; height: 8px; border-bottom: 2px solid #597691; border-right: 2px solid #597691; transform: rotate(45deg); }
-  .main-content .settings-section[open] > summary::after { transform: rotate(225deg); top: 31px; }
-  .main-content .settings-section > summary small { margin: 5px 0 0; line-height: 1.6; }
+  .main-content .settings-section { border: 1px solid var(--ui-line); border-radius: 12px; margin: 16px 0; padding: 0 0 12px; background: #fff; }
+  .main-content .settings-section > .settings-section-head { padding: 18px var(--sb-space-5) 2px; border-bottom: 1px solid var(--ui-line); margin-bottom: 4px; }
+  .main-content .settings-section-head h3 { margin: 0 0 8px; font-size: 16px; color: var(--ui-ink); }
+  .main-content .settings-section-head small { display: block; margin: 4px 0 0; line-height: 1.6; }
 
   /* Tabs, row actions and data surfaces share one density. */
   .main-content .subtabs { width: 100%; gap: 4px; padding: 6px; border-radius: 12px; margin-bottom: 24px; }
@@ -249,7 +247,7 @@
   .main-content .backlog-filters, .main-content .filter-toolbar, .main-content .form-grid.two { grid-template-columns: minmax(0, 1fr); }
   .main-content .subtabs { flex-wrap: wrap; }
   .main-content .subtabs a { padding: 10px 12px; flex: 1 0 auto; text-align: center; }
-  .main-content .settings-section > summary { padding: 20px 48px 20px 18px; }
+  .main-content .settings-section > .settings-section-head { padding: 16px 14px 2px; }
   .main-content .team-directory .member-profile { padding: 20px; }
   .main-content .sprint-row { padding: 20px; }
   .main-content .sprint-row .goal { white-space: normal; }
