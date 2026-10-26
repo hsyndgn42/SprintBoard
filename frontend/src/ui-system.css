@@ -2,15 +2,25 @@
    8px spacing scale · 44px form controls · 40px actions · 36px row actions.
    Keep page-specific visualizations in their components, not in this foundation. */
 :root {
-  --ui-control-height: 44px;
-  --ui-action-height: 40px;
-  --ui-compact-height: 36px;
-  --ui-panel-padding: 24px;
-  --ui-gap: 16px;
+  --ui-control-height: 38px;
+  --ui-action-height: 34px;
+  --ui-compact-height: 30px;
+  --ui-panel-padding: 20px;
+  --ui-gap: 14px;
   --ui-soft: #f7f9fc;
   --ui-ink: #203c57;
   --ui-label: #4e637a;
   --ui-line: #dfe7f0;
+}
+
+/* Touch pointers need a larger target than a mouse does, so the compact desktop
+   scale is restored to the accessible minimum on phones and tablets. */
+@media (pointer: coarse) {
+  :root {
+    --ui-control-height: 44px;
+    --ui-action-height: 42px;
+    --ui-compact-height: 38px;
+  }
 }
 
 @media screen {
@@ -31,13 +41,13 @@
   .main-content .data-note { color: #64758a; font-size: 12px; line-height: 1.65; }
 
   /* Controls align by their baselines, never by label or card height. */
-  :root .btn { min-height: var(--ui-action-height); padding: 9px 16px; line-height: 20px; font-size: 12px; font-weight: 650; border-radius: 9px; max-width: 100%; white-space: normal; text-align: center; flex-shrink: 0; transition: background-color .15s, border-color .15s; }
-  :root .btn.small { min-height: var(--ui-compact-height); padding: 7px 12px; font-size: 12px; line-height: 20px; }
+  :root .btn { min-height: var(--ui-action-height); padding: 7px 13px; line-height: 18px; font-size: 12px; font-weight: 650; border-radius: 8px; max-width: 100%; white-space: nowrap; text-align: center; flex-shrink: 0; transition: background-color .15s, border-color .15s; }
+  :root .btn.small { min-height: var(--ui-compact-height); padding: 5px 10px; font-size: 11.5px; line-height: 18px; }
   :root .btn:disabled { cursor: not-allowed; opacity: .55; }
   .main-content .page-actions, .ui-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-  :root .field { min-width: 0; align-content: start; gap: 7px; color: var(--ui-label); font-size: 12px; font-weight: 650; line-height: 1.5; }
-  :root .field :is(input:not([type=checkbox]):not([type=radio]), select, textarea) { min-width: 0; min-height: var(--ui-control-height); padding: 10px 12px; border: 1px solid #cbd7e5; border-radius: 9px; background-color: #fff; color: #243b53; font-size: 13px; font-weight: 400; line-height: 22px; }
-  :root .field textarea { min-height: 104px; }
+  :root .field { min-width: 0; align-content: start; gap: 6px; color: var(--ui-label); font-size: 11.5px; font-weight: 650; line-height: 1.45; }
+  :root .field :is(input:not([type=checkbox]):not([type=radio]), select, textarea) { min-width: 0; min-height: var(--ui-control-height); padding: 8px 11px; border: 1px solid #cbd7e5; border-radius: 8px; background-color: #fff; color: #243b53; font-size: 12.5px; font-weight: 400; line-height: 20px; }
+  :root .field textarea { min-height: 92px; }
   :root .field small { font-size: 11px; line-height: 1.6; color: #66788c; }
   :root .field :is(input, select, textarea):focus-visible, :root .compact-select:focus-visible { outline: 3px solid #b2d3f5; outline-offset: 1px; border-color: #397cbd; }
   :root .field :is(input, select, textarea):disabled { background-color: #f3f5f8; }
@@ -95,12 +105,12 @@
   .main-content :is(.effort-total, .planning-group-total, .effort-group-count) { text-align: right; font-variant-numeric: tabular-nums; }
   .main-content .effort-total { justify-items: end; }
   .main-content .planning-table :is(th, td):nth-child(3) { text-align: right; font-variant-numeric: tabular-nums; }
-  .main-content .capacity-table :is(th, td):nth-child(n+3):not(:last-child) { text-align: right; font-variant-numeric: tabular-nums; }
+  .main-content .capacity-table :is(th, td):nth-child(n+3):nth-child(-n+7) { text-align: right; font-variant-numeric: tabular-nums; }
+  .main-content .capacity-table :is(th, td):nth-child(8) { text-align: left; }
   .main-content .type-progress-head > small { text-align: right; margin-left: auto; }
   .main-content .result-meta > span:last-child { margin-left: auto; text-align: right; }
   .main-content .btn.ui-refresh { margin-left: auto; }
   .main-content .page-actions > .ui-refresh { order: 10; }
-  .main-content app-slack-backlog-inbox .toolbar { justify-content: flex-end; }
   .main-content .settings-section { border-color: var(--ui-line); border-radius: 12px; margin: 16px 0; }
   .main-content .settings-section > summary { position: relative; list-style: none; padding: 22px 56px 22px 24px; font-size: 16px; color: var(--ui-ink); }
   .settings-section > summary::-webkit-details-marker { display: none; }
@@ -112,12 +122,29 @@
   .main-content .subtabs { width: 100%; gap: 4px; padding: 6px; border-radius: 12px; margin-bottom: 24px; }
   .main-content .subtabs a { padding: 10px 14px; min-height: 40px; font-size: 12px; font-weight: 650; }
   .main-content .table-wrap { position: relative; box-shadow: none; border-color: var(--ui-line); }
-  .main-content th { font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 650; color: #526981; background: #f7f9fc; padding: 14px 16px; }
-  .main-content td { padding: 16px; font-size: 12px; line-height: 1.6; }
+  .main-content th { font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 650; color: #526981; background: #f7f9fc; padding: 11px 14px; }
+  .main-content td { padding: 12px 14px; font-size: 12px; line-height: 1.55; }
   .main-content td strong { font-size: 12px; }
   .main-content td small { color: #657b91; line-height: 1.6; }
   .main-content tbody tr:hover { background: #f9fbfe; }
   .main-content .table-actions { gap: 8px; align-items: center; }
+
+  /* One rail for panel toolbars: filters left, refresh right, in every inbox. */
+  .main-content .ui-filter-rail { display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 10px; margin: 14px 0 18px; }
+  .main-content .ui-filter-rail > :last-child { margin-left: auto; }
+  .main-content .ui-filter-rail select { min-height: var(--ui-compact-height); padding: 6px 10px; border: 1px solid #cbd7e5; border-radius: 8px; background: #fff; font-size: 12px; max-width: 100%; }
+
+  /* Row actions live in one trailing column of fixed width, so the data columns
+     keep the same edge from table to table. */
+  .main-content :is(.capacity-table, .planning-table, .backlog-table) td:last-child { width: 44px; text-align: right; }
+  .main-content sb-row-actions { vertical-align: middle; }
+
+  /* Capacity load: the bar carries the comparison, the figures confirm it. */
+  .main-content .load-cell { display: grid; gap: 5px; min-width: 132px; }
+  .main-content .load-meter { display: block; height: 6px; border-radius: 999px; background: #e4ebf3; overflow: hidden; }
+  .main-content .load-meter__fill { display: block; height: 100%; border-radius: inherit; background: #3f82c4; }
+  .main-content .load-meter.over .load-meter__fill { background: #c9453a; }
+  .main-content .load-figure { font-size: 12px; font-weight: 650; color: var(--ui-ink); font-variant-numeric: tabular-nums; }
   .main-content .status { font-size: 11px; font-weight: 650; padding: 4px 10px; align-self: center; }
   .main-content .pager { padding: 12px 0; gap: 10px; flex-wrap: wrap; }
   .main-content .pager span { font-variant-numeric: tabular-nums; }
@@ -228,6 +255,7 @@
   .main-content .sprint-row .goal { white-space: normal; }
   .main-content .pager { justify-content: center; }
   .main-content .table-actions { justify-content: flex-start; }
+  :root .btn { white-space: normal; }
   .main-content .planning-table .table-actions { min-width: 0; }
   :root .modal header, :root .modal > .modal-body { padding: 18px; }
   :root .modal > footer { padding: 14px 18px; }

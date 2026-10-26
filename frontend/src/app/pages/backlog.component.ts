@@ -18,11 +18,12 @@ import { AuthService } from '../auth.service';
 import { TASK_CATEGORIES, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
 import { SbStateComponent } from '../shared/sb-state.component';
 import { AutoRefresh } from '../shared/auto-refresh';
+import { SbRowActionsComponent } from '../shared/sb-row-actions.component';
 import { readFilters, writeFilters } from '../shared/filter-memory';
 
 @Component({
   standalone: true,
-  imports: [WorkItemActionComponent,SlackInboxComponent,SlackBacklogInboxComponent,FoldDirective, BacklogHistoryComponent, ModalAccessibilityDirective, FormsModule, RouterLink, SprintAddDialogComponent, BacklogRepeatDialogComponent, DefectFieldsComponent, SbStateComponent],
+  imports: [WorkItemActionComponent,SlackInboxComponent,SlackBacklogInboxComponent,FoldDirective, BacklogHistoryComponent, ModalAccessibilityDirective, FormsModule, RouterLink, SprintAddDialogComponent, BacklogRepeatDialogComponent, DefectFieldsComponent, SbStateComponent, SbRowActionsComponent],
   template: `
     <div class="page-head"><div><span class="eyebrow">İŞ HAVUZU</span><h1>Backlog</h1><p>İş havuzunu ve sprintlerdeki işleri tek yerden yönetin.</p></div>
       @if (auth.isAdmin()) { <div class="page-actions"><button class="btn primary" (click)="openCreate()">+ Yeni iş</button></div> }</div>
@@ -53,8 +54,8 @@ import { readFilters, writeFilters } from '../shared/filter-memory';
         </select> } @else { <span>{{ item.roadmapTitle || 'Roadmap hedefine bağlı değil' }}</span> }</td>
         <td data-label="Durum"><span class="status" [class.done]="item.taskStatus === 'done'" [class.undone]="item.taskStatus === 'undone'" [class.doing]="item.taskStatus === 'doing'" [class.todo]="item.taskStatus === 'todo' && !plannedOnly(item)" [class.planned]="plannedOnly(item)" [class.active]="item.state === 'IN_SPRINT' && !plannedOnly(item)">{{ backlogState(item) }}</span>@if (plannedOnly(item)) { <small>{{ item.sprintName }} · sprint başlayınca Yapılacak olur</small> }@if (item.readiness.eligible) { <small [class.readiness-warning]="!item.readiness.ready">{{ item.readiness.ready ? 'Planlamaya hazır' : 'Kontrol gerekli · ' + item.readiness.warnings.length }}</small> }@if (item.dependencies.length) { <small>{{ item.dependencies.length }} bağımlılık · {{ openDependencies(item) }} açık</small> }</td>
         <td data-label="Sprint">@if (item.sprintId) { <a class="table-link" [routerLink]="['/sprints', item.sprintId, 'summary']">{{ item.sprintName || 'Sprint görevi' }} →</a><small>{{ item.sprintStatus==='active'?'Aktif sprint':item.sprintStatus==='planned'?'Planlanan sprint':'Kapanmış sprint' }}</small> } @else { <span class="muted">Henüz yok</span> }@if (item.jiraKey) { <small>@if (jiraBaseUrl) { <a class="table-link" [href]="jiraBaseUrl + '/browse/' + item.jiraKey" target="_blank" rel="noopener noreferrer">{{ item.jiraKey }} ↗</a> } @else { {{ item.jiraKey }} }</small> } @else if (pbiBusy.has(item.id) || item.jiraState === 'PENDING') { <small>Jira kaydı açılıyor…</small> } @else if (item.jiraState) { <small class="readiness-warning">Jira PBI açılamadı — {{ item.jiraError || 'bilinmeyen hata' }}</small>@if (auth.isAdmin()) { <button class="btn small" [disabled]="pbiBusy.has(item.id)" (click)="retryPbi(item)">Tekrar dene</button> } } @else if (auth.isAdmin() && item.taskId && jiraBaseUrl) { <button class="btn small" [disabled]="pbiBusy.has(item.id)" (click)="retryPbi(item)">Jira PBI aç</button> }</td>
-        <td data-label="İşlemler"><div class="table-actions">@if (auth.isAdmin() && !item.taskId && item.state === 'Ready') { <button class="btn small" (click)="edit(item)">Düzenle</button> <button class="btn small danger" (click)="openDelete(item)">Sil</button> } @if (auth.isAdmin() && !item.taskId && item.state === 'Ready' && sprintTargetCount) { <button class="btn small" (click)="addToSprint(item)">Sprinte al</button> }
-          @else if (auth.isAdmin() && item.taskId) { <button class="btn small" (click)="repeat(item)">Yeni iş olarak tekrarla</button> } @else { <span class="muted">—</span> }</div></td>
+        <td data-label="İşlemler"><sb-row-actions [label]="item.title + ' işlemleri'" [disabled]="!hasRowActions(item)">@if (auth.isAdmin() && !item.taskId && item.state === 'Ready') { <button class="btn small" (click)="edit(item)">Düzenle</button> @if (sprintTargetCount) { <button class="btn small" (click)="addToSprint(item)">Sprinte al</button> } <button class="btn small danger" (click)="openDelete(item)">Sil</button> }
+          @else if (auth.isAdmin() && item.taskId) { <button class="btn small" (click)="repeat(item)">Yeni iş olarak tekrarla</button> }</sb-row-actions></td>
       </tr> }</tbody></table></div> }
     @else if (filtersActive()) { <sb-state variant="no-results" title="Bu filtrede iş yok" message="Toplam {{ items.length }} kayıt var ama hiçbiri seçili filtrelerle eşleşmiyor." actionLabel="Filtreleri temizle" (action)="clearFilters()" /> }
     @else { <sb-state variant="empty" title="Backlog boş" message="Planlanacak ilk işi ekleyerek başlayabilirsin." [actionLabel]="auth.isAdmin() ? 'Yeni iş ekle' : ''" (action)="openCreate()" /> }
@@ -152,6 +153,9 @@ export class BacklogComponent implements OnInit, OnDestroy {
     return [...seen].map(([id,name]) => ({id,name})).sort((a,b) => a.name.localeCompare(b.name,'tr'));
   }
   rank(p:string):number { return ({URGENT:0,HIGH:1,NORMAL:2,LOW:3,UNSET:4} as Record<string,number>)[p] ?? 4; }
+  /** A reader without edit rights, or a row whose work has already moved on, has nothing
+   *  to open; the trigger stays in place so the column keeps its alignment. */
+  hasRowActions(item: BacklogItem): boolean { return this.auth.isAdmin() && (!!item.taskId || item.state === 'Ready'); }
   get totalPages(): number { return Math.max(1, Math.ceil(this.visible.length / this.pageSize)); }
   get pageStart(): number { return this.visible.length ? (this.page - 1) * this.pageSize + 1 : 0; }
   get pageEnd(): number { return Math.min(this.page * this.pageSize, this.visible.length); }

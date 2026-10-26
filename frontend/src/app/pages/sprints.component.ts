@@ -11,6 +11,7 @@ import { PlanningInsightsComponent } from './planning-insights.component';
 import { ModalAccessibilityDirective } from '../modal-accessibility.directive';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { AutoRefresh } from '../shared/auto-refresh';
+import { SbRowActionsComponent } from '../shared/sb-row-actions.component';
 import { SbBreadcrumbService } from '../shared/sb-breadcrumb.component';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -118,7 +119,7 @@ export class SprintsComponent implements OnInit, OnDestroy {
 
 @Component({
   standalone: true,
-  imports: [FoldDirective,SprintEditDialogComponent,PlannedOvertimeListComponent,PlannedOvertimeDialogComponent,ListPagerComponent, WorkItemActionComponent,DefectReservesComponent,ReserveLinkComponent,ModalAccessibilityDirective, FormsModule, RouterLink, SprintJournalComponent, PlanningInsightsComponent, SprintBoardComponent, SprintReviewComponent, SprintAddDialogComponent, SprintCloseDialogComponent, DefectDialogComponent, RetroComponent, TaskRemoveDialogComponent],
+  imports: [FoldDirective,SprintEditDialogComponent,PlannedOvertimeListComponent,PlannedOvertimeDialogComponent,ListPagerComponent, WorkItemActionComponent,DefectReservesComponent,ReserveLinkComponent,ModalAccessibilityDirective, FormsModule, RouterLink, SprintJournalComponent, PlanningInsightsComponent, SprintBoardComponent, SprintReviewComponent, SprintAddDialogComponent, SprintCloseDialogComponent, DefectDialogComponent, RetroComponent, TaskRemoveDialogComponent, SbRowActionsComponent],
   template: `
     @if (sprint; as current) {
       <div class="page-head sprint-detail-head"><div><span class="eyebrow">SPRİNT DETAYI</span><h1>{{ current.name }}</h1><p>{{ current.goal || 'Sprint hedefi belirtilmedi.' }}</p></div>
@@ -134,9 +135,9 @@ export class SprintsComponent implements OnInit, OnDestroy {
       @if (tab === 'capacity') {
         <section class="card card-pad"><div class="section-head"><div><span class="eyebrow">KİŞİ KAPASİTESİ</span><h2>Planlanan yük / kullanılabilir saat</h2></div></div>
           <details class="ui-help"><summary>Kapasite hesabı hakkında</summary><p class="data-note">Kişiye bu sprintte ayrılan günü belirtin. Çekirdek ekip varsayılan olarak tam uygun gün, Support ise siz gün ayırana kadar 0 gün kapasite getirir. İzin ve çalışılmayan günler ayrılan kapasiteden düşer. Tarihi bilinmeyen eski izinler yalnız sprint toplamından düşülür.</p></details>
-          <app-list-pager #capacityPager [items]="capacityRows" label="Kapasite" /><div class="table-wrap"><table class="capacity-table"><caption class="sr-only">Sprint kapasite dağılımı: kişi başına çalışma günü, izin, planlı mesai ve atanan efor.</caption><thead><tr><th scope="col">Kişi</th><th scope="col">Rol</th><th scope="col">Çalışma günü</th><th scope="col">Ayrılan gün</th><th scope="col">İzin</th><th scope="col">Çalışılmayan</th><th scope="col">Planlı mesai</th><th scope="col">Kapasite</th><th scope="col">Atanan</th><th scope="col">Fark</th><th scope="col"><span class="sr-only">İşlem</span></th></tr></thead><tbody>
-            @for (row of capacityPager.rows; track row.memberId) { <tr><td><strong>{{ row.memberName }}</strong><small class="table-subtext">{{ row.hoursPerDay ?? settings.hoursPerDay }} sa/gün · %{{ row.focusPercent ?? 100 }} odak</small>@if (row.supportMember) { <small class="table-subtext">Support</small> }</td><td>{{ row.role }}</td><td>{{ row.workingDays }}</td><td><strong>{{ row.allocatedDays }} gün</strong>@if (row.supportMember && !row.allocationExplicit) { <small class="table-subtext">Atama bekliyor</small> }</td><td>{{ row.leaveDays }} gün</td><td>{{ row.nonWorkingDays }} gün</td><td>{{ row.overtimeHours }} sa</td><td>{{ row.availableHours }} sa</td><td>{{ row.plannedHours }} sa</td>
-              <td><span class="status" [class.undone]="row.remainingHours<0" [class.done]="row.remainingHours>=0">{{ row.remainingHours }} sa</span></td><td>@if (auth.isAdmin() && current.status !== 'completed') { <div class="capacity-actions"><button class="btn small" (click)="openAllocation(row)">Gün düzenle</button><button class="btn small" [attr.aria-label]="row.memberName+' için planlı mesai ekle'" (click)="openPlannedOvertime(row)">Planlı mesai ekle</button><button class="btn small" [attr.aria-label]="row.memberName+' için planlı mesaileri yönet'" (click)="openOvertimePlans(row)">Planlı mesaileri yönet</button></div> }</td></tr> }
+          <app-list-pager #capacityPager [items]="capacityRows" label="Kapasite" /><div class="table-wrap"><table class="capacity-table"><caption class="sr-only">Sprint kapasite dağılımı: kişi başına çalışma günü, izin, planlı mesai ve atanan efor.</caption><thead><tr><th scope="col">Kişi</th><th scope="col">Rol</th><th scope="col">Çalışma günü</th><th scope="col">Ayrılan gün</th><th scope="col">İzin</th><th scope="col">Çalışılmayan</th><th scope="col">Planlı mesai</th><th scope="col">Yük</th><th scope="col"><span class="sr-only">İşlem</span></th></tr></thead><tbody>
+            @for (row of capacityPager.rows; track row.memberId) { <tr><td><strong>{{ row.memberName }}</strong><small class="table-subtext">{{ row.hoursPerDay ?? settings.hoursPerDay }} sa/gün · %{{ row.focusPercent ?? 100 }} odak</small>@if (row.supportMember) { <small class="table-subtext">Support</small> }</td><td>{{ row.role }}</td><td>{{ row.workingDays }}</td><td><strong>{{ row.allocatedDays }} gün</strong>@if (row.supportMember && !row.allocationExplicit) { <small class="table-subtext">Atama bekliyor</small> }</td><td>{{ row.leaveDays }} gün</td><td>{{ row.nonWorkingDays }} gün</td><td>{{ row.overtimeHours }} sa</td>
+              <td><span class="load-cell"><span class="load-meter" [class.over]="row.remainingHours<0" [attr.aria-hidden]="true"><span class="load-meter__fill" [style.width.%]="loadPercent(row)"></span></span><span class="load-figure">{{ row.plannedHours }} / {{ row.availableHours }} sa</span></span><small class="table-subtext">{{ loadNote(row) }}</small></td><td>@if (auth.isAdmin() && current.status !== 'completed') { <sb-row-actions [label]="row.memberName + ' için kapasite işlemleri'"><button class="btn small" (click)="openAllocation(row)">Gün düzenle</button><button class="btn small" (click)="openPlannedOvertime(row)">Planlı mesai ekle</button><button class="btn small" (click)="openOvertimePlans(row)">Planlı mesaileri yönet</button></sb-row-actions> }</td></tr> }
           </tbody></table></div>
         </section>
       } @else if (tab === 'effort') {
@@ -149,17 +150,24 @@ export class SprintsComponent implements OnInit, OnDestroy {
             <div class="effort-total"><small>{{ item.workKind === 'LEAVE' ? 'Kapasite etkisi' : 'Atanan efor' }}</small><strong>{{ visibleEffortHours(item) }} sa</strong>@if (item.workKind !== 'LEAVE') { <small>Görev tahmini {{ item.estimatedHours }} sa</small> }</div></article> }</div>
         </details> }</div> } @else { <section class="card empty"><strong>Bu filtrede görev bulunamadı</strong>Aramayı veya kişi filtresini değiştirebilirsiniz.</section> }
       } @else if (tab === 'planning') {
-        @if(current.defectReserves?.length){<details appFold class="card card-pad"><summary><h2>Defect Support rezerv planı</h2></summary>@defer(on immediate){<app-defect-reserves [rows]="current.defectReserves||[]" />}</details>}<div class="section-head planning-heading"><div><span class="eyebrow">SPRİNT PLANI</span><h2>İşler ve atamalar</h2><p class="data-note">BAU ve teslimat işleri türlerine göre ayrılır. Efor saatleri ile izin kaynaklı kapasite kaybı ayrı izlenir.</p></div><span class="status">{{ current.items.length }} iş</span></div>
+        @if(current.defectReserves?.length){<details appFold class="card card-pad"><summary><h2>Defect Support rezerv planı</h2></summary>@defer(on immediate){<app-defect-reserves [rows]="current.defectReserves||[]" />}</details>}<div class="section-head planning-heading"><div><span class="eyebrow">SPRİNT PLANI</span><h2>İşler ve atamalar</h2><p class="data-note">BAU ve teslimat işleri türlerine göre ayrılır. Efor saatleri ile izin kaynaklı kapasite kaybı ayrı izlenir.</p></div><span class="status">{{ planningCount }} / {{ current.items.length }} iş</span></div>
+        <section class="card card-pad ui-toolbar" aria-label="Planlama filtreleri"><div class="ui-toolbar-head"><h2>İşleri filtrele</h2><button type="button" class="btn small" (click)="resetPlanningFilters()">Filtreleri temizle</button></div><div class="form-grid filter-toolbar">
+          <label class="field">Görev ara<input type="search" [(ngModel)]="planningQuery" (ngModelChange)="refreshView()" placeholder="Görev adında ara"></label>
+          <label class="field">Kişi<select [(ngModel)]="planningMemberId" (ngModelChange)="refreshView()"><option value="">Tüm kişiler</option><option value="none">Atanmamış</option>@for (member of effortMembers; track member.id) { <option [value]="member.id">{{ member.name }}</option> }</select></label>
+          <label class="field">Durum<select [(ngModel)]="planningStatus" (ngModelChange)="refreshView()"><option value="">Tüm durumlar</option><option value="todo">Yapılacak</option><option value="doing">Yapılıyor</option><option value="done">Done</option><option value="undone">Undone</option></select></label>
+        </div></section>
         <div class="planning-groups">@for (group of planningGroups; track group.key) {
           <details appFold class="card planning-group" [attr.aria-label]="group.label + ' işleri'"><summary class="planning-group-head"><div><span class="planning-group-mark" [style.background]="group.color"></span><div><h3>{{ group.label }}</h3><p>{{ group.description }}</p></div></div><span class="planning-group-total">{{ group.items.length }} iş · {{ groupHours(group.items) }} sa efor</span></summary>
             <app-list-pager #planPager [items]="group.items" [label]="group.label" /><div class="table-wrap planning-table-wrap"><table class="planning-table"><caption class="sr-only">Sprint planlama listesi: iş, göreli tahmin, efor, atamalar ve durum.</caption><thead><tr><th scope="col">İş</th><th scope="col">Göreli tahmin</th><th scope="col">Efor / etki</th><th scope="col">Atamalar</th><th scope="col">Durum</th><th scope="col"><span class="sr-only">İşlem</span></th></tr></thead><tbody>
               @for (item of planPager.rows; track item.id) { <tr [attr.data-planning-task]="item.id"><td><span class="task-swatch" [style.background]="taskColor(item)" aria-hidden="true"></span><strong class="task-title">{{ item.name }}</strong><small class="table-subtext">{{ taxonomyLabel(item) }}</small></td>
                 <td><span class="estimate-badge">{{ relativeEstimate(item) }}</span></td><td>@if (item.workKind === 'LEAVE') { <strong>{{ leaveHours(item) }} sa</strong><small class="table-subtext">{{ leaveDays(item) }} gün · kapasiteden düşer</small> } @else { <strong>{{ item.planningHours ?? item.estimatedHours }} sa</strong>@if(item.taskSubtype==='DEFECT_SUPPORT'){<small class="table-subtext">Kalan rezerv · başlangıç {{item.estimatedHours}} sa</small>}@if(item.taskCategory==='DEFECT' && item.reserveTaskId){<small class="table-subtext">Rezervden karşılanan: {{ item.reserveCoveredHours ?? 0 }} sa</small><small class="table-subtext">Ek plan yükü: {{ item.extraPlanHours ?? 0 }} sa</small>} }</td>
                 <td class="assignment-cell">{{ assignmentNames(item) }}@if(item.taskCategory==='DEFECT'&&auth.isAdmin()&&current.status!=='completed'){@defer(on immediate){<app-reserve-link [task]="item" [sprint]="current" (updated)="load(current.id)" />}}@if(item.reserveTaskId){<small class="table-subtext">Defect Support rezervine bağlı</small>}</td><td><span class="status" [class.done]="effectiveStatus(item)==='done'" [class.undone]="effectiveStatus(item)==='undone'" [class.doing]="effectiveStatus(item)==='doing'" [class.todo]="effectiveStatus(item)==='todo'">{{ isBau(item)?'Done · otomatik':statusText(item.status) }}</span></td>
-                <td>@if(item.taskCategory==='DEFECT'){<small>{{ defectSummary(item.defect) }}</small>}<div class="table-actions">@if(auth.isAdmin() && current.status!=='completed' && item.taskCategory==='DEFECT'){<button class="btn small" (click)="openDefect(item)">Defect takibi</button>}@if (auth.isAdmin() && !current.closureFrozen) { @if(current.status!=='completed'){<button class="btn small" (click)="openRename(item)">Adı düzenle</button>} <button class="btn small" (click)="openClassification(item)">Türü düzenle</button> } @if (auth.isAdmin() && current.status !== 'completed' && item.workKind !== 'LEAVE') { <button class="btn small" (click)="openAssignments(item)">Atama düzenle</button> } @if (removableInPlanning(item)) { <button class="btn small danger" (click)="openRemove(item)">Backlog’a geri gönder</button> }</div></td></tr> }
+                <td>@if(item.taskCategory==='DEFECT'){<small>{{ defectSummary(item.defect) }}</small>}<sb-row-actions [label]="item.name + ' işlemleri'">@if(auth.isAdmin() && current.status!=='completed' && item.taskCategory==='DEFECT'){<button class="btn small" (click)="openDefect(item)">Defect takibi</button>}@if (auth.isAdmin() && !current.closureFrozen) { @if(current.status!=='completed'){<button class="btn small" (click)="openRename(item)">Adı düzenle</button>} <button class="btn small" (click)="openClassification(item)">Türü düzenle</button> } @if (auth.isAdmin() && current.status !== 'completed' && item.workKind !== 'LEAVE') { <button class="btn small" (click)="openAssignments(item)">Atama düzenle</button> } @if (removableInPlanning(item)) { <button class="btn small danger" (click)="openRemove(item)">Backlog’a geri gönder</button> }</sb-row-actions></td></tr> }
             </tbody></table></div>
           </details>
-        }</div>
+        }
+        @empty { <section class="card empty"><strong>Bu filtrede iş bulunamadı</strong><button class="btn" (click)="resetPlanningFilters()">Filtreleri temizle</button></section> }
+        </div>
       } @else if (tab === 'retro') {
         <app-retro [sprintId]="current.id" />
       } @else if (tab === 'board') {
@@ -290,7 +298,33 @@ export class SprintDetailComponent implements OnInit, OnDestroy {
     OTHER: { label: 'DİĞER', description: 'Diğer teslimat işleri', color: TASK_CATEGORY_COLORS.OTHER },
   };
   get planningGroups(): { key: string; label: string; description: string; color: string; items: Task[] }[] {
-    return this.kindOrder.map(key => ({ key, ...this.kindMeta[key], items: (this.sprint?.items || []).filter(item => this.groupKey(item) === key) })).filter(group => group.items.length > 0);
+    return this.kindOrder.map(key => ({ key, ...this.kindMeta[key], items: this.planningItems.filter(item => this.groupKey(item) === key) })).filter(group => group.items.length > 0);
+  }
+  planningQuery = '';
+  planningMemberId = '';
+  planningStatus = '';
+  refreshView(): void { this.cdr.detectChanges(); }
+  resetPlanningFilters(): void { this.planningQuery = ''; this.planningMemberId = ''; this.planningStatus = ''; this.refreshView(); }
+  /** Planning is read one person at a time during the session, so the same narrowing the
+   *  effort matrix offers is available here. BAU rows report Done regardless of their
+   *  stored status, so the status filter compares the effective status the row shows. */
+  get planningItems(): Task[] {
+    const query = this.planningQuery.trim().toLocaleLowerCase('tr-TR');
+    return (this.sprint?.items || []).filter(item => (!query || item.name.toLocaleLowerCase('tr-TR').includes(query))
+      && (!this.planningMemberId || (this.planningMemberId === 'none' ? !item.assignments.length : item.assignments.some(assignment => assignment.memberId === this.planningMemberId)))
+      && (!this.planningStatus || effectiveTaskStatus(item) === this.planningStatus));
+  }
+  get planningCount(): number { return this.planningItems.length; }
+  /** Capacity used to be read by comparing three numeric columns in the head. The bar
+   *  carries the comparison instead, so an overloaded person is visible while scanning.
+   *  Capped at 100 so the track stays a fixed reference; the overflow is named in words. */
+  loadPercent(row: CapacityRow): number {
+    if (!(row.availableHours > 0)) return row.plannedHours > 0 ? 100 : 0;
+    return Math.min(100, Math.round((row.plannedHours / row.availableHours) * 100));
+  }
+  loadNote(row: CapacityRow): string {
+    if (!(row.availableHours > 0)) return row.plannedHours > 0 ? 'Kapasite yok, iş atanmış' : 'Kapasite ayrılmamış';
+    return row.remainingHours < 0 ? `${Math.abs(row.remainingHours)} sa aşım` : `${row.remainingHours} sa boşta`;
   }
   get effortMembers(): { id: string; name: string }[] {
     const people = new Map<string, string>();
@@ -338,7 +372,7 @@ export class SprintDetailComponent implements OnInit, OnDestroy {
   get teamNames(): string { return [...new Set(this.sprint?.items.flatMap(item => item.assignments.map(assignment => assignment.memberName)).filter(Boolean) || [])].join(' · '); }
   assignmentNames(item: Task): string { if (item.workKind === 'LEAVE') return item.assignments.map(row => `${row.memberName} (${row.leaveDays} gün izin)`).join(', ') || 'Bu sprintte izin yok'; return item.assignments.map(assignment => `${assignment.memberName}${assignment.supportOnly ? ' (X)' : assignment.estimatedHours ? ' (' + assignment.estimatedHours + ' sa)' : ''}`).filter(Boolean).join(', ') || 'Atanmamış'; }
   taskColor(item: Task): string { const palette = ['#2563eb', '#7c3aed', '#0d9488', '#d97706', '#db2777', '#0891b2']; const key = item.backlogId || item.id; let hash = 0; for (const char of key) hash = (hash * 31 + char.charCodeAt(0)) >>> 0; return palette[hash % palette.length]; }
-  ngOnInit(): void { this.route.paramMap.subscribe(params => { const nextTab = params.get('tab') || 'summary'; const id = params.get('id') || ''; if (nextTab !== this.tab || id !== this.sprint?.id) { this.overtimePlansRow=null; this.plannedOvertimeRow=null; this.renameTask=null; this.pendingUndoneTask=null; this.undoneNote=''; this.defectTask=null; this.showComplete=false; this.showAddTask=false; this.allocationRow = null; this.closeAssignments(); this.closeClassification(); this.actionMessage = ''; } if (id !== this.sprint?.id) { this.effortQuery = ''; this.effortMemberId = ''; } this.tab = nextTab; this.cdr.detectChanges(); this.load(id); }); this.autoRefresh.start(() => { const id = this.sprint?.id; if (id) void this.load(id, true); }, () => this.saving); }
+  ngOnInit(): void { this.route.paramMap.subscribe(params => { const nextTab = params.get('tab') || 'summary'; const id = params.get('id') || ''; if (nextTab !== this.tab || id !== this.sprint?.id) { this.overtimePlansRow=null; this.plannedOvertimeRow=null; this.renameTask=null; this.pendingUndoneTask=null; this.undoneNote=''; this.defectTask=null; this.showComplete=false; this.showAddTask=false; this.allocationRow = null; this.closeAssignments(); this.closeClassification(); this.actionMessage = ''; } if (id !== this.sprint?.id) { this.effortQuery = ''; this.effortMemberId = ''; this.resetPlanningFilters(); } this.tab = nextTab; this.cdr.detectChanges(); this.load(id); }); this.autoRefresh.start(() => { const id = this.sprint?.id; if (id) void this.load(id, true); }, () => this.saving); }
   /** Statuses, assignments and Jira keys change under us while a sprint runs, so the
    *  screen refreshes itself. Open dialogs pause the cycle (see AutoRefresh). */
   private autoRefresh = new AutoRefresh();
