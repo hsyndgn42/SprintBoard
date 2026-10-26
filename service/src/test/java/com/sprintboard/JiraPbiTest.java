@@ -42,7 +42,7 @@ class JiraPbiTest {
  }
 
  void backlogItem(String id,String roadmapId,String category,String size,Double points){
-  var subtype="DEFECT".equals(category)?"PROD_DEFECT":"BAU".equals(category)?"BAU_OPS":null;
+  var subtype="DEFECT".equals(category)?"PROD_DEFECT":"BAU".equals(category)?"SUPPORT":null;
   db.update("INSERT INTO backlog_item(id,roadmap_id,title,criteria,work_kind,type,state,estimated_hours,story_points,created_at,size_code,task_category,task_subtype,priority) "
     +"VALUES(?,?,'Fatura ekranı','Kabul kriteri','FEATURE','DEV','POOL',8,?,CURRENT_TIMESTAMP,?,?,?,'HIGH')",id,roadmapId,points,size,category,subtype);
  }
@@ -147,6 +147,22 @@ class JiraPbiTest {
   assertEquals("PENDING",state("backlog-1"));
   pbi.sendNext();
   assertEquals("SENT",state("backlog-1"));
+ }
+
+ @Test void startingASprintQueuesEverythingPlannedIntoItWithoutDuplicating()throws Exception{
+  enableIntegration();
+  roadmapWithEpic("roadmap-1","VBCRF-4");
+  backlogItem("backlog-1","roadmap-1","DEV","SMALL",null);
+  backlogItem("backlog-2","roadmap-1","BAU","SMALL",null);
+  db.update("INSERT INTO sprint(id,number,name,goal,start_date,end_date,status,story_points_available) VALUES('sprint-17',17,'Sprint 17','Hedef','2026-10-26','2026-11-08','planned',TRUE)");
+  db.update("INSERT INTO sprint_task(id,sprint_id,backlog_id,title,criteria,type,work_kind,status,task_category,task_subtype) VALUES('task-1','sprint-17','backlog-1','Fatura ekranı','Kriter','DEV','FEATURE','todo','DEV',NULL)");
+  db.update("INSERT INTO sprint_task(id,sprint_id,backlog_id,title,criteria,type,work_kind,status,task_category,task_subtype) VALUES('task-2','sprint-17','backlog-2','BAU','Kriter','DEV','FEATURE','todo','BAU','SUPPORT')");
+  outbox.enqueueBacklog("backlog-1");
+
+  outbox.enqueueSprint("sprint-17");
+
+  assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM jira_issue_link WHERE local_id='backlog-1'",Integer.class));
+  assertEquals("PENDING",state("backlog-2"));
  }
 
  @Test void deletingLocalWorkDropsTheLinkWithoutDeletingTheJiraIssue()throws Exception{

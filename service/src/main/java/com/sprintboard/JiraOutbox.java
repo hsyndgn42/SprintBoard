@@ -23,6 +23,17 @@ public class JiraOutbox {
   claim(backlogId);
  }
 
+ /**
+  * Catches everything that was planned into the sprint before the integration existed, and any
+  * item whose queue row was dropped. Rows that already exist are skipped, so starting a sprint
+  * never opens a second issue for work that already reached Jira.
+  */
+ public void enqueueSprint(String sprintId){
+  if(sprintId==null||sprintId.isBlank())return;
+  if(!configs.load().enabled())return;
+  for(String backlogId:db.queryForList("SELECT backlog_id FROM sprint_task WHERE sprint_id=? AND backlog_id IS NOT NULL",String.class,sprintId))claim(backlogId);
+ }
+
  /** Returns false when a row already exists, which is how a re-add to another sprint stays silent. */
  boolean claim(String backlogId){
   String now=clock.instant().toString();

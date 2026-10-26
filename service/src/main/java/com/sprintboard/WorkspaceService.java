@@ -1157,6 +1157,7 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
     if (!"planned".equals(row.get("status"))) throw new IllegalArgumentException("Yalnız planlanan sprint başlatılabilir.");
     if (sprints().stream().anyMatch(item -> "active".equals(item.get("status")))) throw new IllegalArgumentException("Önce aktif sprinti tamamlayın.");
     jdbc.update("UPDATE sprint SET status='active' WHERE id=?", id);
+    jiraOutbox.enqueueSprint(id);
     flow.begin(id,(List<Map<String,Object>>)row.get("items"),true);
     audit("sprint", id, "started", map());
     return map("id", id, "status", "active");
