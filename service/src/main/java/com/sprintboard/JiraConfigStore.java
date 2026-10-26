@@ -28,8 +28,15 @@ public class JiraConfigStore {
  public record Config(String baseUrl,String projectKey,String boardId,String defectJql,String fieldDefaults,boolean enabled,int version,boolean patConfigured){}
 
  public Config load(){
-  var rows=db.query("SELECT * FROM jira_config WHERE id=1",(r,n)->new Config(r.getString("base_url"),r.getString("project_key"),r.getString("board_id"),r.getString("defect_jql"),r.getString("field_defaults"),r.getBoolean("enabled"),r.getInt("version"),!r.getString("pat_secret").isBlank()));
+  var rows=db.query("SELECT * FROM jira_config WHERE id=1",(r,n)->new Config(trimUrl(r.getString("base_url")),r.getString("project_key"),r.getString("board_id"),r.getString("defect_jql"),r.getString("field_defaults"),r.getBoolean("enabled"),r.getInt("version"),!r.getString("pat_secret").isBlank()));
   return rows.isEmpty()?new Config("","","",DEFAULT_DEFECT_JQL,DEFAULT_FIELDS,false,0,false):rows.getFirst();
+ }
+
+ /** Every caller appends its own path, so a trailing slash would produce a double slash. */
+ static String trimUrl(String value){
+  String trimmed=value==null?"":value.trim();
+  while(trimmed.endsWith("/"))trimmed=trimmed.substring(0,trimmed.length()-1);
+  return trimmed;
  }
 
  public String token(){
@@ -39,7 +46,7 @@ public class JiraConfigStore {
  }
 
  @Transactional public int save(Config c,String pat){
-  String baseUrl=c.baseUrl().trim(),project=c.projectKey().trim().toUpperCase(Locale.ROOT),jql=c.defectJql().trim();
+  String baseUrl=trimUrl(c.baseUrl()),project=c.projectKey().trim().toUpperCase(Locale.ROOT),jql=c.defectJql().trim();
   if(!baseUrl.isEmpty()&&!baseUrl.startsWith("https://"))throw new IllegalArgumentException("Jira adresi https:// ile başlamalı.");
   if(!project.isEmpty()&&!project.matches("[A-Z][A-Z0-9_]{1,20}"))throw new IllegalArgumentException("Jira proje anahtarı geçersiz. Örn. VBCRF");
   if(c.enabled()&&(baseUrl.isEmpty()||project.isEmpty()))throw new IllegalArgumentException("Entegrasyonu açmadan önce Jira adresi ve proje anahtarı girilmeli.");

@@ -36,6 +36,14 @@ class JiraSettingsTest {
   return input;
  }
 
+ /** A pasted address often ends with a slash, which would turn every link into a double slash. */
+ @Test void storesTheAddressWithoutATrailingSlash(){
+  var input=form("pat-token",true,0);
+  input.put("baseUrl","https://itjira.example.local//");
+  settings.save(input);
+  assertEquals("https://itjira.example.local",configs.load().baseUrl());
+ }
+
  @Test void rejectsPlainHttpAndForeignPaths(){
   assertThrows(IllegalArgumentException.class,()->JiraTransport.endpoint("http://jira.local","/rest/api/2/myself",Map.of()));
   assertThrows(IllegalArgumentException.class,()->JiraTransport.endpoint("https://jira.local","/secure/Dashboard.jspa",Map.of()));
