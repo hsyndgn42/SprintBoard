@@ -128,7 +128,11 @@ export class SprintsComponent implements OnInit, OnDestroy {
           @if (auth.isAdmin() && (current.status === 'active' || current.status === 'planned')) { <button class="btn primary" (click)="openAddTask()">+ İş ekle</button> }
           @if (auth.isAdmin() && current.status === 'active') { <button class="btn closing-action" (click)="openComplete()">Sprinti tamamla</button> }
           @if (auth.isAdmin() && current.status === 'planned') { <button class="btn closing-action" (click)="start()">Sprinti başlat</button> }
+          @if (auth.isAdmin() && wikiEnabled && current.status !== 'completed') { <button class="btn" [disabled]="wikiBusy" (click)="publishWiki()">{{ wikiBusy ? 'Wikiye gönderiliyor…' : (wikiUrl ? 'Wiki sayfasını güncelle' : 'Wikiye gönder') }}</button> }
+          @if (wikiUrl) { <a class="btn subtle" [href]="wikiUrl" target="_blank" rel="noopener noreferrer">Wiki sayfası</a> }
         </div></div>
+      @if (wikiError) { <p class="notice warn" role="alert">{{ wikiError }}</p> }
+      @if (wikiMessage) { <p class="inline-success" role="status">{{ wikiMessage }}</p> }
       @if(current.closureFrozen){<p class="notice" data-testid="closure-frozen">Kapanış kaydı sabitlendi · {{ current.closedAt }}. Görevler, atamalar, kapasite ve tahmin yöntemi kapanış anını gösterir.</p>}
       <nav class="subtabs" aria-label="Sprint alanları"><a [routerLink]="['/sprints', current.id, 'summary']" [class.active]="tab==='summary'">Özet</a><a [routerLink]="['/sprints', current.id, 'planning']" [class.active]="tab==='planning'">Planlama</a><a [routerLink]="['/sprints', current.id, 'capacity']" [class.active]="tab==='capacity'">Kapasite</a><a [routerLink]="['/sprints', current.id, 'effort']" [class.active]="tab==='effort'">Efor matrisi</a><a [routerLink]="['/sprints', current.id, 'board']" [class.active]="tab==='board'">Pano</a><a [routerLink]="['/sprints', current.id, 'journal']" [class.active]="tab==='journal'">Sprint günlüğü</a><a [routerLink]="['/sprints', current.id, 'review']" [class.active]="tab==='review'">Review</a><a [routerLink]="['/sprints', current.id, 'retro']" [class.active]="tab==='retro'">Retro</a></nav>
       @if(tab==='planning'||tab==='capacity'){@defer(on immediate){<app-planning-insights [items]="current.items" [rows]="capacityRows" [loaded]="capacityLoaded" [mode]="settings.estimationMode" [historical]="current.status==='completed'" [editable]="auth.isAdmin()&&current.status!=='completed'" (allocate)="openAllocation($event)" (assign)="openAssignments($event)" />}}
@@ -381,9 +385,24 @@ export class SprintDetailComponent implements OnInit, OnDestroy {
    *  refresh; blanking them to "—" every 30 seconds reads as data loss. */
   async load(id: string, quiet = false): Promise<void> {
     const version=++this.sprintLoadVersion;if(!quiet)this.capacityLoaded=false;++this.capacityRequestId;if(id!==this.sprint?.id)this.sprint=null;
-    try { const [sprint,settings]=await Promise.all([this.api.get<Sprint>(`/sprints/${encodeURIComponent(id)}`),this.api.get<ProductSettings>('/settings')]);if(version!==this.sprintLoadVersion)return;this.sprint=sprint;this.breadcrumb.set(sprint?.name||'');this.settings=sprint?.closureSettings||sprint?.workSettings||settings;this.error='';if(['planning','capacity','summary'].includes(this.tab))await this.loadCapacity(id);}
+    try { const [sprint,settings]=await Promise.all([this.api.get<Sprint>(`/sprints/${encodeURIComponent(id)}`),this.api.get<ProductSettings>('/settings')]);if(version!==this.sprintLoadVersion)return;this.sprint=sprint;this.breadcrumb.set(sprint?.name||'');this.settings=sprint?.closureSettings||sprint?.workSettings||settings;this.error='';if(['planning','capacity','summary'].includes(this.tab))await this.loadCapacity(id);void this.loadWikiLink(id);}
     catch(error){if(version===this.sprintLoadVersion){this.error=String(error);this.sprint=null;}}
     finally{if(version===this.sprintLoadVersion)this.cdr.detectChanges();}
+  }
+
+  wikiEnabled=false; wikiUrl=''; wikiBusy=false; wikiError=''; wikiMessage='';
+  /** A missing or disabled Confluence setup simply hides the button; it is not an error. */
+  private async loadWikiLink(id: string): Promise<void> {
+    try { const link=await this.api.get<{enabled:boolean;pageUrl:string}>(`/admin/confluence/sprint/${encodeURIComponent(id)}`); if(this.sprint?.id!==id)return; this.wikiEnabled=link.enabled; this.wikiUrl=link.pageUrl; }
+    catch { this.wikiEnabled=false; this.wikiUrl=''; }
+    finally { this.cdr.detectChanges(); }
+  }
+  async publishWiki(): Promise<void> {
+    const id=this.sprint?.id; if(!id||this.wikiBusy)return;
+    this.wikiBusy=true;this.wikiError='';this.wikiMessage='';this.cdr.detectChanges();
+    try { const result=await this.api.post<{pageUrl:string}>(`/admin/confluence/sprint/${encodeURIComponent(id)}`,{}); this.wikiUrl=result.pageUrl; this.wikiMessage='Sprint planı wikiye gönderildi.'; }
+    catch(error){ this.wikiError=String(error); }
+    finally { this.wikiBusy=false;this.cdr.detectChanges(); }
   }
   isBau=isBau; effectiveStatus=effectiveTaskStatus;
   async changeStatus(item: Task, value: string): Promise<void> {

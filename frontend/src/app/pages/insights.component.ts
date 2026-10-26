@@ -2,6 +2,7 @@ import {OvertimeTrendComponent} from './overtime-trend.component';
 import { ListPagerComponent } from '../list-pager.component';
 import {SlackSettingsComponent} from './slack-settings.component';
 import {JiraSettingsComponent} from './jira-settings.component';
+import {ConfluenceSettingsComponent} from './confluence-settings.component';
 import {ScopeReportComponent} from './scope-report.component';
 import { ReportHtmlExportComponent } from './report-html-export.component';
 import { CapacityTrendComponent } from './capacity-trend.component';
@@ -209,7 +210,7 @@ type SettingsTab = typeof SETTINGS_TABS[number];
 
 @Component({
   standalone: true,
-  imports: [ListPagerComponent, SlackSettingsComponent, JiraSettingsComponent, ModalAccessibilityDirective, FormsModule, RouterLink, BackupComponent, SubtypeSettingsComponent, AccountsComponent, WorkSettingsComponent, SbStateComponent],
+  imports: [ListPagerComponent, SlackSettingsComponent, JiraSettingsComponent, ConfluenceSettingsComponent, ModalAccessibilityDirective, FormsModule, RouterLink, BackupComponent, SubtypeSettingsComponent, AccountsComponent, WorkSettingsComponent, SbStateComponent],
   template: `
     <div class="page-head"><div><span class="eyebrow">YÖNETİM</span><h1>Ayarlar</h1><p>Sprint varsayılanları, erişim hesapları, tahmin yöntemi, takvim ve yedekleme.</p></div></div>
     <nav class="subtabs" aria-label="Ayar kategorileri">
@@ -267,6 +268,8 @@ type SettingsTab = typeof SETTINGS_TABS[number];
     <section class="settings-section"><div class="settings-section-head"><h3>Slack entegrasyonu</h3><small>Kanallar, bağlantı ve mesaj şablonları</small></div>@defer (on idle) { <app-slack-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Slack</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
     </section>
     <section class="settings-section"><div class="settings-section-head"><h3>Jira entegrasyonu</h3><small>Sunucu, proje ve defect sorgusu</small></div>@defer (on idle) { <app-jira-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Jira</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
+    </section>
+    <section class="settings-section"><div class="settings-section-head"><h3>Confluence (wiki)</h3><small>Sprint planını wiki sayfasına gönderir</small></div>@defer (on idle) { <app-confluence-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Confluence</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
     </section>
     </section> }
     @if (tab==='admin') { <section class="settings-group danger-zone" id="settings-admin" tabindex="-1" aria-labelledby="settings-admin-heading">

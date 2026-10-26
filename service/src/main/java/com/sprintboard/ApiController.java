@@ -39,7 +39,7 @@ public class ApiController {
     return value == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(value);
   }
 
-@GetMapping("/health") public Map<String, Object> health() { return Map.of("status", "ok", "schemaVersion", 45, "backupSchemaVersion", 41); }
+@GetMapping("/health") public Map<String, Object> health() { return Map.of("status", "ok", "schemaVersion", 46, "backupSchemaVersion", 41); }
   @PutMapping("/sprints/{id}/flow") public ResponseEntity<?> configureFlow(@PathVariable String id,@RequestBody Map<String,Object> input){return found(workspace.configureFlow(id,input));}
   @PostMapping("/tasks/{id}/remove") public ResponseEntity<?> removeTask(@PathVariable String id,@RequestBody Map<String,Object> input){return found(workspace.removeTask(id,input));}
   @GetMapping("/reports/defect-reserves") public Object defectReserves(){return workspace.defectReserveReports();}
