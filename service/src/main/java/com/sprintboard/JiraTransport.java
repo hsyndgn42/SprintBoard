@@ -41,6 +41,9 @@ public class JiraTransport {
   * would strip the public roots that SlackTransport needs for slack.com.
   */
  static SSLContext corporateTrust(){
+  // The wiki host sends only its leaf certificate, so PKIX has to fetch the issuing
+  // sub-CA itself; the Windows intermediate store is not readable from the JDK.
+  System.setProperty("com.sun.security.enableAIAcaIssuers","true");
   try{
    KeyStore store=KeyStore.getInstance("PKCS12");store.load(null,null);
    int loaded=0;
