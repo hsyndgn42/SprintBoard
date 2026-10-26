@@ -5,7 +5,7 @@ import {SlackBacklogInboxComponent} from './slack-backlog-inbox.component';
 import {FoldDirective} from '../fold.directive';
 import {BACKLOG_VIEWS,matchesBacklogView} from './backlog-view.model';
 import { ModalAccessibilityDirective } from '../modal-accessibility.directive';
-import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService, BacklogItem, TeamMember, Overview, ProductSettings, RoadmapItem, SprintSummary, TaskCategory, TaskSubtype, statusText } from '../api.service';
@@ -48,7 +48,7 @@ import { SbStateComponent } from '../shared/sb-state.component';
           <option [ngValue]="null">Roadmap hedefine bağlı değil</option>@for (target of roadmap; track target.id) { <option [ngValue]="target.id">{{ target.referenceId ? target.referenceId + ' · ' : '' }}{{ target.title }}</option> }
         </select> } @else { <span>{{ item.roadmapTitle || 'Roadmap hedefine bağlı değil' }}</span> }</td>
         <td data-label="Durum"><span class="status" [class.done]="item.taskStatus === 'done'" [class.undone]="item.taskStatus === 'undone'" [class.doing]="item.taskStatus === 'doing'" [class.todo]="item.taskStatus === 'todo' && !plannedOnly(item)" [class.planned]="plannedOnly(item)" [class.active]="item.state === 'IN_SPRINT' && !plannedOnly(item)">{{ backlogState(item) }}</span>@if (plannedOnly(item)) { <small>{{ item.sprintName }} · sprint başlayınca Yapılacak olur</small> }@if (item.readiness.eligible) { <small [class.readiness-warning]="!item.readiness.ready">{{ item.readiness.ready ? 'Planlamaya hazır' : 'Kontrol gerekli · ' + item.readiness.warnings.length }}</small> }@if (item.dependencies.length) { <small>{{ item.dependencies.length }} bağımlılık · {{ openDependencies(item) }} açık</small> }</td>
-        <td data-label="Sprint">@if (item.sprintId) { <a class="table-link" [routerLink]="['/sprints', item.sprintId, 'summary']">{{ item.sprintName || 'Sprint görevi' }} →</a><small>{{ item.sprintStatus==='active'?'Aktif sprint':item.sprintStatus==='planned'?'Planlanan sprint':'Kapanmış sprint' }}</small> } @else { <span class="muted">Henüz yok</span> }@if (item.jiraKey) { <small>@if (jiraBaseUrl) { <a class="table-link" [href]="jiraBaseUrl + '/browse/' + item.jiraKey" target="_blank" rel="noopener noreferrer">{{ item.jiraKey }} ↗</a> } @else { {{ item.jiraKey }} }</small> } @else if (pbiBusy.has(item.id) || item.jiraState === 'PENDING') { <small>Jira kaydı açılıyor…</small> } @else if (item.jiraState) { <small class="readiness-warning">Jira PBI açılamadı — {{ item.jiraError || 'bilinmeyen hata' }}</small>@if (auth.isAdmin()) { <button class="btn small" [disabled]="pbiBusy.has(item.id)" (click)="retryPbi(item)">Tekrar dene</button> } }</td>
+        <td data-label="Sprint">@if (item.sprintId) { <a class="table-link" [routerLink]="['/sprints', item.sprintId, 'summary']">{{ item.sprintName || 'Sprint görevi' }} →</a><small>{{ item.sprintStatus==='active'?'Aktif sprint':item.sprintStatus==='planned'?'Planlanan sprint':'Kapanmış sprint' }}</small> } @else { <span class="muted">Henüz yok</span> }@if (item.jiraKey) { <small>@if (jiraBaseUrl) { <a class="table-link" [href]="jiraBaseUrl + '/browse/' + item.jiraKey" target="_blank" rel="noopener noreferrer">{{ item.jiraKey }} ↗</a> } @else { {{ item.jiraKey }} }</small> } @else if (pbiBusy.has(item.id) || item.jiraState === 'PENDING') { <small>Jira kaydı açılıyor…</small> } @else if (item.jiraState) { <small class="readiness-warning">Jira PBI açılamadı — {{ item.jiraError || 'bilinmeyen hata' }}</small>@if (auth.isAdmin()) { <button class="btn small" [disabled]="pbiBusy.has(item.id)" (click)="retryPbi(item)">Tekrar dene</button> } } @else if (auth.isAdmin() && item.taskId && jiraBaseUrl) { <button class="btn small" [disabled]="pbiBusy.has(item.id)" (click)="retryPbi(item)">Jira PBI aç</button> }</td>
         <td data-label="İşlemler"><div class="table-actions">@if (auth.isAdmin() && !item.taskId && item.state === 'Ready') { <button class="btn small" (click)="edit(item)">Düzenle</button> <button class="btn small danger" (click)="openDelete(item)">Sil</button> } @if (auth.isAdmin() && !item.taskId && item.state === 'Ready' && sprintTargetCount) { <button class="btn small" (click)="addToSprint(item)">Sprinte al</button> }
           @else if (auth.isAdmin() && item.taskId) { <button class="btn small" (click)="repeat(item)">Yeni iş olarak tekrarla</button> } @else { <span class="muted">—</span> }</div></td>
       </tr> }</tbody></table></div> }
@@ -77,7 +77,7 @@ import { SbStateComponent } from '../shared/sb-state.component';
   `,
   styles: [`.backlog-title-link{display:block;border:0;background:none;padding:0;text-align:left;color:#195da8;font:inherit;font-weight:750;cursor:pointer;white-space:normal;overflow-wrap:anywhere}.backlog-title-link:hover{text-decoration:underline}.backlog-title-link:focus-visible{outline:2px solid #1565c0;outline-offset:4px}h3{margin-top:20px}.priority-badge{display:inline-block;padding:4px 8px;border-radius:6px;background:#edf2fa;color:#35516f;font-size:12px;font-weight:700}.priority-badge.urgent{background:#feecec;color:#9d2424}.priority-badge.high{background:#fff4df;color:#805215}.readiness-warning{color:#805215}.dependency-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px;width:100%;text-align:left;overflow-wrap:anywhere}.dependency-options{max-height:180px;overflow:auto}.dependency-options button{border:1px solid #dce5f1;background:#f8fbff;cursor:pointer}`],
 })
-export class BacklogComponent implements OnInit {
+export class BacklogComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   auth = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
@@ -92,6 +92,7 @@ export class BacklogComponent implements OnInit {
   linkingIds = new Set<string>();
   pbiBusy = new Set<string>();
   jiraBaseUrl = '';
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
   query = '';
   filter = 'open';
   views=BACKLOG_VIEWS;
@@ -200,7 +201,16 @@ export class BacklogComponent implements OnInit {
   async deleted(){this.closeDelete();this.savedMessage='Backlog işi silindi. Denetim geçmişi korundu.';await this.load();}
   edit(item: BacklogItem): void { this.editingId=item.id; this.detail=null; this.draft={title:item.title,criteria:item.criteria,roadmapId:item.roadmapId || '',taskCategory:item.taskCategory,taskSubtype:item.taskSubtype,estimatedHours:item.estimatedHours,size:item.size || '',storyPoints:item.storyPoints,priority:item.priority,dependencyIds:item.dependencies.map(d=>d.id),defect:{...(item.defect||emptyDefect())}}; this.formOpen=true; this.error=''; this.cdr.detectChanges(); }
   private route=inject(ActivatedRoute);
-  async ngOnInit(): Promise<void> { await this.load();await this.loadJira();const id=this.route.snapshot.queryParamMap.get('item');if(id){const item=this.items.find(i=>i.id===id);if(item)this.openDetail(item);else{this.error='Bağlı backlog işi bulunamadı.';this.cdr.detectChanges();}} }
+  async ngOnInit(): Promise<void> { await this.load();await this.loadJira();const id=this.route.snapshot.queryParamMap.get('item');if(id){const item=this.items.find(i=>i.id===id);if(item)this.openDetail(item);else{this.error='Bağlı backlog işi bulunamadı.';this.cdr.detectChanges();}}this.startAutoRefresh(); }
+  ngOnDestroy(): void { if (this.refreshTimer) clearInterval(this.refreshTimer); }
+  /** Jira keys and sprint changes arrive from background work and other people, so the list
+   *  refreshes itself. Editing is never interrupted: an open form or modal pauses the cycle. */
+  private startAutoRefresh(): void {
+    this.refreshTimer = setInterval(() => {
+      if (this.formOpen || this.detail || this.saving || this.pbiBusy.size || this.linkingIds.size || document.hidden) return;
+      void this.load();
+    }, 30000);
+  }
   async load(): Promise<void> {
     try {
       const [items, roadmap, overview, settings, members, sprints] = await Promise.all([this.api.get<BacklogItem[]>('/backlog'), this.api.get<RoadmapItem[]>('/roadmap'), this.api.get<Overview>('/overview'), this.api.get<ProductSettings>('/settings'), this.api.get<TeamMember[]>('/team'), this.api.get<SprintSummary[]>('/sprints')]);
