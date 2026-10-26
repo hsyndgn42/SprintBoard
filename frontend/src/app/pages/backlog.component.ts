@@ -17,6 +17,8 @@ import { emptyDefect,defectSummary } from '../defect-model';
 import { AuthService } from '../auth.service';
 import { TASK_CATEGORIES, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
 import { SbStateComponent } from '../shared/sb-state.component';
+import { AutoRefresh } from '../shared/auto-refresh';
+import { readFilters, writeFilters } from '../shared/filter-memory';
 
 @Component({
   standalone: true,
@@ -29,6 +31,8 @@ import { SbStateComponent } from '../shared/sb-state.component';
       <label class="field">Ara<input type="search" [(ngModel)]="query" (ngModelChange)="resetPage()" placeholder="İş adı veya dış referans"></label>
       <label class="field">Görünüm<select aria-label="Backlog görünümü" [(ngModel)]="filter" (ngModelChange)="resetPage()">@for(view of views;track view.value){<option [value]="view.value">{{view.label}}</option>}</select></label>
       <label class="field">İş tipi<select [(ngModel)]="typeFilter" (ngModelChange)="resetPage()"><option value="">Tüm iş tipleri</option>@for (option of taskCategories; track option.value) { <option [value]="option.value">{{ option.label }}</option> }</select></label>
+      <label class="field">Roadmap<select [(ngModel)]="roadmapFilter" (ngModelChange)="resetPage()"><option value="">Tüm roadmap hedefleri</option><option value="none">Roadmap hedefine bağlı değil</option>@for (target of roadmap; track target.id) { <option [value]="target.id">{{ target.referenceId ? target.referenceId + ' · ' : '' }}{{ target.title }}</option> }</select></label>
+      <label class="field">Sprint<select [(ngModel)]="sprintFilter" (ngModelChange)="resetPage()"><option value="">Tüm sprintler</option><option value="none">Sprinte alınmamış</option>@for (option of sprintOptions; track option.id) { <option [value]="option.id">{{ option.name }}</option> }</select></label>
       <label class="field">Öncelik<select [(ngModel)]="priorityFilter" (ngModelChange)="resetPage()"><option value="">Tümü</option>@for (p of priorities; track p.value) { <option [value]="p.value">{{ p.label }}</option> }</select></label>
       <label class="field">Hazırlık<select [(ngModel)]="readinessFilter" (ngModelChange)="resetPage()"><option value="">Tümü</option><option value="ready">Planlamaya hazır</option><option value="warnings">Kontrol gerekli</option><option value="blocked">Bağımlılığı açık</option></select></label>
       <label class="field">Sıralama<select [(ngModel)]="sort" (ngModelChange)="resetPage()"><option value="priority">Öncelik</option><option value="recent">En yeni</option></select></label>
@@ -89,11 +93,11 @@ export class BacklogComponent implements OnInit, OnDestroy {
   members: TeamMember[] = [];
   priorities = [{value:'UNSET',label:'Belirlenmemiş'},{value:'URGENT',label:'Acil'},{value:'HIGH',label:'Yüksek'},{value:'NORMAL',label:'Normal'},{value:'LOW',label:'Düşük'}];
   priorityFilter=''; readinessFilter=''; sort='priority'; dependencyQuery=''; addItemId='';
+  roadmapFilter=''; sprintFilter='';
   linkingIds = new Set<string>();
   pbiBusy = new Set<string>();
   jiraBaseUrl = '';
-  private refreshTimer: ReturnType<typeof setInterval> | null = null;
-  query = '';
+  private autoRefresh = new AutoRefresh();  query = '';
   filter = 'open';
   views=BACKLOG_VIEWS;
   get viewHint(){return this.views.find(v=>v.value===this.filter)?.hint||'';}
@@ -134,16 +138,37 @@ export class BacklogComponent implements OnInit, OnDestroy {
     const q = this.query.trim().toLocaleLowerCase('tr-TR');
     return this.items.filter(item => matchesBacklogView(item,this.filter) && (!this.typeFilter || item.taskCategory === this.typeFilter) &&
       (!q || `${item.title} ${item.externalId}`.toLocaleLowerCase('tr-TR').includes(q)) &&
+      (!this.roadmapFilter || (this.roadmapFilter === 'none' ? !item.roadmapId : item.roadmapId === this.roadmapFilter)) &&
+      (!this.sprintFilter || (this.sprintFilter === 'none' ? !item.sprintId : item.sprintId === this.sprintFilter)) &&
       (!this.priorityFilter || item.priority===this.priorityFilter) &&
       (!this.readinessFilter || (item.readiness.eligible && (this.readinessFilter==='ready' ? item.readiness.ready : this.readinessFilter==='blocked' ? this.openDependencies(item)>0 : !item.readiness.ready))))
       .sort((a,b)=>this.sort==='priority' ? this.rank(a.priority)-this.rank(b.priority) : 0);
+  }
+  /** Built from the loaded items rather than the sprint list, so the dropdown can
+   *  only offer sprints that actually hold backlog work and never yields an empty result. */
+  get sprintOptions(): {id:string;name:string}[] {
+    const seen = new Map<string,string>();
+    for (const item of this.items) if (item.sprintId) seen.set(item.sprintId, item.sprintName || 'Sprint');
+    return [...seen].map(([id,name]) => ({id,name})).sort((a,b) => a.name.localeCompare(b.name,'tr'));
   }
   rank(p:string):number { return ({URGENT:0,HIGH:1,NORMAL:2,LOW:3,UNSET:4} as Record<string,number>)[p] ?? 4; }
   get totalPages(): number { return Math.max(1, Math.ceil(this.visible.length / this.pageSize)); }
   get pageStart(): number { return this.visible.length ? (this.page - 1) * this.pageSize + 1 : 0; }
   get pageEnd(): number { return Math.min(this.page * this.pageSize, this.visible.length); }
   get visiblePage(): BacklogItem[] { return this.visible.slice((this.page - 1) * this.pageSize, this.page * this.pageSize); }
-  clearFilters(): void { this.query=""; this.filter="open"; this.typeFilter=""; this.priorityFilter=""; this.readinessFilter=""; this.sort="priority"; this.resetPage(); }
+  clearFilters(): void { this.query=""; this.filter="open"; this.typeFilter=""; this.roadmapFilter=""; this.sprintFilter=""; this.priorityFilter=""; this.readinessFilter=""; this.sort="priority"; this.resetPage(); }
+
+  /** Filters are the reader's working context; dropping them on every reload or
+   *  every trip to a detail page forces the same narrowing to be redone by hand. */
+  private static readonly FILTER_KEY = 'sprintboard.backlog.filters';
+  private filterState(): Record<string,string> {
+    return { query:this.query, filter:this.filter, typeFilter:this.typeFilter, roadmapFilter:this.roadmapFilter, sprintFilter:this.sprintFilter, priorityFilter:this.priorityFilter, readinessFilter:this.readinessFilter, sort:this.sort };
+  }
+  private restoreFilters(): void {
+    const saved = readFilters(BacklogComponent.FILTER_KEY, this.filterState());
+    this.query=saved['query']; this.filter=saved['filter']; this.typeFilter=saved['typeFilter']; this.roadmapFilter=saved['roadmapFilter'];
+    this.sprintFilter=saved['sprintFilter']; this.priorityFilter=saved['priorityFilter']; this.readinessFilter=saved['readinessFilter']; this.sort=saved['sort'];
+  }
 
   /**
    * True when the reader has narrowed the list away from its default view.
@@ -153,6 +178,8 @@ export class BacklogComponent implements OnInit, OnDestroy {
     return !!this.query.trim()
       || this.filter !== 'open'
       || !!this.typeFilter
+      || !!this.roadmapFilter
+      || !!this.sprintFilter
       || !!this.priorityFilter
       || !!this.readinessFilter;
   }
@@ -172,6 +199,13 @@ export class BacklogComponent implements OnInit, OnDestroy {
     if (this.typeFilter) {
       chips.push(`İş tipi: ${this.taskCategories.find(c => c.value === this.typeFilter)?.label ?? this.typeFilter}`);
     }
+    if (this.roadmapFilter) {
+      const target = this.roadmap.find(r => r.id === this.roadmapFilter);
+      chips.push(`Roadmap: ${this.roadmapFilter === 'none' ? 'Bağlı değil' : target ? (target.referenceId ? `${target.referenceId} · ${target.title}` : target.title) : this.roadmapFilter}`);
+    }
+    if (this.sprintFilter) {
+      chips.push(`Sprint: ${this.sprintFilter === 'none' ? 'Sprinte alınmamış' : this.sprintOptions.find(s => s.id === this.sprintFilter)?.name ?? this.sprintFilter}`);
+    }
     if (this.priorityFilter) {
       chips.push(`Öncelik: ${this.priorities.find(p => p.value === this.priorityFilter)?.label ?? this.priorityFilter}`);
     }
@@ -185,7 +219,7 @@ export class BacklogComponent implements OnInit, OnDestroy {
     }
     return chips;
   }
-  resetPage(): void { this.page = 1; this.cdr.detectChanges(); }
+  resetPage(): void { this.page = 1; writeFilters(BacklogComponent.FILTER_KEY, this.filterState()); this.cdr.detectChanges(); }
   changePage(nextPage: number): void {
     this.page = Math.max(1, Math.min(nextPage, this.totalPages));
     this.cdr.detectChanges();
@@ -201,15 +235,12 @@ export class BacklogComponent implements OnInit, OnDestroy {
   async deleted(){this.closeDelete();this.savedMessage='Backlog işi silindi. Denetim geçmişi korundu.';await this.load();}
   edit(item: BacklogItem): void { this.editingId=item.id; this.detail=null; this.draft={title:item.title,criteria:item.criteria,roadmapId:item.roadmapId || '',taskCategory:item.taskCategory,taskSubtype:item.taskSubtype,estimatedHours:item.estimatedHours,size:item.size || '',storyPoints:item.storyPoints,priority:item.priority,dependencyIds:item.dependencies.map(d=>d.id),defect:{...(item.defect||emptyDefect())}}; this.formOpen=true; this.error=''; this.cdr.detectChanges(); }
   private route=inject(ActivatedRoute);
-  async ngOnInit(): Promise<void> { await this.load();await this.loadJira();const id=this.route.snapshot.queryParamMap.get('item');if(id){const item=this.items.find(i=>i.id===id);if(item)this.openDetail(item);else{this.error='Bağlı backlog işi bulunamadı.';this.cdr.detectChanges();}}this.startAutoRefresh(); }
-  ngOnDestroy(): void { if (this.refreshTimer) clearInterval(this.refreshTimer); }
+  async ngOnInit(): Promise<void> { this.restoreFilters();await this.load();await this.loadJira();const id=this.route.snapshot.queryParamMap.get('item');if(id){const item=this.items.find(i=>i.id===id);if(item)this.openDetail(item);else{this.error='Bağlı backlog işi bulunamadı.';this.cdr.detectChanges();}}this.startAutoRefresh(); }
+  ngOnDestroy(): void { this.autoRefresh.stop(); }
   /** Jira keys and sprint changes arrive from background work and other people, so the list
-   *  refreshes itself. Editing is never interrupted: an open form or modal pauses the cycle. */
+   *  refreshes itself. Open dialogs pause the cycle (see AutoRefresh). */
   private startAutoRefresh(): void {
-    this.refreshTimer = setInterval(() => {
-      if (this.formOpen || this.detail || this.saving || this.pbiBusy.size || this.linkingIds.size || document.hidden) return;
-      void this.load();
-    }, 30000);
+    this.autoRefresh.start(() => this.load(), () => this.saving || this.pbiBusy.size > 0 || this.linkingIds.size > 0);
   }
   async load(): Promise<void> {
     try {

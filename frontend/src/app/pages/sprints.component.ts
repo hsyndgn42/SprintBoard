@@ -10,6 +10,7 @@ import { SprintJournalComponent } from './sprint-journal.component';
 import { PlanningInsightsComponent } from './planning-insights.component';
 import { ModalAccessibilityDirective } from '../modal-accessibility.directive';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { AutoRefresh } from '../shared/auto-refresh';
 import { SbBreadcrumbService } from '../shared/sb-breadcrumb.component';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -51,7 +52,7 @@ import { TaskRemoveDialogComponent } from './task-remove-dialog.component';
       @if (error) { <p class="notice warn" role="alert">{{ error }}</p> }</div><footer><button data-modal-dismiss type="button" class="btn" (click)="setFormOpen(false)">Vazgeç</button><button type="submit" class="btn primary" [disabled]="saving">Sprint oluştur</button></footer></form></div> }
   `,
 })
-export class SprintsComponent implements OnInit {
+export class SprintsComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   auth = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
@@ -102,7 +103,9 @@ export class SprintsComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     this.route.queryParamMap.subscribe(params => { const filter = params.get('status'); this.filter = ['active', 'planned', 'completed'].includes(filter || '') ? filter! : 'active'; this.cdr.detectChanges(); });
     await this.load();
-  }
+    this.autoRefresh.start(() => this.load(), () => this.saving);  }
+  ngOnDestroy(): void { this.autoRefresh.stop(); }
+  private autoRefresh = new AutoRefresh();
   async load(): Promise<void> { try { [this.items, this.templates] = await Promise.all([this.api.get<SprintSummary[]>('/sprints'), this.api.get<BauTemplate[]>('/bau-templates')]); } catch (error) { this.error = String(error); } finally { this.cdr.detectChanges(); } }
   openCreate(): void { this.formOpen = true; this.cdr.detectChanges(); }
   async create(): Promise<void> {
@@ -215,7 +218,7 @@ export class SprintDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private breadcrumb = inject(SbBreadcrumbService);
-  ngOnDestroy(): void { this.breadcrumb.clear(); }
+  ngOnDestroy(): void { this.autoRefresh.stop(); this.breadcrumb.clear(); }
   sprint: Sprint | null = null;
   settings: ProductSettings = { estimationMode: 'SIZE_AND_HOURS', hoursPerDay: 8 };
   tab = 'summary';
@@ -335,10 +338,15 @@ export class SprintDetailComponent implements OnInit, OnDestroy {
   get teamNames(): string { return [...new Set(this.sprint?.items.flatMap(item => item.assignments.map(assignment => assignment.memberName)).filter(Boolean) || [])].join(' · '); }
   assignmentNames(item: Task): string { if (item.workKind === 'LEAVE') return item.assignments.map(row => `${row.memberName} (${row.leaveDays} gün izin)`).join(', ') || 'Bu sprintte izin yok'; return item.assignments.map(assignment => `${assignment.memberName}${assignment.supportOnly ? ' (X)' : assignment.estimatedHours ? ' (' + assignment.estimatedHours + ' sa)' : ''}`).filter(Boolean).join(', ') || 'Atanmamış'; }
   taskColor(item: Task): string { const palette = ['#2563eb', '#7c3aed', '#0d9488', '#d97706', '#db2777', '#0891b2']; const key = item.backlogId || item.id; let hash = 0; for (const char of key) hash = (hash * 31 + char.charCodeAt(0)) >>> 0; return palette[hash % palette.length]; }
-  ngOnInit(): void { this.route.paramMap.subscribe(params => { const nextTab = params.get('tab') || 'summary'; const id = params.get('id') || ''; if (nextTab !== this.tab || id !== this.sprint?.id) { this.overtimePlansRow=null; this.plannedOvertimeRow=null; this.renameTask=null; this.pendingUndoneTask=null; this.undoneNote=''; this.defectTask=null; this.showComplete=false; this.showAddTask=false; this.allocationRow = null; this.closeAssignments(); this.closeClassification(); this.actionMessage = ''; } if (id !== this.sprint?.id) { this.effortQuery = ''; this.effortMemberId = ''; } this.tab = nextTab; this.cdr.detectChanges(); this.load(id); }); }
+  ngOnInit(): void { this.route.paramMap.subscribe(params => { const nextTab = params.get('tab') || 'summary'; const id = params.get('id') || ''; if (nextTab !== this.tab || id !== this.sprint?.id) { this.overtimePlansRow=null; this.plannedOvertimeRow=null; this.renameTask=null; this.pendingUndoneTask=null; this.undoneNote=''; this.defectTask=null; this.showComplete=false; this.showAddTask=false; this.allocationRow = null; this.closeAssignments(); this.closeClassification(); this.actionMessage = ''; } if (id !== this.sprint?.id) { this.effortQuery = ''; this.effortMemberId = ''; } this.tab = nextTab; this.cdr.detectChanges(); this.load(id); }); this.autoRefresh.start(() => { const id = this.sprint?.id; if (id) void this.load(id, true); }, () => this.saving); }
+  /** Statuses, assignments and Jira keys change under us while a sprint runs, so the
+   *  screen refreshes itself. Open dialogs pause the cycle (see AutoRefresh). */
+  private autoRefresh = new AutoRefresh();
   private sprintLoadVersion=0;
-  async load(id: string): Promise<void> {
-    const version=++this.sprintLoadVersion;this.capacityLoaded=false;++this.capacityRequestId;if(id!==this.sprint?.id)this.sprint=null;
+  /** `quiet` keeps the already-shown capacity numbers on screen during a background
+   *  refresh; blanking them to "—" every 30 seconds reads as data loss. */
+  async load(id: string, quiet = false): Promise<void> {
+    const version=++this.sprintLoadVersion;if(!quiet)this.capacityLoaded=false;++this.capacityRequestId;if(id!==this.sprint?.id)this.sprint=null;
     try { const [sprint,settings]=await Promise.all([this.api.get<Sprint>(`/sprints/${encodeURIComponent(id)}`),this.api.get<ProductSettings>('/settings')]);if(version!==this.sprintLoadVersion)return;this.sprint=sprint;this.breadcrumb.set(sprint?.name||'');this.settings=sprint?.closureSettings||sprint?.workSettings||settings;this.error='';if(['planning','capacity','summary'].includes(this.tab))await this.loadCapacity(id);}
     catch(error){if(version===this.sprintLoadVersion){this.error=String(error);this.sprint=null;}}
     finally{if(version===this.sprintLoadVersion)this.cdr.detectChanges();}

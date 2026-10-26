@@ -8,6 +8,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService, RoadmapItem, BacklogItem, ProductSettings, TaskCategory, TaskSubtype, formatDate } from '../api.service';
 import { AuthService } from '../auth.service';
 import { ROADMAP_STATUSES, ROADMAP_PRIORITIES, roadmapStatusLabel, roadmapPriorityLabel, filterRoadmap } from './roadmap-planning';
+import { AutoRefresh } from '../shared/auto-refresh';
+import { readFilters, writeFilters } from '../shared/filter-memory';
 import { TASK_CATEGORIES, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
 
 @Component({
@@ -28,11 +30,11 @@ import { TASK_CATEGORIES, TASK_SUBTYPES, availableSubtypes, defaultTaskSubtype, 
       <div class="page-head"><div><span class="eyebrow">ÜRÜN YÖNÜ</span><h1>Roadmap</h1><p>Stratejik hedefleri backlog işlerine, oradan sprint teslimatlarına bağlayın.</p></div>@if (auth.isAdmin()) { <div class="page-actions"><button class="btn primary" (click)="setFormOpen(true)">+ Hedef ekle</button></div> }</div>
       @if (items.length) {
         <section class="card roadmap-filters ui-toolbar" aria-label="Roadmap filtreleri">
-          <label class="field">Ara<input type="search" [(ngModel)]="query" placeholder="Başlık veya referans ID"></label>
-          <label class="field">Durum<select [(ngModel)]="statusFilter"><option value="">Tüm durumlar</option>@for(s of statuses;track s.value){<option [value]="s.value">{{ s.label }}</option>}</select></label>
-          <label class="field">Öncelik<select [(ngModel)]="priorityFilter"><option value="">Tüm öncelikler</option>@for(p of priorities;track p.value){<option [value]="p.value">{{ p.label }}</option>}</select></label>
-          <label class="field">Tür<select [(ngModel)]="kindFilter"><option value="">Tüm türler</option><option value="PROJECT">Proje</option><option value="FEATURE_SET">Feature set</option><option value="GENERAL">Genel</option><option value="UNSPECIFIED">Belirtilmemiş</option></select></label>
-          <label class="field">Sıralama<select [(ngModel)]="sort"><option value="priority">Öncelik</option><option value="date">Hedef tarihi</option><option value="title">Başlık</option></select></label>
+          <label class="field">Ara<input type="search" [(ngModel)]="query" (ngModelChange)="filtersChanged()" placeholder="Başlık veya referans ID"></label>
+          <label class="field">Durum<select [(ngModel)]="statusFilter" (ngModelChange)="filtersChanged()"><option value="">Tüm durumlar</option>@for(s of statuses;track s.value){<option [value]="s.value">{{ s.label }}</option>}</select></label>
+          <label class="field">Öncelik<select [(ngModel)]="priorityFilter" (ngModelChange)="filtersChanged()"><option value="">Tüm öncelikler</option>@for(p of priorities;track p.value){<option [value]="p.value">{{ p.label }}</option>}</select></label>
+          <label class="field">Tür<select [(ngModel)]="kindFilter" (ngModelChange)="filtersChanged()"><option value="">Tüm türler</option><option value="PROJECT">Proje</option><option value="FEATURE_SET">Feature set</option><option value="GENERAL">Genel</option><option value="UNSPECIFIED">Belirtilmemiş</option></select></label>
+          <label class="field">Sıralama<select [(ngModel)]="sort" (ngModelChange)="filtersChanged()"><option value="priority">Öncelik</option><option value="date">Hedef tarihi</option><option value="title">Başlık</option></select></label>
           <button class="btn" (click)="resetFilters()">Filtreleri temizle</button>
         </section>
         <p class="data-note" aria-live="polite">{{ visible.length }} / {{ items.length }} hedef gösteriliyor</p>
@@ -65,8 +67,13 @@ export class RoadmapComponent implements OnInit {
   statuses=ROADMAP_STATUSES;priorities=ROADMAP_PRIORITIES;
   statusLabel=roadmapStatusLabel;priorityLabel=roadmapPriorityLabel;
   query='';statusFilter='';priorityFilter='';kindFilter='';sort='priority';
+  private static readonly FILTER_KEY = 'sprintboard.roadmap.filters';
+  private filterState(): Record<string,string> { return { query:this.query, statusFilter:this.statusFilter, priorityFilter:this.priorityFilter, kindFilter:this.kindFilter, sort:this.sort }; }
+  /** Filters are the reader's working context; losing them on every reload means
+   *  narrowing the same board by hand over and over. */
+  filtersChanged(): void { writeFilters(RoadmapComponent.FILTER_KEY, this.filterState()); this.cdr.detectChanges(); }
   get visible(){return filterRoadmap(this.items,{query:this.query,status:this.statusFilter,priority:this.priorityFilter,kind:this.kindFilter,sort:this.sort});}
-  resetFilters(){this.query='';this.statusFilter='';this.priorityFilter='';this.kindFilter='';this.sort='priority';}
+  resetFilters(){this.query='';this.statusFilter='';this.priorityFilter='';this.kindFilter='';this.sort='priority';this.filtersChanged();}
   formatDate = formatDate;
   items: RoadmapItem[] = [];
   backlog: BacklogItem[] = [];
@@ -96,7 +103,14 @@ export class RoadmapComponent implements OnInit {
   loading = true;
   missingTarget = false;
   private destroyRef = inject(DestroyRef);
-  async ngOnInit(): Promise<void> { this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.selectTarget()); await this.load(); }
+  async ngOnInit(): Promise<void> { this.restoreFilters(); this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.selectTarget()); await this.load(); this.autoRefresh.start(() => this.load(true), () => this.saving || this.epicBusy); this.destroyRef.onDestroy(() => this.autoRefresh.stop()); }
+  /** Epic keys and linked backlog counts change from background work, so the board
+   *  refreshes itself. Open dialogs pause the cycle (see AutoRefresh). */
+  private autoRefresh = new AutoRefresh();
+  private restoreFilters(): void {
+    const saved = readFilters(RoadmapComponent.FILTER_KEY, this.filterState());
+    this.query=saved['query']; this.statusFilter=saved['statusFilter']; this.priorityFilter=saved['priorityFilter']; this.kindFilter=saved['kindFilter']; this.sort=saved['sort'];
+  }
   private selectTarget(): void {
     const id = this.route.snapshot.paramMap.get('id');
     this.selected = this.items.find(item => item.id === id) || null;
@@ -106,8 +120,10 @@ export class RoadmapComponent implements OnInit {
     this.formKind = 'roadmap';
     this.cdr.detectChanges();
   }
-  async load(): Promise<void> {
-    this.loading=true;this.error='';
+  /** `quiet` keeps the current board on screen during a background refresh; swapping
+   *  it for the loading placeholder every 30 seconds reads as the page resetting. */
+  async load(quiet = false): Promise<void> {
+    this.loading=!quiet;this.error='';
     try {
       [this.items, this.backlog, this.settings] = await Promise.all([this.api.get<RoadmapItem[]>('/roadmap'), this.api.get<BacklogItem[]>('/backlog'), this.api.get<ProductSettings>('/settings')]);
       await this.loadJira();
