@@ -46,4 +46,12 @@ class ConfluencePageTest {
   assertThrows(IllegalArgumentException.class,()->ConfluenceTransport.endpoint("http://wiki.local","/rest/api/content",Map.of()));
   assertThrows(IllegalArgumentException.class,()->ConfluenceTransport.endpoint("https://user:pw@wiki.local","/rest/api/content",Map.of()));
  }
+
+ @Test void connectionFailuresNameTheActualCause(){
+  var uri=URI.create("https://itwiki.vodafone.local/rest/api/content");
+  assertTrue(ConfluenceTransport.reason(uri,new java.net.UnknownHostException("x")).contains("çözülemedi"));
+  assertTrue(ConfluenceTransport.reason(uri,new javax.net.ssl.SSLHandshakeException("x")).contains("sertifika"));
+  assertTrue(ConfluenceTransport.reason(uri,new java.net.ConnectException("x")).contains("ulaşılamadı"));
+  assertTrue(ConfluenceTransport.reason(uri,new java.io.IOException("x")).contains("itwiki.vodafone.local"));
+ }
 }

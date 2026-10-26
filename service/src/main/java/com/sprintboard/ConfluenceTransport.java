@@ -56,7 +56,20 @@ public class ConfluenceTransport {
    }
   }catch(InterruptedException e){Thread.currentThread().interrupt();throw new IllegalStateException("Confluence bağlantısı durduruldu.");}
   catch(IllegalStateException|IllegalArgumentException e){throw e;}
-  catch(Exception e){throw new IllegalStateException("Confluence'a bağlanılamadı. Ağ erişimini, sunucu adresini ve sertifika güvenini kontrol edin.");}
+  catch(Exception e){throw new IllegalStateException(reason(uri,e));}
+ }
+
+ /**
+  * A single "could not connect" line sends people hunting through the network, the address and
+  * the certificate at once; naming which of the three failed is usually the whole fix.
+  */
+ static String reason(URI uri,Exception e){
+  String host=uri.getHost()==null?"":uri.getHost();
+  if(e instanceof UnknownHostException)return "Confluence adresi çözülemedi: "+host+". Sunucu adını kontrol edin.";
+  if(e instanceof javax.net.ssl.SSLException)return "Confluence sertifikasına güvenilmedi: "+host+". Kurumsal kök sertifikanın yüklü olduğunu kontrol edin.";
+  if(e instanceof java.net.ConnectException)return "Confluence sunucusuna ulaşılamadı: "+host+". Ağ erişimini ve portu kontrol edin.";
+  if(e instanceof java.net.http.HttpTimeoutException)return "Confluence zamanında yanıt vermedi: "+host+".";
+  return "Confluence'a bağlanılamadı: "+host+". Ağ erişimini, sunucu adresini ve sertifika güvenini kontrol edin.";
  }
 
  private JsonNode checked(int status,byte[] data)throws Exception{
