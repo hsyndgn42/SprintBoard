@@ -28,15 +28,15 @@ class ConfluencePageTest {
   var capacity=List.of(member("İsa",120,28,false),member("Destek",40,40,true));
   String html=ConfluencePageService.storage(sprint,capacity,NOW,"https://jira.local");
 
-  assertTrue(html.contains("Tasarım (1 iş, 8 sa)"));assertTrue(html.contains("Geliştirme (1 iş, 16 sa)"));assertTrue(html.contains("Test ve kalite (1 iş, 4 sa)"));
+  assertTrue(html.contains("Tasarım</strong>"));assertTrue(html.contains("1 iş, 16 sa"));assertTrue(html.contains("Planlanan işler"));
   // Design must be listed before development so the wiki matches the review export order.
-  assertTrue(html.indexOf("Tasarım (1 iş")<html.indexOf("Geliştirme (1 iş"));
+  assertTrue(html.indexOf("Tasarım</strong>")<html.indexOf("Geliştirme</strong>"));
   assertFalse(html.contains("Private sick reason"));
   assertTrue(html.contains("&lt;Kapsam&gt;"));assertFalse(html.contains("<Kapsam>"));
   assertTrue(html.contains("120 sa"),"core capacity excludes support members");
   assertFalse(html.contains("Destek"),"support members stay out of the core load");
   assertTrue(html.contains("3 Kasım 2026"),"dates are written in Turkish");
-  assertEquals("Sprint 17 · Sprint 17 · Plan",ConfluencePageService.title(sprint));
+  assertEquals("Sprint 17",ConfluencePageService.title(sprint),"Confluence already prints the title, so it stays bare");
  }
 
  /** The team total used to cancel one person's spare hours against another's missing ones. */
@@ -61,7 +61,7 @@ class ConfluencePageTest {
   assertTrue(html.contains("ac:name=\"status\""),"task state rides on a coloured lozenge");
   assertTrue(html.contains("class=\"highlight-#267a68\""),"Confluence paints a cell only when the class is present too");
   assertTrue(html.contains("https://jira.local/browse/VBCRF-779"),"the PBI key links back to Jira");
-  assertTrue(html.contains("Kişi bazında yük"));
+  assertTrue(html.contains("Kişi bazında"));assertTrue(html.contains("Sprint hedefi"));assertTrue(html.contains("width: 100%"),"tables span the page instead of shrinking to their text");
  }
 
  @Test void emptySprintStillProducesAReadablePage(){

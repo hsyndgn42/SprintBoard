@@ -78,9 +78,10 @@ public class ConfluencePageService {
   return new Published(id,webui.isBlank()?settings.baseUrl()+"/pages/viewpage.action?pageId="+id:settings.baseUrl()+webui,page.path("version").path("number").asInt(1),title);
  }
 
- /** Confluence titles are unique per space, so the sprint number keeps reruns off each other. */
+ /** Confluence titles are unique per space and the page already sits under a sprint parent. */
  static String title(Map<String,Object> sprint){
-  return "Sprint "+SprintDigestSnapshot.s(sprint,"number")+" · "+SprintDigestSnapshot.s(sprint,"name")+" · Plan";
+  String name=SprintDigestSnapshot.s(sprint,"name").trim();
+  return name.isEmpty()?"Sprint "+SprintDigestSnapshot.s(sprint,"number"):name;
  }
 
  static String storage(Map<String,Object> sprint,List<Map<String,Object>> capacity,Instant now,String jiraBase){
@@ -93,13 +94,15 @@ public class ConfluencePageService {
   double over=core.stream().mapToDouble(c->Math.max(0,SprintDigestSnapshot.n(c,"plannedHours")-SprintDigestSnapshot.n(c,"availableHours"))).sum();
   double free=core.stream().mapToDouble(c->Math.max(0,SprintDigestSnapshot.n(c,"availableHours")-SprintDigestSnapshot.n(c,"plannedHours"))).sum();
 
-  var out=new StringBuilder(cover(sprint));
-  out.append(kpis(List.of(new String[]{"Çekirdek kapasite",SprintDigestSnapshot.num(available)+" sa"},
-                          new String[]{"Planlanan efor",SprintDigestSnapshot.num(planned)+" sa"},
-                          new String[]{"Kişisel aşım",SprintDigestSnapshot.num(over)+" sa"},
-                          new String[]{"Kişisel boşluk",SprintDigestSnapshot.num(free)+" sa"})));
+  var out=new StringBuilder(meta(sprint)).append(goal(sprint));
+  out.append(heading("Kapasite"));
+  out.append(kpis(List.of(new String[]{"Çekirdek kapasite",SprintDigestSnapshot.num(available)+" sa",INK},
+                          new String[]{"Planlanan efor",SprintDigestSnapshot.num(planned)+" sa",INK},
+                          new String[]{"Kişisel aşım",SprintDigestSnapshot.num(over)+" sa",over>0.01?RED:INK},
+                          new String[]{"Kişisel boşluk",SprintDigestSnapshot.num(free)+" sa",INK})));
   out.append(people(core));
   if(tasks.isEmpty())out.append(note("Bu sprintte planlanmış iş yok. SprintBoard'da iş ekleyip sayfayı yeniden gönderin."));
+  else out.append(heading("Planlanan işler"));
   for(String category:CATEGORIES){
    var group=tasks.stream().filter(t->category.equals(Objects.toString(t.get("taskCategory"),""))).toList();
    if(!group.isEmpty())out.append(section(category,group,jiraBase));
@@ -107,30 +110,31 @@ public class ConfluencePageService {
   return out.append(footer(now)).toString();
  }
 
- /** Mirrors the review export's cover: a green rule, the sprint name, then the goal. */
- private static String cover(Map<String,Object> sprint){
-  String name=SprintDigestSnapshot.s(sprint,"name"),number=SprintDigestSnapshot.s(sprint,"number");
-  String goal=SprintDigestSnapshot.s(sprint,"goal").trim(),status=SprintDigestSnapshot.s(sprint,"status");
-  var out=new StringBuilder("<div style=\"border-top: 6px solid "+GREEN+"; background-color: "+PAPER+"; padding: 26px 28px;\">");
-  out.append("<p style=\"margin: 0; font-size: 11px; font-weight: bold; letter-spacing: 2px; color: "+GREEN+";\">SPRINT PLANI</p>");
-  out.append("<p style=\"margin: 10px 0 4px; font-family: Georgia, serif; font-size: 34px; line-height: 1.15; color: "+INK+";\">")
-     .append(h(name.isBlank()?"Sprint "+number:name)).append("</p>");
-  out.append("<p style=\"margin: 0; font-size: 13px; color: "+MUTED+";\">")
-     .append(h(day(sprint.get("start")))).append(" &#8211; ").append(h(day(sprint.get("end"))))
-     .append("&#160;&#160;").append(lozenge(sprintColour(status),sprintLabel(status))).append("</p>");
-  out.append("<p style=\"margin: 20px 0 0; padding-top: 18px; border-top: 1px solid #acbcb6; font-family: Georgia, serif; font-size: 19px; line-height: 1.5; color: "+INK+";\">")
-     .append(goal.isEmpty()?"Bu sprint için hedef yazılmadı.":h(goal)).append("</p>");
-  return out.append("</div>").toString();
+ /** Confluence already prints the sprint name above, so the body opens with the period only. */
+ private static String meta(Map<String,Object> sprint){
+  String status=SprintDigestSnapshot.s(sprint,"status");
+  return "<p style=\"margin: 0 0 4px; font-size: 13px; color: "+MUTED+";\">"
+   +h(day(sprint.get("start")))+" &#8211; "+h(day(sprint.get("end")))+"&#160;&#160;"
+   +lozenge(sprintColour(status),sprintLabel(status))+"</p>";
+ }
+
+ /** The goal gets a panel of its own because it is the one line that outlives the sprint. */
+ private static String goal(Map<String,Object> sprint){
+  String goal=SprintDigestSnapshot.s(sprint,"goal").trim();
+  return heading("Sprint hedefi")
+   +"<div style=\"background-color: "+PAPER+"; border-left: 4px solid "+GREEN+"; padding: 18px 22px;\">"
+   +"<p style=\"margin: 0; font-family: Georgia, serif; font-size: 19px; line-height: 1.55; color: "+INK+";\">"
+   +(goal.isEmpty()?"Bu sprint için hedef yazılmadı.":h(goal))+"</p></div>";
  }
 
  /** Four numbers that decide whether the plan is sound, in the review export's strip. */
  private static String kpis(List<String[]> cells){
-  var out=new StringBuilder("<table><colgroup>");
+  var out=new StringBuilder("<table style=\"width: 100%;\"><colgroup>");
   for(int i=0;i<cells.size();i++)out.append("<col style=\"width: ").append(100/cells.size()).append("%;\" />");
   out.append("</colgroup><tbody><tr>");
   for(var cell:cells)out.append("<td style=\"border: 0; border-top: 1px solid "+LINE+"; border-bottom: 1px solid "+LINE+"; padding: 16px 14px;\">")
      .append("<p style=\"margin: 0; font-size: 11px; color: "+MUTED+";\">").append(h(cell[0])).append("</p>")
-     .append("<p style=\"margin: 2px 0 0; font-size: 24px; color: "+INK+";\"><strong>").append(h(cell[1])).append("</strong></p></td>");
+     .append("<p style=\"margin: 2px 0 0; font-size: 24px; color: "+cell[2]+";\"><strong>").append(h(cell[1])).append("</strong></p></td>");
   return out.append("</tr></tbody></table>").toString();
  }
 
@@ -142,8 +146,8 @@ public class ConfluencePageService {
   var rows=core.stream().filter(c->!SprintDigestSnapshot.s(c,"memberName").isBlank())
    .sorted((a,b)->Double.compare(ratio(b),ratio(a))).toList();
   if(rows.isEmpty())return "";
-  var out=new StringBuilder(heading("Kişi bazında yük"));
-  out.append("<table><colgroup><col style=\"width: 26%;\" /><col style=\"width: 50%;\" /><col style=\"width: 24%;\" /></colgroup><tbody>");
+  var out=new StringBuilder(subheading("Kişi bazında","kapasiteye göre sıralı"));
+  out.append("<table style=\"width: 100%;\"><colgroup><col style=\"width: 26%;\" /><col style=\"width: 50%;\" /><col style=\"width: 24%;\" /></colgroup><tbody>");
   for(var row:rows){
    double capacity=SprintDigestSnapshot.n(row,"availableHours"),load=SprintDigestSnapshot.n(row,"plannedHours");
    double gap=load-capacity;
@@ -170,11 +174,11 @@ public class ConfluencePageService {
   String colour=load>capacity+0.01?RED:GREEN;
   if(filled>=100)return fill(100,colour);
   if(filled<=0)return fill(100,TRACK);
-  return "<table><colgroup><col style=\"width: "+filled+"%;\" /><col style=\"width: "+(100-filled)+"%;\" /></colgroup><tbody><tr>"
+  return "<table style=\"width: 100%;\"><colgroup><col style=\"width: "+filled+"%;\" /><col style=\"width: "+(100-filled)+"%;\" /></colgroup><tbody><tr>"
    +cell(colour)+cell(TRACK)+"</tr></tbody></table>";
  }
  private static String fill(int width,String colour){
-  return "<table><colgroup><col style=\"width: "+width+"%;\" /></colgroup><tbody><tr>"+cell(colour)+"</tr></tbody></table>";
+  return "<table style=\"width: 100%;\"><colgroup><col style=\"width: "+width+"%;\" /></colgroup><tbody><tr>"+cell(colour)+"</tr></tbody></table>";
  }
  /** Confluence needs the highlight class as well as the attribute before it paints a cell. */
  private static String cell(String colour){
@@ -183,8 +187,8 @@ public class ConfluencePageService {
 
  private static String section(String category,List<Map<String,Object>> group,String jiraBase){
   double hours=group.stream().mapToDouble(ConfluencePageService::effort).sum();
-  var out=new StringBuilder(heading(categoryLabel(category)+" ("+group.size()+" iş, "+SprintDigestSnapshot.num(hours)+" sa)"));
-  out.append("<table><colgroup><col style=\"width: 42%;\" /><col style=\"width: 13%;\" /><col style=\"width: 15%;\" /><col style=\"width: 10%;\" /><col style=\"width: 20%;\" /></colgroup>");
+  var out=new StringBuilder(subheading(categoryLabel(category),group.size()+" iş, "+SprintDigestSnapshot.num(hours)+" sa"));
+  out.append("<table style=\"width: 100%;\"><colgroup><col style=\"width: 42%;\" /><col style=\"width: 13%;\" /><col style=\"width: 15%;\" /><col style=\"width: 10%;\" /><col style=\"width: 20%;\" /></colgroup>");
   out.append("<thead><tr><th>İş</th><th>PBI</th><th>Durum</th><th>Efor</th><th>Kişiler</th></tr></thead><tbody>");
   for(var task:group){
    var names=new ArrayList<String>();
@@ -206,7 +210,12 @@ public class ConfluencePageService {
  }
 
  private static String heading(String text){
-  return "<p style=\"margin: 28px 0 10px; padding-bottom: 8px; border-bottom: 2px solid "+GREEN+"; font-family: Georgia, serif; font-size: 20px; color: "+INK+";\"><strong>"+h(text)+"</strong></p>";
+  return "<p style=\"margin: 32px 0 12px; padding-bottom: 8px; border-bottom: 2px solid "+GREEN+"; font-family: Georgia, serif; font-size: 20px; color: "+INK+";\"><strong>"+h(text)+"</strong></p>";
+ }
+ /** A second, quieter level so a reader can tell a work type from a page section. */
+ private static String subheading(String text,String note){
+  return "<p style=\"margin: 24px 0 6px; font-size: 14px; color: "+INK+";\"><strong>"+h(text)
+   +"</strong><span style=\"color: "+MUTED+"; font-weight: normal;\">&#160;&#160;"+h(note)+"</span></p>";
  }
  private static String note(String text){
   return "<p style=\"margin: 20px 0; padding: 12px 16px; border-left: 3px solid "+GREEN+"; background-color: #f0f4f0; font-size: 12px; color: "+MUTED+";\">"+h(text)+"</p>";
