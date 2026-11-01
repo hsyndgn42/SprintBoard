@@ -9,8 +9,8 @@ import org.springframework.transaction.annotation.*;
 /** Server-side standalone review, usable without an open browser or frontend runtime. */
 @Service
 public class SprintDigestSnapshot {
- private final WorkspaceService workspace;
- public SprintDigestSnapshot(WorkspaceService workspace){this.workspace=workspace;}
+ private final WorkspaceService workspace; private final JiraConfigStore jira;
+ public SprintDigestSnapshot(WorkspaceService workspace,JiraConfigStore jira){this.workspace=workspace;this.jira=jira;}
  public record Snapshot(String sprintId,String name,int number,String summary,String html,List<Map<String,Object>> blocks){
   public Snapshot(String sprintId,String name,int number,String summary,String html){this(sprintId,name,number,summary,html,List.of(Map.of("type","section","text",Map.of("type","plain_text","text",summary))));}
  }
@@ -24,7 +24,20 @@ public class SprintDigestSnapshot {
    id=active.getFirst().get("id").toString();
   }
   var sprint=workspace.sprint(id);if(sprint==null)throw new IllegalArgumentException("Sprint bulunamadı.");
-  return render(sprint,workspace.capacity(id),workspace.settings(),workspace.overtime(),workspace.overtimeEntries(),now);
+  return render(sprint,workspace.capacity(id),workspace.settings(),workspace.overtime(),workspace.overtimeEntries(),now,jiraBase());
+ }
+ /** A missing or unreadable Jira setting only costs the links, never the digest. */
+ private String jiraBase(){try{return jira.load().baseUrl();}catch(RuntimeException e){return "";}}
+ /** Jira keys are the only task detail a defect may reveal, so they are matched strictly. */
+ static String key(Map<String,Object> t){String key=s(t,"jiraKey").trim();return key.matches("[A-Z][A-Z0-9]*-[0-9]+")?key:"";}
+ static String issueUrl(String key,String jiraBase){
+  return key.isEmpty()||jiraBase==null||!jiraBase.startsWith("https://")?"":jiraBase.replaceAll("/+$","")+"/browse/"+key;
+ }
+ /** Reads as a bare key when Jira's address is unknown, so the id is never lost. */
+ static String issueHtml(Map<String,Object> t,String jiraBase){
+  String key=key(t),url=issueUrl(key,jiraBase);
+  if(key.isEmpty())return "";
+  return url.isEmpty()?"<span class='pill'>"+h(key)+"</span>":"<a class='pill' href='"+h(url)+"'>"+h(key)+"</a>";
  }
  @SuppressWarnings("unchecked") static List<Map<String,Object>> rows(Map<String,Object> m,String key){return (List<Map<String,Object>>)m.getOrDefault(key,List.of());}
  static String s(Map<String,Object> m,String key){return Objects.toString(m.get(key),"");}
@@ -37,7 +50,7 @@ public class SprintDigestSnapshot {
  static String kind(Map<String,Object> t){return "DEFECT".equals(t.get("taskCategory"))?s(t,"taskSubtype").replace('_',' '):s(t,"taskCategory");}
  static String metric(String label,double value,String unit){return "<div class='metric'><span>"+h(label)+"</span><strong>"+num(value)+" <small>"+unit+"</small></strong></div>";}
  static String bar(String name,long done,long total){double p=total==0?0:100.0*done/total;return "<div class='bar'><div><b>"+h(name)+"</b><span>"+done+" / "+total+" Done</span></div><div class='track'><i style='width:"+String.format(Locale.ROOT,"%.2f",p)+"%'></i></div></div>";}
- static Snapshot render(Map<String,Object> sprint,List<Map<String,Object>> capacity,Map<String,Object> settings,List<Map<String,Object>> history,List<Map<String,Object>> entries,Instant now){
+ static Snapshot render(Map<String,Object> sprint,List<Map<String,Object>> capacity,Map<String,Object> settings,List<Map<String,Object>> history,List<Map<String,Object>> entries,Instant now,String jiraBase){
   String id=s(sprint,"id"),name=s(sprint,"name"),time=DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneId.of("Europe/Istanbul")).format(now);
   int number=(int)n(sprint,"number");var tasks=rows(sprint,"items");var delivery=tasks.stream().filter(t->!BauPolicy.isBau(t)).toList();long done=delivery.stream().filter(t->"done".equals(status(t))).count();
   var overtime=entries.stream().filter(e->id.equals(e.get("sprintId"))).toList();double actual=history.stream().filter(e->n(e,"sprintNumber")==number).mapToDouble(e->n(e,"earnedHours")).sum()+overtime.stream().mapToDouble(e->n(e,"earnedHours")).sum();
@@ -51,9 +64,24 @@ public class SprintDigestSnapshot {
   out.append("<section class='section'><span class='eyebrow'>YALNIZ BU SPRINT</span><h2>Mesai</h2><div class='metrics'>"+metric("Gerçekleşen",actual,"sa")+metric("Planlanan",planned,"sa")+metric("Plan içinde gerçekleşen",matched,"sa")+metric("Kalan plan",remaining,"sa")+metric("Planı aşan",excess,"sa")+metric("Plansız",unplanned,"sa")+metric("Eski / sınıflandırılmamış",Math.max(0,actual-classified),"sa")+"</div><small>Mesai ayrı gösterilir; görev eforuna tekrar eklenmez. Hakediş bakiyeleri paylaşılmaz.</small></section>");
   out.append(SlackDigestPresentation.overtimePeople(number,id,history,entries));
   out.append(SlackDigestPresentation.leaves(capacity));
-  out.append("<section class='section'><h2>Defect çözüm durumu</h2>");for(String type:List.of("TEST_DEFECT","PROD_DEFECT")){var group=tasks.stream().filter(t->"DEFECT".equals(t.get("taskCategory"))&&type.equals(t.get("taskSubtype"))).toList();long resolved=group.stream().filter(t->"done".equals(status(t))).count();out.append(bar(type.replace('_',' '),resolved,group.size()));summary.append(type.replace('_',' ')+": "+resolved+" çözülen / "+(group.size()-resolved)+" açık\n");var reserved=group.stream().filter(t->!s(t,"reserveTaskId").isBlank()).toList();out.append("<p>Defect Support kapsamında: "+reserved.size()+" iş · "+reserved.stream().filter(t->"done".equals(status(t))).count()+" Done</p>");}out.append("</section>");
-  out.append("<section class='section'><span class='eyebrow'>GÜNCEL GÖREVLER</span><h2>Done ve açık işler</h2><div class='grid'>");for(boolean completed:List.of(true,false)){out.append("<div><h3>"+(completed?"Done":"Devam eden / açık")+"</h3>");for(var t:tasks){if(leave(t)||"DEFECT".equals(t.get("taskCategory"))||completed!="done".equals(status(t)))continue;out.append("<article class='task'><span class='pill "+h(status(t))+"'>"+label(status(t))+"</span> <span class='eyebrow'>"+h(kind(t))+"</span><h3>"+h(t.get("name"))+"</h3>");if(Boolean.TRUE.equals(t.get("emergency")))out.append("<span class='pill undone'>Acil / plansız</span>");out.append("<p>"+num(t.containsKey("planningHours")?n(t,"planningHours"):n(t,"estimatedHours"))+" sa plan</p><small>");var names=new ArrayList<String>();for(var a:DefectReserve.assignments(t))names.add(h(a.get("memberName"))+" · "+(Boolean.TRUE.equals(a.get("supportOnly"))?"X destek":num(DefectReserve.planned(a))+" sa"));out.append(String.join(" · ",names)+"</small></article>");}out.append("</div>");}out.append("</div><small>İzin nedenleri, hakediş bakiyeleri ve defect açıklamaları paylaşılmaz. Defectler yukarıda sayısal özetlenir.</small></section><footer>VIBE Craft · "+time+" · Bu dosya sonraki değişikliklerle güncellenmez.</footer></main></body></html>");
+  out.append("<section class='section'><h2>Defect çözüm durumu</h2>");for(String type:List.of("TEST_DEFECT","PROD_DEFECT")){var group=tasks.stream().filter(t->"DEFECT".equals(t.get("taskCategory"))&&type.equals(t.get("taskSubtype"))).toList();long resolved=group.stream().filter(t->"done".equals(status(t))).count();out.append(bar(type.replace('_',' '),resolved,group.size()));summary.append(type.replace('_',' ')+": "+resolved+" çözülen / "+(group.size()-resolved)+" açık\n");var reserved=group.stream().filter(t->!s(t,"reserveTaskId").isBlank()).toList();out.append("<p>Defect Support kapsamında: "+reserved.size()+" iş · "+reserved.stream().filter(t->"done".equals(status(t))).count()+" Done</p>");out.append(defectList(group,jiraBase));}out.append("</section>");
+  out.append("<section class='section'><span class='eyebrow'>GÜNCEL GÖREVLER</span><h2>Done ve açık işler</h2><div class='grid'>");for(boolean completed:List.of(true,false)){out.append("<div><h3>"+(completed?"Done":"Devam eden / açık")+"</h3>");for(var t:tasks){if(leave(t)||"DEFECT".equals(t.get("taskCategory"))||completed!="done".equals(status(t)))continue;out.append("<article class='task'><span class='pill "+h(status(t))+"'>"+label(status(t))+"</span> <span class='eyebrow'>"+h(kind(t))+"</span> "+issueHtml(t,jiraBase)+"<h3>"+h(t.get("name"))+"</h3>");if(Boolean.TRUE.equals(t.get("emergency")))out.append("<span class='pill undone'>Acil / plansız</span>");out.append("<p>"+num(t.containsKey("planningHours")?n(t,"planningHours"):n(t,"estimatedHours"))+" sa plan</p><small>");var names=new ArrayList<String>();for(var a:DefectReserve.assignments(t))names.add(h(a.get("memberName"))+" · "+(Boolean.TRUE.equals(a.get("supportOnly"))?"X destek":num(DefectReserve.planned(a))+" sa"));out.append(String.join(" · ",names)+"</small></article>");}out.append("</div>");}out.append("</div><small>İzin nedenleri, hakediş bakiyeleri ve defect açıklamaları paylaşılmaz. Defectler yukarıda PBI numarası ve durumuyla listelenir.</small></section><footer>VIBE Craft · "+time+" · Bu dosya sonraki değişikliklerle güncellenmez.</footer></main></body></html>");
   summary.append("Güncel görevler ve dağılımlar ekteki Review HTML dosyasında.");
-  return new Snapshot(id,name,number,summary.toString(),out.toString(),SlackDigestPresentation.blocks(name,time,delivery,done,actual,planned));
+  return new Snapshot(id,name,number,summary.toString(),out.toString(),SlackDigestPresentation.blocks(name,time,delivery,done,actual,planned,jiraBase));
+ }
+
+ /**
+  * Defect titles stay private, so a row is only its Jira key and state. That is
+  * enough to open the ticket and still tells nobody what the defect was about.
+  */
+ static String defectList(List<Map<String,Object>> group,String jiraBase){
+  if(group.isEmpty())return "";
+  var out=new StringBuilder("<table class='personal-table'><thead><tr><th>PBI</th><th>Durum</th></tr></thead><tbody>");
+  for(var t:group.stream().sorted(Comparator.comparing(t->key(t).isEmpty()?"ZZZ":key(t))).toList()){
+   String pbi=issueHtml(t,jiraBase);
+   out.append("<tr><th scope='row'>"+(pbi.isEmpty()?"<span class='pill undone'>PBI yok</span>":pbi)
+    +"</th><td data-label='Durum'><span class='pill "+h(status(t))+"'>"+label(status(t))+"</span></td></tr>");
+  }
+  return out.append("</tbody></table>").toString();
  }
 }

@@ -95,6 +95,21 @@ public class WorkspaceService {
         "deliveryTaskCount", rs.getInt("delivery_count"), "deliveryDoneCount", rs.getInt("delivery_done"), "deliveryUndoneCount", rs.getInt("delivery_undone")));
   }
   @SuppressWarnings("unchecked")
+  /**
+   * A sprint task carries the Jira key of the backlog item it was planned from, so
+   * reports can link out without every reader opening the backlog first.
+   */
+  private void jiraKeys(List<Map<String, Object>> tasks) {
+    for (var task : tasks) task.put("jiraKey", "");
+    var ids = tasks.stream().map(task -> Objects.toString(task.get("backlogId"), "")).filter(id -> !id.isEmpty()).distinct().toList();
+    if (ids.isEmpty()) return;
+    var keys = new HashMap<String, String>();
+    for (var row : jdbc.queryForList("SELECT local_id,jira_issue_key FROM jira_issue_link WHERE local_kind='backlog' AND state='SENT' AND local_id IN ("
+        + String.join(",", java.util.Collections.nCopies(ids.size(), "?")) + ")", ids.toArray()))
+      keys.put(Objects.toString(row.get("local_id"), ""), Objects.toString(row.get("jira_issue_key"), ""));
+    for (var task : tasks) task.put("jiraKey", keys.getOrDefault(Objects.toString(task.get("backlogId"), ""), ""));
+  }
+
   public Map<String, Object> sprint(String id) {
     var frozen=closures.read(id);
     if(frozen!=null){var result=new LinkedHashMap<>((Map<String,Object>)frozen.get("sprint"));result.put("closureFrozen",true);result.put("closedAt",frozen.get("closedAt"));result.put("closureSettings",frozen.get("settings"));defects.enrichReporterNames((List<Map<String,Object>>)result.get("items"));return result;}
@@ -123,6 +138,7 @@ public class WorkspaceService {
     }
     for(var task:tasks)if("LEAVE".equals(task.get("workKind"))){for(var a:(List<Map<String,Object>>)task.get("assignments"))a.put("hoursPerDay",memberCapacity.forSprint(id,(String)a.get("memberId"),schedules.forSprint(id).hoursPerDay()).hoursPerDay());}
     DefectReserve.links(jdbc,id,tasks);
+    jiraKeys(tasks);
     flow.enrich(tasks);
     result.put("defectReserves",DefectReserve.enrich(tasks));
     defects.enrich(tasks,"backlogId");

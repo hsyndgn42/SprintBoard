@@ -8,7 +8,7 @@ final class SlackDigestPresentation {
  private SlackDigestPresentation(){}
  private static Map<String,Object> text(String value){return Map.of("type","plain_text","text",value,"emoji",true);}
  private static Map<String,Object> fields(String... values){return Map.of("type","section","fields",Arrays.stream(values).map(SlackDigestPresentation::text).toList());}
- static List<Map<String,Object>> blocks(String name,String time,List<Map<String,Object>> delivery,long done,double actual,double planned){
+ static List<Map<String,Object>> blocks(String name,String time,List<Map<String,Object>> delivery,long done,double actual,double planned,String jiraBase){
   var result=new ArrayList<Map<String,Object>>();
   result.add(Map.of("type","header","text",text("📊 "+name.substring(0,Math.min(name.length(),110))+" · Sprint özeti")));
   result.add(Map.of("type","context","elements",List.of(text(time+" · Türkiye saati · Güncel durum"))));
@@ -18,17 +18,35 @@ final class SlackDigestPresentation {
    "🕒 Gerçekleşen mesai\n"+num(actual)+" sa", "🗓️ Planlanan mesai\n"+num(planned)+" sa"));
   result.add(Map.of("type","divider"));
   var defects=new ArrayList<String>();
+  var tickets=new ArrayList<Map<String,Object>>();
   for(String type:List.of("TEST_DEFECT","PROD_DEFECT")){
    var group=delivery.stream().filter(t->"DEFECT".equals(t.get("taskCategory"))&&type.equals(t.get("taskSubtype"))).toList();
    long solved=group.stream().filter(t->"done".equals(status(t))).count();
    defects.add((type.equals("TEST_DEFECT")?"🧪 Test Defect":"🚨 Prod Defect")+"\n"+solved+" çözülen · "+(group.size()-solved)+" açık");
+   tickets.addAll(group);
   }
   result.add(fields(defects.toArray(String[]::new)));
+  defectList(tickets,jiraBase).ifPresent(result::add);
   result.add(Map.of("type","context","elements",List.of(text("📎 Review HTML: görevler, grafikler, kişi bazlı mesai ve sprint izin günleri."))));
   return List.copyOf(result);
  }
- private static class Person {String name;double earned,planned;Person(String name){this.name=name;}}
- static String overtimePeople(int sprintNumber,String sprintId,List<Map<String,Object>> history,List<Map<String,Object>> entries){
+ /**
+  * The only mrkdwn block in the message, because a link cannot render in plain_text.
+  * Every character here is either a fixed label or a Jira key that passed a strict
+  * pattern, so nothing a user typed reaches Slack's formatter. Defect titles stay out.
+  */
+ private static Optional<Map<String,Object>> defectList(List<Map<String,Object>> tickets,String jiraBase){
+  if(tickets.isEmpty())return Optional.empty();
+  var sorted=tickets.stream().sorted(Comparator.comparing(t->key(t).isEmpty()?"ZZZ":key(t))).toList();
+  var lines=new ArrayList<String>();
+  for(var t:sorted.stream().limit(20).toList()){
+   String key=key(t),url=issueUrl(key,jiraBase),state=label(status(t));
+   lines.add("• "+(key.isEmpty()?"PBI yok":url.isEmpty()?key:"<"+url+"|"+key+">")+" · "+state);
+  }
+  if(sorted.size()>lines.size())lines.add("• +"+(sorted.size()-lines.size())+" defect daha ekteki dosyada");
+  return Optional.of(Map.of("type","section","text",Map.of("type","mrkdwn","text","*Defect listesi*\n"+String.join("\n",lines))));
+ }
+ private static class Person {String name;double earned,planned;Person(String name){this.name=name;}} static String overtimePeople(int sprintNumber,String sprintId,List<Map<String,Object>> history,List<Map<String,Object>> entries){
   var people=new LinkedHashMap<String,Person>();
   for(var row:history)if(n(row,"sprintNumber")==sprintNumber){var p=person(people,row);p.earned+=n(row,"earnedHours");}
   for(var row:entries)if(sprintId.equals(row.get("sprintId"))){var p=person(people,row);p.earned+=n(row,"earnedHours");p.planned+=n(row,"plannedHours");}
