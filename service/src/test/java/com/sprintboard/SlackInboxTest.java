@@ -49,6 +49,17 @@ class SlackInboxTest {
   String ts=db.queryForObject("SELECT message_ts FROM slack_inbox WHERE id=?",String.class,id);new SlackInboxService(db,mapper,workspace,config).accept("T09TFUVTBQQ","C0C9AFXQB4M",ts,"U123456",backlogText(),SlackDefectParser.DEFAULT_TEMPLATE,1);assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM slack_inbox",Integer.class));
   String invalid=receive("#defect\nBaşlık: invalid");assertThrows(IllegalArgumentException.class,()->inbox.decide(invalid,approve("BACKLOG"),"admin"));inbox.decide(invalid,Map.of("action","REJECT","note","Eksik format"),"admin");assertEquals(before+1,db.queryForObject("SELECT COUNT(*) FROM backlog_item",Integer.class));assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM audit_event WHERE entity_id=? AND action='APPROVED'",Integer.class,id));
  }
+ /** The Jira reader is rarely in the Slack channel, so the report travels with the record. */
+ @Test void theDescriptionCarriesTheReportInsteadOfASlackLink(){
+  String id=receive(backlogText()+"\nAdımlar: 1. Giriş yap\n2. OTP iste\nBeklenen: Kod gelir\nGerçekleşen: Kod gelmiyor");
+  String backlog=inbox.decide(id,approve("BACKLOG"),"admin").get("backlogId").toString();
+  String criteria=db.queryForObject("SELECT criteria FROM backlog_item WHERE id=?",String.class,backlog);
+  assertFalse(criteria.contains("https://app.slack.com/"),"a Slack link is unreadable to anyone outside the channel");
+  assertTrue(criteria.contains("Adımlar:"));assertTrue(criteria.contains("2. OTP iste"),"continuation lines survive");
+  assertTrue(criteria.contains("Beklenen:"));assertTrue(criteria.contains("Gerçekleşen:"));
+  assertEquals("",SlackInboxService.report(Map.of("title","","steps","","expected","","actual","")));
+  assertEquals("Yalnız başlık",SlackInboxService.report(Map.of("title","Yalnız başlık")),"missing fields add no empty headings");
+ }
  @Test void sprintApprovalStartsWithoutExtraEffortOrEmergency(){
   String id=receive(SlackPreviewTest.TEXT);var request=approve("SPRINT");request.put("sprintId","legacy-sprint-13");request.put("confirmed",true);int before=db.queryForObject("SELECT COUNT(*) FROM backlog_item",Integer.class);
   assertThrows(IllegalArgumentException.class,()->inbox.decide(id,request,"admin"));assertEquals(before,db.queryForObject("SELECT COUNT(*) FROM backlog_item",Integer.class));

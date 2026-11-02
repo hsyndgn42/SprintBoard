@@ -73,6 +73,50 @@ class JiraPbiTest {
   assertEquals("RRCA-11438",fields.path("customfield_32981").get(0).path("key").asText());
  }
 
+ /** Defects arrive with the Jira key pasted into the title, which is how the link is found. */
+ @Test void aDefectKeyInTheTitleIsRelatedToTheNewPbi()throws Exception{
+  enableIntegration();
+  roadmapWithEpic("roadmap-1","VBCRF-4");
+  backlogItem("backlog-1","roadmap-1","DEV","MEDIUM",null);
+  db.update("UPDATE backlog_item SET title='TDEF-66195 Product_Price_Tax null geliyor' WHERE id='backlog-1'");
+  outbox.enqueueBacklog("backlog-1");
+
+  assertTrue(pbi.sendNext());
+
+  var body=ArgumentCaptor.forClass(JsonNode.class);
+  verify(transport).post(anyString(),anyString(),eq("/rest/api/2/issueLink"),body.capture());
+  assertEquals("Relates",body.getValue().path("type").path("name").asText());
+  assertEquals("TDEF-66195",body.getValue().path("inwardIssue").path("key").asText());
+  assertEquals("VBCRF-1001",body.getValue().path("outwardIssue").path("key").asText());
+  assertEquals("SENT",state("backlog-1"));
+  assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM audit_event WHERE entity_id='backlog-1' AND action='pbi-defect-linked'",Integer.class));
+ }
+
+ /** A link is a convenience; Jira already accepted the PBI and must not lose it. */
+ @Test void aFailedDefectLinkIsRecordedWithoutUndoingThePbi()throws Exception{
+  enableIntegration();
+  roadmapWithEpic("roadmap-1","VBCRF-4");
+  backlogItem("backlog-1","roadmap-1","DEV","MEDIUM",null);
+  db.update("UPDATE backlog_item SET title='TDEF-1 başlık' WHERE id='backlog-1'");
+  when(transport.post(anyString(),anyString(),eq("/rest/api/2/issueLink"),any())).thenThrow(new IllegalStateException("Link type yok"));
+  outbox.enqueueBacklog("backlog-1");
+
+  assertTrue(pbi.sendNext());
+
+  assertEquals("SENT",state("backlog-1"));
+  assertEquals("VBCRF-1001",db.queryForObject("SELECT jira_issue_key FROM jira_issue_link WHERE local_id='backlog-1'",String.class));
+  assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM audit_event WHERE entity_id='backlog-1' AND action='pbi-defect-link-failed'",Integer.class));
+ }
+
+ @Test void onlyWholeDefectKeysAreMatched(){
+  assertEquals(List.of("TDEF-66195"),JiraPbiService.defectKeys("TDEF-66195 Vergi alanı","TDEF"));
+  assertEquals(List.of("TDEF-5","TDEF-9"),JiraPbiService.defectKeys("tdef-5 ve TDEF-9 birlikte","TDEF"));
+  assertEquals(List.of(),JiraPbiService.defectKeys("XTDEF-5 başka proje","TDEF"));
+  assertEquals(List.of(),JiraPbiService.defectKeys("TDEF-5-2 sürüm notu","TDEF"));
+  assertEquals(List.of(),JiraPbiService.defectKeys("TDEF-66195","VBCRF"));
+  assertEquals(List.of(),JiraPbiService.defectKeys("TDEF-5",""));
+ }
+
  @Test void anExplicitStoryPointEstimateWinsOverTheSizeMapping()throws Exception{
   enableIntegration();
   roadmapWithEpic("roadmap-1","VBCRF-4");

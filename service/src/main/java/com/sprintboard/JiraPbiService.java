@@ -48,6 +48,7 @@ public class JiraPbiService {
    db.update("UPDATE jira_issue_link SET jira_issue_id=?,jira_issue_key=?,state='SENT',last_error='',next_attempt_at=NULL,attempts=attempts+1,updated_at=? WHERE id=?",
      created.path("id").asLong(),key,now(),linkId);
    audit(backlogId,"pbi-created",Map.of("pbiKey",key));
+   linkDefects(config,item,key,backlogId);
   }catch(JiraTransport.RateLimited waiting){
    defer(linkId,attempts,waiting.seconds,"Jira istek sınırı; otomatik yeniden denenecek.");
   }catch(JiraTransport.Rejected rejected){
@@ -56,6 +57,39 @@ public class JiraPbiService {
    if(attempts+1>=MAX_ATTEMPTS){fail(linkId,backlogId,message(failure));return;}
    defer(linkId,attempts,BACKOFF_SECONDS[Math.min(attempts,BACKOFF_SECONDS.length-1)],message(failure));
   }
+ }
+
+ /**
+  * Defects reach SprintBoard by someone pasting the Jira key into the title, so the
+  * PBI is related back to the defect it answers. A link is a convenience, never a
+  * reason to fail a PBI that Jira already accepted, so problems are only recorded.
+  */
+ private void linkDefects(JiraConfigStore.Config config,Map<String,Object> item,String pbiKey,String backlogId){
+  var defaults=new JiraFieldDefaults(mapper,config.fieldDefaults());
+  String project=defaults.text("defectProjectKey","TDEF"),type=defaults.text("defectLinkType","Relates");
+  var keys=defectKeys(text(item,"title"),project);
+  if(keys.isEmpty()||type.isBlank())return;
+  for(String defect:keys){
+   try{
+    var body=mapper.createObjectNode();
+    body.set("type",mapper.createObjectNode().put("name",type));
+    body.set("inwardIssue",mapper.createObjectNode().put("key",defect));
+    body.set("outwardIssue",mapper.createObjectNode().put("key",pbiKey));
+    transport.post(config.baseUrl(),configs.token(),"/rest/api/2/issueLink",body);
+    audit(backlogId,"pbi-defect-linked",Map.of("pbiKey",pbiKey,"defectKey",defect));
+   }catch(RuntimeException failure){
+    audit(backlogId,"pbi-defect-link-failed",Map.of("pbiKey",pbiKey,"defectKey",defect,"error",message(failure)));
+   }
+  }
+ }
+
+ /** Matched on a word boundary so a key inside another word is never mistaken for a defect. */
+ static List<String> defectKeys(String title,String projectKey){
+  if(projectKey==null||!projectKey.matches("[A-Z][A-Z0-9]*"))return List.of();
+  var found=new LinkedHashSet<String>();
+  var matcher=java.util.regex.Pattern.compile("(?<![A-Z0-9-])"+projectKey+"-[0-9]{1,10}(?![0-9-])").matcher(title.toUpperCase(Locale.ROOT));
+  while(matcher.find())found.add(matcher.group());
+  return List.copyOf(found);
  }
 
  private ObjectNode payload(JiraConfigStore.Config config,Map<String,Object> item,String epicKey){

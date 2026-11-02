@@ -48,7 +48,9 @@ class SlackBacklogTest {
   assertThrows(IllegalArgumentException.class,()->service.decide(id,input,"admin"));assertEquals(before+1,count("backlog_item"));
   assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM audit_event WHERE entity_id=? AND action='slack-request-approved'",Integer.class,item));
   assertFalse(db.queryForObject("SELECT detail_json FROM audit_event WHERE entity_id=? AND action='slack-request-approved'",String.class,item).contains("Forged"));
-  assertTrue(db.queryForObject("SELECT criteria FROM backlog_item WHERE id=?",String.class,item).contains("https://app.slack.com/client/"));
+  String criteria=db.queryForObject("SELECT criteria FROM backlog_item WHERE id=?",String.class,item);
+  assertFalse(criteria.contains("https://app.slack.com/"),"a Slack link is unreadable to anyone outside the channel");
+  assertTrue(criteria.startsWith("Düzeltilen başlık"),"the description opens with the heading the reporter wrote");
  }
  @Test void invalidRejectAndFailedApprovalNeverCreateItemOrEraseRequest(){
   String invalid=receive("#backlog\nBaşlık: eksik");assertEquals(0,count("slack_receipt_reaction"));assertThrows(IllegalArgumentException.class,()->service.decide(invalid,approve(),"admin"));

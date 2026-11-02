@@ -28,6 +28,19 @@ public class SlackInboxService {
   String where=switch(filter){case "WAITING"->" WHERE status IN ('PENDING','INVALID')";case "ALL"->"";default->" WHERE status='"+filter+"'";};
   return Map.of("items",db.query("SELECT * FROM slack_inbox"+where+" ORDER BY received_at DESC,id LIMIT 20 OFFSET ?",(r,n)->row(r),page*20),"total",db.queryForObject("SELECT COUNT(*) FROM slack_inbox"+where,Integer.class),"pending",db.queryForObject("SELECT COUNT(*) FROM slack_inbox WHERE status IN ('PENDING','INVALID')",Integer.class));
  }
+ /**
+  * What the reporter actually typed in Slack. The source link used to be the whole
+  * description, which told a Jira reader nothing and only worked for people in the
+  * channel; the report itself travels with the record instead.
+  */
+ static String report(Map<String,Object> p){
+  var out=new StringBuilder(Objects.toString(p.get("title"),"").strip());
+  for(String[] part:new String[][]{{"steps","Adımlar"},{"expected","Beklenen"},{"actual","Gerçekleşen"}}){
+   String value=Objects.toString(p.get(part[0]),"").strip();
+   if(!value.isEmpty())out.append("\n\n").append(part[1]).append(":\n").append(value);
+  }
+  return out.toString().strip();
+ }
  @Transactional public Map<String,Object> decide(String id,Map<String,Object> input,String actor){
   var rows=db.query("SELECT * FROM slack_inbox WHERE id=? FOR UPDATE",(r,n)->row(r),id);if(rows.isEmpty())throw new IllegalArgumentException("Slack kaydı bulunamadı.");var p=rows.getFirst();
   if(!Set.of("PENDING","INVALID").contains(p.get("status")))throw new IllegalArgumentException("Bu mesaj için daha önce karar verilmiş; listeyi yenileyin.");
@@ -38,7 +51,7 @@ public class SlackInboxService {
   if(action.equals("APPROVE")){
    if(!Boolean.TRUE.equals(p.get("valid")))throw new IllegalArgumentException("Format hatalı; önce Mesajı düzelt ile alanları düzenleyip kaydedin.");
    String target=Objects.toString(input.get("target"),p.get("target").toString());if(!Set.of("BACKLOG","SPRINT").contains(target))throw new IllegalArgumentException("Hedef BACKLOG veya SPRINT olmalı.");
-   var draft=new LinkedHashMap<String,Object>();draft.put("title",p.get("title"));draft.put("taskCategory","DEFECT");draft.put("taskSubtype",p.get("taskSubtype"));draft.put("size",input.get("size"));draft.put("storyPoints",input.get("storyPoints"));draft.put("estimatedHours",0);draft.put("criteria","Slack bildirimi: "+p.get("sourceUrl"));draft.put("defect",Map.of("severity",p.get("severity"),"environment",p.get("environment"),"verification","NOT_CHECKED"));
+   var draft=new LinkedHashMap<String,Object>();draft.put("title",p.get("title"));draft.put("taskCategory","DEFECT");draft.put("taskSubtype",p.get("taskSubtype"));draft.put("size",input.get("size"));draft.put("storyPoints",input.get("storyPoints"));draft.put("estimatedHours",0);draft.put("criteria",report(p));draft.put("defect",Map.of("severity",p.get("severity"),"environment",p.get("environment"),"verification","NOT_CHECKED"));
    if(target.equals("SPRINT")){
     sprint=Objects.toString(input.get("sprintId"),"");var states=db.queryForList("SELECT status FROM sprint WHERE id=? FOR UPDATE",String.class,sprint);
     if(states.size()!=1||!states.getFirst().equals("active"))throw new IllegalArgumentException("Seçilen sprint artık aktif değil; güncel sprinti seçin veya backlog'a alın.");

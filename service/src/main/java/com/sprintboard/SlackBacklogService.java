@@ -44,7 +44,7 @@ public class SlackBacklogService {
    String title=SlackDefectParser.safe(Objects.toString(input.get("title"),p.get("title").toString())).strip(),description=SlackDefectParser.safe(Objects.toString(input.get("description"),p.get("description").toString())).strip();
    if(description.isBlank()||description.length()>8000)throw new IllegalArgumentException("Açıklama 1–8.000 karakter olmalı.");
    Object raw=input.getOrDefault("estimatedHours",0);if(!(raw instanceof Number n)||!Double.isFinite(n.doubleValue())||n.doubleValue()<0||n.doubleValue()>10000)throw new IllegalArgumentException("Efor 0–10.000 saat olmalı.");
-   var draft=new LinkedHashMap<String,Object>();draft.put("title",title);draft.put("criteria",description+"\n\nSlack iş isteği: "+p.get("sourceUrl"));draft.put("taskCategory",category);draft.put("taskSubtype",subtype);draft.put("size",input.get("size"));draft.put("storyPoints",input.get("storyPoints"));draft.put("estimatedHours",n.doubleValue());draft.put("roadmapId",Objects.toString(input.get("roadmapId"),""));
+   var draft=new LinkedHashMap<String,Object>();draft.put("title",title);draft.put("criteria",title+"\n\n"+description);draft.put("taskCategory",category);draft.put("taskSubtype",subtype);draft.put("size",input.get("size"));draft.put("storyPoints",input.get("storyPoints"));draft.put("estimatedHours",n.doubleValue());draft.put("roadmapId",Objects.toString(input.get("roadmapId"),""));
    backlog=workspace.createBacklog(draft).get("id").toString();
   }else if(!action.equals("REJECT"))throw new IllegalArgumentException("Karar APPROVE veya REJECT olmalı.");
   String state=action.equals("APPROVE")?"APPROVED":"REJECTED";

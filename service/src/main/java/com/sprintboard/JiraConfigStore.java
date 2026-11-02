@@ -19,6 +19,7 @@ public class JiraConfigStore {
   "epicIssueTypeId":"238","epicNameFieldId":"customfield_12874",
   "epicExtraFields":{"customfield_30186":{"id":"33344"}},
   "tcTaskFieldId":"customfield_10356","defaultTcTaskId":"",
+  "defectProjectKey":"TDEF","defectLinkType":"Relates",
   "kpiIssueKey":"RRCA-11438","checklistOptionId":"39621","fallbackEpicKey":""}""";
 
  private final JdbcTemplate db; private final JiraSecretVault vault;
