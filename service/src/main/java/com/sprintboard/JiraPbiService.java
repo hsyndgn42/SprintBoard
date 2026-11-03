@@ -92,6 +92,20 @@ public class JiraPbiService {
   return List.copyOf(found);
  }
 
+ /**
+  * The issue link lives in Jira's sidebar and can fail on a link type this server does not
+  * have, so the defect is also named in the description where it is always readable.
+  */
+ private static String description(JiraConfigStore.Config config,JiraFieldDefaults defaults,String criteria,String title){
+  var body=new StringBuilder(criteria.isBlank()?"SprintBoard backlog kaydından açıldı; kabul kriteri girilmedi.":criteria);
+  var keys=defectKeys(title,defaults.text("defectProjectKey","TDEF"));
+  if(!keys.isEmpty()){
+   body.append("\n\nTest defect:");
+   for(String key:keys)body.append("\n").append(key).append(" — ").append(config.baseUrl().replaceAll("/+$","")).append("/browse/").append(key);
+  }
+  return body.toString();
+ }
+
  private ObjectNode payload(JiraConfigStore.Config config,Map<String,Object> item,String epicKey){
   var defaults=new JiraFieldDefaults(mapper,config.fieldDefaults());
   var fields=mapper.createObjectNode();
@@ -99,7 +113,7 @@ public class JiraPbiService {
   fields.set("issuetype",mapper.createObjectNode().put("id",defaults.text("pbiIssueTypeId","11500")));
   fields.put("summary",text(item,"title"));
   String criteria=text(item,"criteria");
-  fields.put("description",criteria.isBlank()?"SprintBoard backlog kaydından açıldı; kabul kriteri girilmedi.":criteria);
+  fields.put("description",description(config,defaults,criteria,text(item,"title")));
   fields.set("priority",mapper.createObjectNode().put("id",defaults.option("priorityByRoadmapPriority",text(item,"priority"),"3")));
   fields.put(defaults.text("storyPointsFieldId","customfield_10663"),points(defaults,item));
   // Jira reports the epic link as optional but rejects a PBI without it.

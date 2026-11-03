@@ -88,6 +88,9 @@ class JiraPbiTest {
   assertEquals("Relates",body.getValue().path("type").path("name").asText());
   assertEquals("TDEF-66195",body.getValue().path("inwardIssue").path("key").asText());
   assertEquals("VBCRF-1001",body.getValue().path("outwardIssue").path("key").asText());
+  var issue=ArgumentCaptor.forClass(JsonNode.class);
+  verify(transport).post(anyString(),anyString(),eq("/rest/api/2/issue"),issue.capture());
+  assertTrue(issue.getValue().path("fields").path("description").asText().contains("https://jira.local/browse/TDEF-66195"),"the defect is readable even if the sidebar link fails");
   assertEquals("SENT",state("backlog-1"));
   assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM audit_event WHERE entity_id='backlog-1' AND action='pbi-defect-linked'",Integer.class));
  }
