@@ -1,46 +1,81 @@
-import { ListPagerComponent } from '../list-pager.component';
 import { ReportHtmlExportComponent } from './report-html-export.component';
+import { SbColumnsComponent,Column } from './report-charts';
 import { Component,Input,Output,EventEmitter,OnChanges,AfterViewInit,ChangeDetectorRef,inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { MemberReportRow,ReportRow } from '../api.service';
 import { buildCapacityTrend,CapacityTrend,trendSource,trendCsvRows } from './capacity-trend.model';
 import { csv,downloadText } from './share-export';
-@Component({selector:'app-capacity-trend',standalone:true,imports:[ListPagerComponent,ReportHtmlExportComponent,FormsModule],template:`
-<section class="card card-pad capacity-trend">
-<div class="section-head"><div><span class="eyebrow">PLANLAMA TRENDİ</span><h2>Ekip kapasitesi ve toplam plan</h2><p class="data-note">Tamamlanan sprintler · Kayıtlı kişi kapsamı · Gerçekleşen efor değil</p></div><div class="report-actions"><app-report-html-export [report]="{kind:'capacity',rows:rows,scope:scope}" /><button class="btn" (click)="exportCsv()" [disabled]="!rows.length">Kapasite trendi CSV indir</button></div></div>
-<p class="notice">Bu karşılaştırma iş/izin/ayrılan gün veya sabit kapanış kaydıyla rapora giren kişilerle sınırlıdır; tüm ekibin tarihsel katılımını kanıtlamaz. <strong>Sabit kapanış</strong> o gün saklanan planı, <strong>yeniden hesaplanan</strong> güncel kayıtlarla hesaplanan tarihsel kapasiteyi gösterir. Başlangıç planı ile gerçekleşen süre farkı değildir.</p>
-<div class="trend-filters"><label class="field">Sprint aralığı<select name="trendLimit" [(ngModel)]="limit" (ngModelChange)="refresh()"><option [ngValue]="6">Son 6 tamamlanan</option><option [ngValue]="12">Son 12 tamamlanan</option><option [ngValue]="0">Tüm tamamlananlar</option></select></label><label class="field">Kişi<select name="trendMember" [(ngModel)]="memberId" (ngModelChange)="refresh()"><option value="">Kayıtlı tüm kişiler</option>@for(p of people;track p.id){<option [value]="p.id">{{p.name}}</option>}</select></label><label class="field">Kapasite kaynağı<select name="trendSource" [(ngModel)]="source" (ngModelChange)="refresh()"><option value="">Tüm kaynaklar</option><option value="FROZEN">Yalnız sabit kapanış</option><option value="RECALCULATED">Yalnız yeniden hesaplanan</option></select></label></div>
-<p class="data-note trend-scope">{{scope}}</p>
 
-@if(rows.length){
-<section class="visual-card capacity-visual" aria-label="Çekirdek ve Support planı ile kapasite karşılaştırması">
-<h3>Planın bileşenleri</h3>
-<div class="visual-equation">
-<div><small>Çekirdek planı</small><strong>{{fmt(total('corePlanned'))}} sa</strong><small>Bilinen ekip kapasitesi: {{fmt(total('capacity'))}} sa</small></div><b aria-hidden="true">+</b>
-<div class="support-total"><small>Support planı</small><strong>{{fmt(total('supportPlanned'))}} sa</strong><small>Ekip kapasitesine dahil değil</small></div><b aria-hidden="true">=</b>
-<div><small>Toplam plan</small><strong>{{fmt(total('planned'))}} sa</strong><small>Gerçekleşen süre değil</small></div>
+/**
+ * One question: did the plan fit the team? The verdict answers it in words, the figure
+ * shows the shape of it, and the sprint-by-sprint numbers stay folded until asked for.
+ * Overload and idle capacity are drawn on opposite sides of a zero line because they are
+ * counted per person and can both be true in the same sprint.
+ */
+@Component({selector:'app-capacity-trend',standalone:true,imports:[ReportHtmlExportComponent,FormsModule,SbColumnsComponent],template:`
+<section class="card card-pad capacity-trend">
+
+<div class="rpt-head"><h2>Kapasite ve plan</h2><div class="rpt-actions"><app-report-html-export [report]="{kind:'capacity',rows:rows,scope:scope}" /><button class="btn" (click)="exportCsv()" [disabled]="!rows.length">CSV indir</button></div></div>
+<p class="rpt-verdict" [innerHTML]="verdict"></p>
+@if(split){<p class="rpt-aside">Bir kişinin boş kalan saati başka birinin kapasite üstü planını kapatmaz, bu yüzden ikisi birlikte görünür.</p>}
+
+<div class="rpt-filters">
+<label class="field">Sprint aralığı<select name="trendLimit" [(ngModel)]="limit" (ngModelChange)="refresh()"><option [ngValue]="6">Son 6 tamamlanan</option><option [ngValue]="12">Son 12 tamamlanan</option><option [ngValue]="0">Tüm tamamlananlar</option></select></label>
+<label class="field">Kişi<select name="trendMember" [(ngModel)]="memberId" (ngModelChange)="refresh()"><option value="">Kayıtlı tüm kişiler</option>@for(p of people;track p.id){<option [value]="p.id">{{p.name}}</option>}</select></label>
+<label class="field">Kapasite kaynağı<select name="trendSource" [(ngModel)]="source" (ngModelChange)="refresh()"><option value="">Tüm kaynaklar</option><option value="FROZEN">Yalnız sabit kapanış</option><option value="RECALCULATED">Yalnız yeniden hesaplanan</option></select></label>
 </div>
-<h3>Sprintler boyunca kapasite ve plan</h3>
-<div class="visual-legend"><span><i class="v-core"></i>Çekirdek planı</span><span><i class="v-support"></i>Support planı</span><span>━ Tam bilinen çekirdek kapasite</span></div>
-<svg class="trend-timeline" viewBox="0 0 760 270" role="img" aria-label="Sprintlere göre çekirdek ve Support planı; yatay çizgiler ekip kapasitesini gösterir">
-@for(tick of [0,0.25,0.5,0.75,1];track tick){<line class="timeline-grid" x1="60" x2="744" [attr.y1]="timelineY(chartMax*tick)" [attr.y2]="timelineY(chartMax*tick)"/><text x="52" [attr.y]="timelineY(chartMax*tick)+4" text-anchor="end">{{fmt(chartMax*tick)}}</text>}
-@for(r of rows;track r.id;let i=$index){
-<g><title>{{r.name}}: Çekirdek {{fmt(r.corePlanned)}} sa, Support {{fmt(r.supportPlanned)}} sa, kapasite {{r.people&&!r.unknown?fmt(r.capacity)+' sa':'bilinmiyor / eksik'}}</title>
-@if(r.people){<rect class="v-core" [attr.x]="timelineX(i)-barWidth/2" [attr.y]="timelineY(r.corePlanned)" [attr.width]="barWidth" [attr.height]="200*r.corePlanned/chartMax"/>
-<rect class="v-support" [attr.x]="timelineX(i)-barWidth/2" [attr.y]="timelineY(r.planned)" [attr.width]="barWidth" [attr.height]="200*r.supportPlanned/chartMax"/>
-@if(!r.unknown){<line class="timeline-capacity" [attr.x1]="timelineX(i)-barWidth/2-4" [attr.x2]="timelineX(i)+barWidth/2+4" [attr.y1]="timelineY(r.capacity)" [attr.y2]="timelineY(r.capacity)"/>}
-}@else{<text [attr.x]="timelineX(i)" y="214" text-anchor="middle">—</text>}
-<text [attr.x]="timelineX(i)" y="248" text-anchor="middle">S{{r.number}}</text></g>
-}
+
+@if(!rows.length){<p class="rpt-empty">Bu kapsamda tamamlanan sprint yok. Bir sprint kapandığında kapasite karşılaştırması burada oluşur.</p>}@else{
+
+<dl class="rpt-kpis">
+<div [class.muted]="loadRatio===null"><dt>Çekirdek plan / kapasite</dt><dd [class.over]="loadRatio!==null&&loadRatio>100">{{loadRatio===null?'—':'%'+fmt(loadRatio)}}</dd></div>
+<div><dt>Kişi bazında aşım</dt><dd [class.over]="total('over')>0">{{fmt(total('over'))}}<small>sa</small></dd></div>
+<div><dt>Atanmamış kapasite</dt><dd>{{fmt(total('free'))}}<small>sa</small></dd></div>
+<div><dt>Support planı</dt><dd>{{fmt(total('supportPlanned'))}}<small>sa</small></dd></div>
+</dl>
+
+<div class="rpt-figure">
+<sb-columns [columns]="columns" unit="sa" [average]="averagePlan" averageLabel="ortalama plan" [label]="chartLabel" />
+</div>
+<div class="rpt-key"><span><i class="f-measure"></i>Çekirdek planı</span><span><i class="f-support"></i>Support planı</span><span><i class="rule"></i>O sprintin kapasitesi</span><span><i class="dash"></i>Ortalama plan</span></div>
+
+<div class="rpt-figure gaps">
+<svg [attr.viewBox]="'0 0 '+width+' 120'" role="img" aria-label="Sıfır çizgisinin üstünde kişisel kapasite aşımı, altında atanmamış kapasite">
+ <line class="zero" [attr.x1]="56" [attr.x2]="width-14" y1="56" y2="56"/>
+ <text x="48" y="42" text-anchor="end">aşım</text><text x="48" y="72" text-anchor="end">boşta</text>
+ @for(r of rows;track r.id;let i=$index){<g>
+  <title>{{r.name}}: {{fmt(r.over)}} sa kapasite üstü plan, {{fmt(r.free)}} sa atanmamış kapasite</title>
+  @if(r.over>0){<rect class="f-over" [attr.x]="x(i)-bar/3" [attr.y]="56-gap(r.over)" [attr.width]="bar*2/3" [attr.height]="gap(r.over)"/>}
+  @if(r.free>0){<rect class="f-spare" [attr.x]="x(i)-bar/3" y="56" [attr.width]="bar*2/3" [attr.height]="gap(r.free)"/>}
+ </g>}
+ @for(r of rows;track r.id;let i=$index){@if(i%step===0||i===rows.length-1){<text [attr.x]="x(i)" y="110" text-anchor="middle">S{{r.number}}</text>}}
 </svg>
-<p class="timeline-mobile-note">Sprint bazlı karşılaştırma aşağıdaki yatay grafiklerde gösterilir.</p>
-<p>Kapasitesi eksik sprintte kapasite çizgisi çizilmez. Support plana eklenir; çekirdek kapasitesini artırmaz.</p>
-</section>}
-<div class="legend"><span><i class="capacity"></i>Çekirdek ekip kapasitesi</span><span><i class="planned"></i>Çekirdek planı</span><span><i class="support"></i>Support planı</span></div>
-@if(rows.length){<app-list-pager #trendPager [items]="rows" [size]="6" label="Planlama dönemleri" /><div class="trend-chart" role="img" aria-label="Sprint bazında kapasite ve atanan planlanan saatler">@for(r of trendPager.rows;track r.id){<article class="trend-row"><div class="row-head"><strong>{{r.name}}</strong><span class="status">{{sourceLabel(r)}}</span></div>@if(r.people){<div class="bar-row"><span>Ekip</span><div class="track"><span class="capacity" [style.width.%]="width(r.capacity)"></span></div><strong>{{r.known||!r.unknown?fmt(r.capacity)+' sa':'—'}}</strong></div><div class="bar-row"><span>Plan</span><div class="track stacked"><span class="planned" [style.width.%]="width(r.corePlanned)" [attr.title]="'Çekirdek: '+fmt(r.corePlanned)+' sa'"></span><span class="support" [style.width.%]="width(r.supportPlanned)" [attr.title]="'Support: '+fmt(r.supportPlanned)+' sa'"></span></div><strong>{{fmt(r.planned)}} sa</strong></div><div class="plan-breakdown"><span><i class="planned"></i>Çekirdek <strong>{{fmt(r.corePlanned)}} sa</strong></span><span><i class="support"></i>Support <strong>{{fmt(r.supportPlanned)}} sa</strong></span></div><p class="core-comparison">{{r.coreRatio===null?'Çekirdek plan / kapasite oranı hesaplanmaz (kapasite sıfır veya eksik)':'Çekirdek plan / kapasite: %'+fmt(r.coreRatio)}}@if(r.coreRatio!==null){<span> · {{fmt(r.corePlanned)}} / {{fmt(r.capacity)}} sa</span>}</p><p class="row-note">Çekirdek ekipte kişi bazlı: {{fmt(r.over)}} sa kapasite üstü plan · {{fmt(r.free)}} sa atanmamış kapasite</p>}@else{<p class="data-note">Bu kapsamda karşılaştırılabilir kapasite kaydı yok; sıfır kapasite varsayılmadı.</p>}<p class="row-note">{{r.known}} çekirdek kapasite kaydı · {{r.supportPeople}} Support kişi (kapasiteye dahil değil)@if(r.unknown){ · {{r.unknown}} çekirdek kişinin kapasitesi bilinmiyor; {{fmt(r.unknownHours)}} sa ataması plana dahil, oran hesaplanmaz}</p></article>}</div>}@else{<div class="empty">Tamamlanan sprint bulunmuyor.</div>}
-<p class="data-note">İzin/çalışılmayan gün/odak ve dahil edilmiş planlı mesai kapasite hesabının içindedir. Kapasite yalnız çekirdek ekibindir; Support ve Architect kapasiteye eklenmez, saatli atamaları toplam plana dahildir. BAU eforu dahildir; Leave ve X saat toplamaz. Kapasite üstü planlama yapılabilir: %100 üstü bir hata veya kayıt engeli değildir; ek destek ya da fazla mesai kararı olabilir. Bu oran tek başına fazla mesai ihtiyacını veya performansı ölçmez. Bir çekirdek kişinin boşluğu diğerinin kapasite üstü planını silmez. Kesin tarihi olmayan eski izinler yalnız sprint toplamında değerlendirilir.</p>
-<aside class="cycle-readiness"><span class="eyebrow">VERİ YETERLİLİĞİ</span><h3>Çevrim süresi henüz ölçülmüyor</h3><p>Güvenilir hesap için işe başlama, tamamlanma ve yeniden açılma olaylarının ürün verisinde kalıcı olarak tutulması gerekiyor. Yerel denetim günlüğü JSON yedeğine dahil değildir; PDF'deki Done/Undone sonucu da süreyi kanıtlamaz. Eksik geçmişe süre veya sıfır gün atanmaz.</p></aside>
-</section>`,styleUrls:['./report-visuals.css'],styles:[`:host{display:block;margin:20px 0;min-width:0}.section-head{align-items:flex-start;flex-wrap:wrap}.notice strong{display:inline}.trend-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:20px 0}.legend{display:flex;flex-wrap:wrap;gap:20px;font-size:11px;margin:18px 0}.legend span{display:flex;align-items:center;gap:7px}.legend i{width:10px;height:10px;border-radius:3px}.capacity{background:#8ba7c9}.planned{background:#1565c0}.support{background:#8460c6}.track.stacked{display:flex}.track.stacked>span{flex-shrink:0;border-radius:0}.plan-breakdown{display:flex;flex-wrap:wrap;gap:8px 18px;margin:10px 0;font-size:12px}.plan-breakdown>span{display:flex;align-items:center;gap:6px}.plan-breakdown i{width:9px;height:9px;border-radius:2px;print-color-adjust:exact}.core-comparison{font-size:12px;font-weight:650;color:#21466d;margin:10px 0}.core-comparison span{font-weight:400}.trend-row{padding:16px 0;border-top:1px solid #e4ebf5;break-inside:avoid}.row-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.row-head strong{font-size:13px;overflow-wrap:anywhere}.bar-row{display:grid;grid-template-columns:65px minmax(0,1fr) 85px;gap:10px;align-items:center;font-size:11px;margin:7px 0}.bar-row>strong{text-align:right}.track{height:10px;background:#f0f3f9;border-radius:5px;overflow:hidden}.track>span{display:block;height:100%;border-radius:5px;print-color-adjust:exact}.row-note{font-size:11px;color:#63788f;margin:9px 0 0;overflow-wrap:anywhere}.cycle-readiness{margin-top:20px;padding:18px;background:#f7f9fd;border:1px solid #e0e8f4;border-radius:10px}.cycle-readiness p{font-size:12px;color:#63788f;margin:10px 0 0;line-height:1.7}@media(max-width:600px){.trend-filters{grid-template-columns:1fr}.bar-row{grid-template-columns:50px minmax(0,1fr) 65px}.row-head{align-items:flex-start;flex-wrap:wrap}}@media print{.trend-filters,button{display:none}.trend-row,.cycle-readiness{break-inside:avoid}.capacity{background:#8ba7c9!important}.planned{background:#1565c0!important}.support{background:#8460c6!important}.legend i{print-color-adjust:exact}}`]})
+</div>
+<div class="rpt-key"><span><i class="f-over"></i>Kişisel aşım</span><span><i class="f-spare"></i>Atanmamış kapasite</span></div>
+
+<div class="rpt-folds">
+<details><summary><span>Sprint sprint rakamlar</span><small>{{rows.length}} sprint</small></summary><div class="fold-body"><div class="table-wrap"><table>
+<thead><tr><th scope="col">Sprint</th><th scope="col">Kapasite</th><th scope="col">Çekirdek planı</th><th scope="col">Support</th><th scope="col">Oran</th><th scope="col">Aşım</th><th scope="col">Boşta</th><th scope="col">Kaynak</th></tr></thead>
+<tbody>@for(r of rows;track r.id){<tr>
+ <td>{{r.name}}</td>
+ <td>{{r.people&&!r.unknown&&r.known?fmt(r.capacity)+' sa':'—'}}</td>
+ <td>{{fmt(r.corePlanned)}} sa</td><td>{{fmt(r.supportPlanned)}} sa</td>
+ <td>{{r.coreRatio===null?'—':'%'+fmt(r.coreRatio)}}</td>
+ <td>{{r.known?fmt(r.over)+' sa':'—'}}</td><td>{{r.known?fmt(r.free)+' sa':'—'}}</td>
+ <td>{{sourceLabel(r)}}@if(r.unknown){<small>{{r.unknown}} kişinin kapasitesi bilinmiyor</small>}</td>
+</tr>}</tbody></table></div></div></details>
+
+<details><summary><span>Nasıl hesaplanıyor?</span></summary><div class="fold-body">
+<p>Kapasite yalnız çekirdek ekibindir. Support ve Architect kapasiteye eklenmez ama saatli atamaları toplam plana girer, bu yüzden ayrı renkte gösterilir.</p>
+<p>Aşım ve boşluk her kişi için ayrı hesaplanıp toplanır. Ekip toplamını karşılaştırmak birinin boşluğunu diğerinin açığıyla götürürdü; bu rapor onu yapmaz.</p>
+<p>İzin, çalışılmayan gün, odak oranı ve plana dahil edilmiş mesai kapasitenin içindedir. BAU eforu plana dahildir; Leave ve X destek saat toplamaz. Gösterilen rakam planlanan saattir, gerçekleşen süre değildir.</p>
+<p>%100 üstü planlama bir hata değildir: ek destek ya da fazla mesai kararı olabilir. Bu oran tek başına performans ölçmez.</p>
+<p><b>Sabit kapanış</b> sprint kapanırken saklanan planı, <b>yeniden hesaplanan</b> güncel kayıtlardan üretilen tarihsel kapasiteyi gösterir. Çekirdek kapasitesi eksik olan sprintte oran üretilmez ve kapasite çizgisi çizilmez; sıfır kapasite varsayılmaz. Rapor yalnız iş, izin veya sabit kapanış kaydıyla görünen kişileri kapsar; tüm ekibin tarihsel katılımını kanıtlamaz.</p>
+<p>Çevrim süresi henüz ölçülmüyor. Güvenilir hesap için işe başlama, tamamlanma ve yeniden açılma olaylarının kalıcı tutulması gerekiyor; eksik geçmişe süre atanmaz.</p>
+</div></details>
+</div>
+}
+</section>`,styleUrls:['./report-design.css'],styles:[`:host{display:block;margin:20px 0;min-width:0}.capacity-trend td small{display:block;color:#5a6b7b;font-size:11px}`]})
 export class CapacityTrendComponent implements OnChanges,AfterViewInit{
  @Input()members:MemberReportRow[]=[];@Input()sprints:ReportRow[]=[];@Output()readyChange=new EventEmitter<boolean>();
  private cdr=inject(ChangeDetectorRef);memberId='';source='';limit=6;rows:CapacityTrend[]=[];people:{id:string;name:string}[]=[];sourceLabel=trendSource;
@@ -49,12 +84,44 @@ export class CapacityTrendComponent implements OnChanges,AfterViewInit{
  rebuild(){this.rows=buildCapacityTrend(this.sprints,this.members,{memberId:this.memberId,source:this.source,limit:this.limit});}
  refresh(){this.rebuild();this.cdr.detectChanges();}
  get scope(){return (this.limit?'Son '+this.limit+' tamamlanan sprint':'Tüm tamamlanan sprintler')+' · '+(this.people.find(p=>p.id===this.memberId)?.name||'Kayıtlı tüm kişiler')+' · '+(this.source==='FROZEN'?'Sabit kapanış':this.source==='RECALCULATED'?'Yeniden hesaplanan':'Tüm kaynaklar');}
- total(key:'capacity'|'planned'|'corePlanned'|'supportPlanned'){return this.rows.reduce((sum,r)=>sum+r[key],0);}
- get chartMax(){return Math.max(1,...this.rows.flatMap(r=>[r.planned,r.capacity]));}
- get barWidth(){return Math.min(46,600/Math.max(1,this.rows.length));}
- timelineX(i:number){return 60+(i+0.5)*684/Math.max(1,this.rows.length);}
- timelineY(value:number){return 222-200*value/this.chartMax;}
- fmt(n:number){return new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(n);}
- width(n:number){return n*100/Math.max(1,...this.rows.flatMap(r=>[r.capacity,r.planned]));}
+ total(key:'capacity'|'planned'|'corePlanned'|'supportPlanned'|'over'|'free'){return this.rows.reduce((sum,r)=>sum+r[key],0);}
+
+ /** Only sprints with a complete core capacity can carry a ratio, so the rest are left out of both sides. */
+ private get comparable(){return this.rows.filter(r=>r.known&&!r.unknown&&r.capacity>0);}
+ get loadRatio(){const c=this.comparable;if(!c.length)return null;const capacity=c.reduce((n,r)=>n+r.capacity,0);return Math.round(c.reduce((n,r)=>n+r.corePlanned,0)/capacity*1000)/10;}
+ get busiest(){return this.comparable.reduce<CapacityTrend|null>((top,r)=>top===null||(r.coreRatio??0)>(top.coreRatio??0)?r:top,null);}
+ get split(){return this.total('over')>0&&this.total('free')>0;}
+
+ get verdict(){
+  const n=this.rows.length,ratio=this.loadRatio,over=this.total('over'),free=this.total('free');
+  const who=this.people.find(p=>p.id===this.memberId)?.name;
+  const span=who?this.esc(who)+' için son '+n+' sprintte':'Son '+n+' sprintte';
+  if(ratio===null)return span+' karşılaştırılabilir çekirdek kapasite kaydı yok, bu yüzden doluluk oranı üretilmedi. Planlanan saatler aşağıda görünür.';
+  const peak=this.busiest;
+  let text=span+' çekirdek ekibe kapasitenin <b'+(ratio>100?' class="over"':'')+'>%'+this.fmt(ratio)+'</b>\u2019i kadar iş planlandı.';
+  if(peak&&n>1&&peak.coreRatio!==null)text+=' En yüklü sprint '+this.esc(peak.name)+' (%'+this.fmt(peak.coreRatio)+').';
+  if(over>0&&free>0)text+=' Kişi bazında <b class="over">'+this.fmt(over)+' saat</b> kapasite üstü plan ve <b>'+this.fmt(free)+' saat</b> atanmamış kapasite var.';
+  else if(over>0)text+=' Kişi bazında <b class="over">'+this.fmt(over)+' saat</b> kapasite üstü plan var.';
+  else if(free>0)text+=' Kimse kapasitesini aşmadı; <b>'+this.fmt(free)+' saat</b> atanmamış kapasite kaldı.';
+  else text+=' Plan kapasiteye tam oturdu.';
+  return text;
+ }
+ private esc(value:string){return value.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));}
+
+ get chartLabel(){return 'Sprintlere göre çekirdek ve Support planı, her sprintin kendi kapasite çizgisi ve ortalama plan';}
+ get columns():Column[]{return this.rows.map(r=>({key:r.id,label:'S'+r.number,caption:this.caption(r),empty:r.people?undefined:'kayıt yok',
+  marker:r.known&&!r.unknown?r.capacity:null,
+  segments:[{label:'Çekirdek planı',value:r.corePlanned,fill:'#1f6f78'},{label:'Support planı',value:r.supportPlanned,fill:'#6b5ca5'}]}));}
+ /** The average ignores sprints with no comparable record so an empty sprint cannot drag it down. */
+ get averagePlan(){const c=this.rows.filter(r=>r.people);return c.length?c.reduce((n,r)=>n+r.planned,0)/c.length:null;}
+ caption(r:CapacityTrend){return r.people?r.name+': çekirdek planı '+this.fmt(r.corePlanned)+' sa, Support '+this.fmt(r.supportPlanned)+' sa, kapasite '+(r.known&&!r.unknown?this.fmt(r.capacity)+' sa':'eksik'):r.name+': karşılaştırılabilir kayıt yok';}
+
+ get width(){return Math.max(720,88+this.rows.length*58);}
+ get bar(){return Math.max(9,Math.min(44,(this.width-70)/Math.max(1,this.rows.length)-14));}
+ get step(){return Math.max(1,Math.ceil(this.rows.length/14));}
+ private get spread(){return Math.max(1,...this.rows.flatMap(r=>[r.over,r.free]));}
+ x(i:number){return 56+(i+0.5)*(this.width-70)/Math.max(1,this.rows.length);}
+ gap(value:number){return 40*Math.max(0,value)/this.spread;}
+ fmt(n:number){return new Intl.NumberFormat('tr-TR',{maximumFractionDigits:1}).format(n);}
  exportCsv(){downloadText(csv(trendCsvRows(this.rows,this.scope)),'text/csv;charset=utf-8','sprintboard-kapasite-trendi.csv');}
 }

@@ -1,47 +1,84 @@
-import { ListPagerComponent } from '../list-pager.component';
 import { ReportHtmlExportComponent } from './report-html-export.component';
 import {Component,Input} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {MemberReportRow} from '../api.service';
 import {memberContexts,capacitySourceLabel} from './member-context.model';
-@Component({selector:'app-member-context',standalone:true,imports:[ListPagerComponent,ReportHtmlExportComponent,RouterLink],template:`
-<div class="section-head"><span class="data-note">HTML kişi bilgisi, izin günü ve kapasite ayrıntıları içerir.</span><app-report-html-export [disabled]="loading" [report]="{kind:'context',rows:rows,scope:scope}" /></div><div class="member-context-heading"><span class="eyebrow">KATILIM BAĞLAMI</span><h3>Kapasite, izin ve X destek</h3>
-<p class="data-note">Dönem ve kişi filtreleri Kişi dağılımı sekmesiyle ortaktır. İzin iş adedine/efora eklenmez; X, saat tahmini verilmemiş destek atamasıdır. Yük oranı gerçekleşen çalışma veya performans puanı değildir.</p></div>
-
-<app-list-pager #personPager [items]="summaries" label="Katılım raporu" />
+import {SbRankedComponent,Ranked} from './report-charts';
+@Component({selector:'app-member-context',standalone:true,imports:[ReportHtmlExportComponent,RouterLink,SbRankedComponent],template:`
+<div class="rpt-head"><h2>Katılım bağlamı</h2><div class="rpt-actions"><app-report-html-export [disabled]="loading" [report]="{kind:'context',rows:rows,scope:scope}" /></div></div>
+<p class="rpt-verdict" [innerHTML]="verdict"></p>
+<p class="rpt-aside">Dönem ve kişi filtreleri Kişi dağılımı sekmesiyle ortaktır. Yük oranı gerçekleşen çalışma veya performans puanı değildir.</p>
 @if(summaries.length){
-<section class="visual-card context-visual" aria-label="Kişi bazında kapasite, efor, izin ve X destek karşılaştırması">
-<h3>Kapasite ve katkı haritası</h3><p>Saatler aynı ölçekte karşılaştırılır. İzin günleri ve X destek adedi ayrı gösterilir; efora eklenmez.</p>
-<div class="visual-legend"><span><i class="v-capacity"></i>Net kapasite (saat)</span><span><i class="v-core"></i>Planlanan efor (saat)</span></div>
-<div class="visual-rows">@for(m of personPager.rows;track m.id){
-<article class="visual-row"><div class="visual-label"><strong>{{m.name}}</strong><small>{{m.total}} sprint · {{m.known}} kapasite kaydı</small></div>
-<div><div class="visual-pair"><span>Kapasite</span><div class="visual-track"><span class="v-capacity" [style.width.%]="chartWidth(m.availableHours)"></span></div><strong>{{m.known?n(m.availableHours)+' sa':'—'}}</strong></div>
-<div class="visual-pair"><span>Plan</span><div class="visual-track"><span class="v-core" [style.width.%]="chartWidth(m.effortHours)"></span></div><strong>{{n(m.effortHours)}} sa</strong></div>
-<div class="context-markers"><span>{{n(m.leaveDays)}} gün izin</span><span>{{m.supportTasks}} X destek ataması</span>@if(m.known<m.total){<span>Kapasite eksik; oran hesaplanmaz</span>}@else if(m.load!==null){<span>Plan / kapasite %{{n(m.load)}}</span>}</div>
-</div></article>
-}</div></section>}
-<div class="member-context-list">@for(m of personPager.rows;track m.id){<details class="member-context"><summary><span><strong>{{ m.name }}</strong><small>{{ m.total }} sprint · {{ m.frozen }} kapanış kaydı · {{ m.recalculated }} yeniden hesaplanan</small></span><span class="context-pills"><b>{{ n(m.leaveDays) }} gün izin</b><b>{{ m.supportTasks }} X destek</b></span></summary>
-<div class="context-overview"><div><small>AYRILAN GÜN</small><strong>{{ m.known?n(m.allocatedDays):'—' }}</strong></div><div><small>NET KAPASİTE</small><strong>{{ m.known?n(m.availableHours)+' sa':'—' }}</strong></div><div><small>PLANLANAN EFOR</small><strong>{{ n(m.effortHours) }} sa</strong></div><div><small>PLAN / KAPASİTE</small><strong>{{ m.load===null?'—':n(m.load)+'%' }}</strong></div></div>
-@if(m.known<m.total){<p class="context-warning">Kapasite {{ m.known }} / {{ m.total }} sprintte hesaplanabiliyor. Gün ve kapasite toplamı yalnız bu sprintleri içerir; birleşik yük oranı üretilmez.</p>}
-@if(m.recalculated){<p class="data-note">Kapanış kaydı olmayan dönemler mevcut takım, takvim ve izin kayıtlarıyla yeniden hesaplanır; kesin tarihsel kapasite değildir.</p>}
-@if(m.load!==null){<div class="context-load" role="img" [attr.aria-label]="'Planlanan efor / net kapasite yüzde '+n(m.load)"><span [style.width.%]="width(m.load)" [class.over]="m.load>100"></span></div>}
-<app-list-pager #periodPager [items]="m.periods" label="Kişi sprintleri" /><div class="member-periods">@for(p of periodPager.rows;track p.sprintId){<article class="member-period"><header><a [routerLink]="['/sprints',p.sprintId,'capacity']">{{ p.sprintName }}</a><span>{{ sourceLabel(p.capacitySource) }}</span></header>
-<div class="period-values"><span>Ayrılan <b>{{ p.allocatedDays===null?'—':n(p.allocatedDays)+' gün' }}</b><small>{{ p.allocationExplicit?'Sprint için girilen':p.capacitySource==='FROZEN'?'Kapanışta kayıtlı':'Varsayılan / belirsiz' }}</small></span>
-<span>İzin <b>{{ n(p.leaveDays) }} gün</b></span><span>Net kapasite <b>{{ p.availableHours===null?'—':n(p.availableHours)+' sa' }}</b></span><span>Planlanan efor <b>{{ n(p.effortHours) }} sa</b></span><span>X destek <b>{{ p.supportTaskCount }} iş</b></span></div>
-<p class="data-note">Çalışılmayan: {{ p.nonWorkingDays===null?'—':n(p.nonWorkingDays)+' gün' }} · Kapasiteye eklenen planlı mesai: {{ p.overtimeHours===null?'—':n(p.overtimeHours)+' sa' }}@if(p.unestimatedTaskCount){ · {{ p.unestimatedTaskCount }} işte saat eforu girilmemiş (X değil)}</p>
-</article>}</div></details>}@empty{<p class="empty">Seçili filtrelerde katılım kaydı bulunamadı.</p>}</div>
-`,styleUrls:['./report-visuals.css'],styles:[`
+<dl class="rpt-kpis">
+<div><dt>Kişi</dt><dd>{{summaries.length}}</dd></div>
+<div><dt>Net kapasite</dt><dd>{{n(totalCapacity)}}<small>sa</small></dd></div>
+<div><dt>Planlanan efor</dt><dd>{{n(totalEffort)}}<small>sa</small></dd></div>
+<div><dt>Kişi bazında aşım</dt><dd [class.over]="totalOver>0">{{n(totalOver)}}<small>sa</small></dd></div>
+</dl>
+<div class="rpt-figure"><sb-ranked [rows]="ranked" unit="sa" [average]="averageEffort" averageLabel="kişi başına ortalama plan" label="Kişi başına kapasite ve plan karşılaştırması" /></div>
+<div class="rpt-key"><span><i style="background:#1f6f78"></i>Kapasite içinde kalan plan</span><span><i style="background:#c0362c"></i>Kapasite aşımı</span><span><i style="background:#b9c4cb"></i>Boşta kapasite</span><span><i class="dash"></i>Kişi başına ortalama plan</span></div>
+
+<div class="rpt-folds">
+<details><summary><span>İzin ve X destek</span><small>{{summaries.length}} kişi</small></summary><div class="fold-body"><div class="table-wrap"><table><caption class="sr-only">Kişi başına izin günü ve X destek ataması.</caption><thead><tr><th scope="col">Kişi</th><th scope="col">İzin</th><th scope="col">X destek</th><th scope="col">Ayrılan gün</th><th scope="col">Plan / kapasite</th></tr></thead><tbody>
+@for(m of summaries;track m.id){<tr><td>{{m.name}}<small>{{m.total}} sprint · {{m.known}} kapasite kaydı</small></td><td>{{n(m.leaveDays)}} gün</td><td>{{m.supportTasks}} iş</td><td>{{m.known?n(m.allocatedDays)+' gün':'—'}}</td><td>{{m.load===null?'—':'%'+n(m.load)}}</td></tr>}
+</tbody></table></div></div></details>
+<details><summary><span>Kişi kişi sprint kayıtları</span></summary><div class="fold-body">
+@for(m of summaries;track m.id){<section class="person"><h4>{{m.name}}<small>{{m.frozen}} kapanış kaydı · {{m.recalculated}} yeniden hesaplanan</small></h4>
+@if(m.known<m.total){<p class="warn">Kapasite {{m.known}} / {{m.total}} sprintte hesaplanabiliyor; birleşik yük oranı üretilmez.</p>}
+@if(m.recalculated){<p class="rpt-aside">Kapanış kaydı olmayan dönemler mevcut takım, takvim ve izin kayıtlarıyla yeniden hesaplanır; kesin tarihsel kapasite değildir.</p>}
+<div class="table-wrap"><table><thead><tr><th scope="col">Sprint</th><th scope="col">Kaynak</th><th scope="col">Ayrılan</th><th scope="col">İzin</th><th scope="col">Kapasite</th><th scope="col">Plan</th><th scope="col">X</th></tr></thead><tbody>
+@for(p of m.periods;track p.sprintId){<tr><td><a [routerLink]="['/sprints',p.sprintId,'capacity']">{{p.sprintName}}</a></td><td>{{sourceLabel(p.capacitySource)}}<small>{{p.allocationExplicit?'Sprint için girilen':p.capacitySource==='FROZEN'?'Kapanışta kayıtlı':'Varsayılan'}}</small></td><td>{{p.allocatedDays===null?'—':n(p.allocatedDays)+' gün'}}</td><td>{{n(p.leaveDays)}} gün</td><td>{{p.availableHours===null?'—':n(p.availableHours)+' sa'}}</td><td>{{n(p.effortHours)}} sa<small>{{p.overtimeHours?n(p.overtimeHours)+' sa planlı mesai':''}}</small></td><td>{{p.supportTaskCount}}@if(p.unestimatedTaskCount){<small>{{p.unestimatedTaskCount}} işte saat yok</small>}</td></tr>}
+</tbody></table></div></section>}
+</div></details>
+<details><summary><span>Nasıl hesaplanıyor?</span></summary><div class="fold-body">
+<p>Aşım ve boşluk her kişi için ayrı hesaplanır, sonra toplanır. Ekip toplamını tek kalemde karşılaştırmak birinin boşluğuyla diğerinin aşımını birbirine yedirir.</p>
+<p>İzin iş adedine veya efora eklenmez; X, saat tahmini verilmemiş destek atamasıdır. Kapasitesi bilinmeyen kişiler grafikte yalnız planlanan eforla görünür.</p>
+</div></details>
+</div>
+}@else{<p class="rpt-empty">Seçili filtrelerde katılım kaydı bulunamadı.</p>}
+`,styleUrls:['./report-design.css'],styles:[`
 :host{display:block;min-width:0}
-.member-context-heading{margin-top:4px}.member-context-list{display:grid;gap:12px;margin-top:16px}.member-context{border:1px solid #dfe7f2;border-radius:12px;padding:16px 18px;background:#fafcff;min-width:0}.member-context summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;list-style:none}.member-context summary:before{content:'›';font-size:22px;color:#2367ae}.member-context[open] summary:before{content:'⌄'}.member-context summary>span:first-of-type{flex:1}.member-context summary strong,.member-context summary small{display:block}.member-context summary small{font-size:11px;color:#70839b;margin-top:4px}.context-pills{display:flex;gap:6px;flex-wrap:wrap}.context-pills b{font-size:11px;border-radius:6px;padding:5px 8px;background:#edf3fa;color:#294d75}.context-overview{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.context-overview small{font-size:10px;color:#698099;display:block}.context-overview strong{font-size:20px;display:block;margin-top:5px}.context-warning{color:#8c5c20;font-size:12px;background:#fff8e9;padding:10px;border-radius:8px}.context-load{height:8px;background:#e6edf7;border-radius:6px;overflow:hidden;margin:12px 0}.context-load span{display:block;height:100%;background:#2672c4}.context-load .over{background:#bd7e25}.member-periods{display:grid;gap:10px}.member-period{padding:14px;background:white;border:1px solid #e0e8f2;border-radius:9px;break-inside:avoid}.member-period header{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;font-size:12px}.member-period header span{color:#75859a}.period-values{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:12px 0;font-size:11px;color:#526a83}.period-values b,.period-values small{display:block}.period-values b{font-size:14px;color:#213e5d;margin-top:3px}.period-values small{font-size:10px;margin-top:4px}.member-period .data-note{font-size:11px}
-@media(max-width:650px){.context-overview,.period-values{grid-template-columns:1fr 1fr}.member-context summary{flex-wrap:wrap}.context-pills{flex-basis:100%}.member-context{padding:13px}.member-period header{display:block}.member-period header span{display:block;margin-top:4px}}
-@media print{.member-context{break-inside:avoid}.member-context::details-content{content-visibility:visible;height:auto}.member-context>:not(summary){display:block}.context-overview,.period-values{display:grid!important}.member-periods{display:grid!important}.context-load{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+.person{margin:0 0 22px}.person h4{margin:0 0 6px;font-size:13px;font-weight:600;color:#15202b;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.person h4 small{font-weight:400;font-size:11px;color:#8a98a4}
+.warn{margin:0 0 8px;font-size:12px;color:#8c5c20}
+td small{display:block;font-size:11px;color:#8a98a4}
 `]})
 export class MemberContextComponent {
  @Input() scope='Tüm tamamlanan sprintler';@Input() loading=false;
  @Input({required:true}) rows:MemberReportRow[]=[];
  get summaries(){return memberContexts(this.rows);}
- chartWidth(value:number){return 100*Math.max(0,value)/Math.max(1,...this.summaries.flatMap(m=>[m.availableHours,m.effortHours]));}
  sourceLabel=capacitySourceLabel;
  n(value:number){return new Intl.NumberFormat('tr-TR',{maximumFractionDigits:1}).format(value);}
- width(value:number){return Math.min(100,Math.max(0,value));}
+ private esc(v:string){return v.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));}
+
+ // Over and spare capacity are summed per person: one person's idle hours must
+ // never cancel another person's overload.
+ get totalCapacity(){return this.summaries.reduce((n,m)=>n+(m.known?m.availableHours:0),0);}
+ get totalEffort(){return this.summaries.reduce((n,m)=>n+m.effortHours,0);}
+ get totalOver(){return this.summaries.reduce((n,m)=>n+(m.known?Math.max(0,m.effortHours-m.availableHours):0),0);}
+ get totalSpare(){return this.summaries.reduce((n,m)=>n+(m.known?Math.max(0,m.availableHours-m.effortHours):0),0);}
+ get averageEffort(){return this.summaries.length?this.totalEffort/this.summaries.length:null;}
+ get ranked():Ranked[]{return this.summaries.map(m=>{
+  const cap=m.known?m.availableHours:0,within=m.known?Math.min(m.effortHours,cap):m.effortHours;
+  const over=m.known?Math.max(0,m.effortHours-cap):0,spare=m.known?Math.max(0,cap-m.effortHours):0;
+  return {key:m.id,label:m.name,
+   note:(m.known?this.n(cap)+' sa kapasite':'kapasite yok')+' · '+this.n(m.leaveDays)+' gün izin'+(m.supportTasks?' · '+m.supportTasks+' X':''),
+   caption:m.name+': '+this.n(m.effortHours)+' sa plan'+(m.known?', '+this.n(cap)+' sa kapasite':'')+(over?', '+this.n(over)+' sa aşım':spare?', '+this.n(spare)+' sa boşta':''),
+   segments:[{label:'Plan',value:within,fill:'#1f6f78'},{label:'Aşım',value:over,fill:'#c0362c'},{label:'Boşta',value:spare,fill:'#b9c4cb'}]};
+ });}
+ get verdict(){
+  const people=this.summaries;if(!people.length)return 'Seçili filtrelerde katılım kaydı yok.';
+  const over=this.totalOver,spare=this.totalSpare;
+  const overloaded=people.filter(m=>m.known&&m.effortHours>m.availableHours);
+  const idle=people.filter(m=>m.known&&m.availableHours-m.effortHours>=4);
+  let text=people.length+' kişide <b>'+this.n(this.totalEffort)+' saat</b> plan, <b>'+this.n(this.totalCapacity)+' saat</b> net kapasite var.';
+  if(over>0)text+=' '+overloaded.length+' kişi kapasitesini toplam <b class="over">'+this.n(over)+' saat</b> aşıyor';
+  else text+=' Kimse kapasitesini aşmıyor';
+  if(spare>0)text+=', '+idle.length+' kişide <b>'+this.n(spare)+' saat</b> boşluk duruyor.';
+  else text+='.';
+  const leave=people.reduce((n,m)=>n+m.leaveDays,0);
+  if(leave>0)text+=' Dönemde '+this.n(leave)+' gün izin kapasiteden düşüldü.';
+  const unknown=people.filter(m=>m.known<m.total);
+  if(unknown.length)text+=' '+unknown.length+' kişinin kapasitesi bazı sprintlerde eksik; oranları bu yüzden kısmi.';
+  return text;
+ }
 }

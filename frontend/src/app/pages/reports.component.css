@@ -19,3 +19,12 @@
 .report-local-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 16px}.report-local-actions>span{color:#60758f;font-size:12px}.report-local-actions>div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 @media(max-width:600px){.report-local-actions{align-items:flex-start;flex-direction:column}}
 @media print{.report-local-actions{display:none!important}}
+
+/* Redesigned report tabs: the shell only supplies spacing, report-design.css owns the look. */
+.report-tab-panel.rpt{background:#fff;border:1px solid #e3e8ec;border-radius:12px;padding:22px 24px 26px}
+.rpt-sub{margin:32px 0 6px;font-size:15px;color:#15202b}
+.rpt-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 32px}
+.rpt-cell h4{margin:16px 0 2px;font-size:13px;font-weight:600;color:#5a6b7b;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.rpt-cell h4 small{font-weight:400;font-size:11px;color:#8a98a4}
+@media(max-width:760px){.rpt-grid{grid-template-columns:1fr}.report-tab-panel.rpt{padding:16px 14px 20px}}
+@media print{.rpt-grid{grid-template-columns:1fr 1fr}.rpt-cell{break-inside:avoid}.report-tab-panel.rpt{border:0;padding:0}}

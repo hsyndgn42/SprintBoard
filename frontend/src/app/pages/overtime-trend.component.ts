@@ -1,27 +1,66 @@
 import {Component,Input,Output,EventEmitter,OnInit,inject,ChangeDetectorRef} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {ApiService,SprintSummary,OvertimeRecord,OvertimeEntry,LeaveRecord,TeamMember} from '../api.service';
-import {ListPagerComponent} from '../list-pager.component';
-import {TrendChartComponent} from './trend-chart.component';
+import {SbColumnsComponent,Column} from './report-charts';
 import {ReportHtmlExportComponent} from './report-html-export.component';
-import {OvertimeTrendRow,overtimeTrend,overtimeSeries,usageSeries,reconciliationSeries,round} from './operational-trends.model';
-@Component({selector:'app-overtime-trend',standalone:true,imports:[FormsModule,ListPagerComponent,TrendChartComponent,ReportHtmlExportComponent],template:`
+import {OvertimeTrendRow,overtimeTrend,round} from './operational-trends.model';
+
+/**
+ * One question: how much overtime did the team actually work, and was it the overtime we
+ * planned? The columns break the worked hours into their causes and the tick marks the plan,
+ * so the gap between intent and reality is the shape of the chart rather than a number.
+ */
+@Component({selector:'app-overtime-trend',standalone:true,imports:[FormsModule,SbColumnsComponent,ReportHtmlExportComponent],template:`
 <section class="card card-pad overtime-report">
- <div class="section-head"><div><span class="eyebrow">MESAİ</span><h2>Mesai durumu ve trendi</h2></div>@if(!sprintId){<app-report-html-export [disabled]="loading||!!error" [report]="{kind:'overtime',rows:visible,scope:scope,entries:visibleEntries}"/>}</div>
- @if(loading){<p role="status">Mesai bilgileri yükleniyor…</p>}@else if(error){<p class="notice warn" role="alert">{{error}} <button class="btn small" (click)="load()">Yeniden dene</button></p>}@else{
- @if(!sprintId){<div class="filters"><label class="field period">Kişi<select [(ngModel)]="memberId" (ngModelChange)="changePerson()"><option value="">Tüm kişiler</option>@for(m of people;track m.id){<option [value]="m.id">{{m.name}}</option>}</select></label><label class="field period">Sprint<select [(ngModel)]="selected" (ngModelChange)="refresh()"><option value="">Tüm sprintler</option>@for(r of rows;track r.id){<option [value]="r.id">{{r.name}}</option>}</select></label></div>}
- <p class="data-note">{{scope}}</p><div class="metrics"><div><small>Gerçekleşen mesai</small><strong>{{sum('earned')}} sa</strong></div><div><small>Planlanan mesai</small><strong>{{sum('planned')}} sa</strong></div><div><small>Mesaiden izin kullanımı</small><strong>{{sum('usedDays')}} gün</strong></div></div>
- @if(unmatched){<p class="data-note">İzin günleriyle eşleştirilmemiş tarihsel kullanım/düzeltme: {{unmatched}} sa. Gün toplamına çevrilmedi.</p>}
- <app-trend-chart [labels]="labels" [series]="series" unit="saat" title="Sprint bazlı gerçekleşen ve planlanan mesai"/>
- <h3>Plan ve gerçekleşen eşleştirmesi</h3><div class="metrics"><div><small>Plan kapsamında gerçekleşen</small><strong>{{sum('matched')}} sa</strong></div><div><small>Kalan plan</small><strong>{{sum('remaining')}} sa</strong></div><div><small>Plan aşımı</small><strong>{{sum('excess')}} sa</strong></div><div><small>Plansız gerçekleşen</small><strong>{{sum('unplanned')}} sa</strong></div><div><small>Sınıflandırılmamış geçmiş kayıt</small><strong>{{sum('unclassified')}} sa</strong></div></div>
- <app-trend-chart [labels]="labels" [series]="matchingSeries" unit="saat" title="Plan kapsamında, kalan, aşan ve plansız mesai"/>
- <p class="data-note">Gerçekleşen = plan kapsamında + plan aşımı + plansız + sınıflandırılmamış. Kalan/aşan her plan için ayrı hesaplanır; kalan plan hakediş değildir.</p>
- <h3>Mesaiden izin kullanımı</h3><app-trend-chart [labels]="labels" [series]="usageSeries" unit="gün" title="Sprint bazlı mesaiden izin kullanımı"/>
- <p class="data-note">{{sprintId?'Bu sprint ve önceki en fazla 7 sprint. ':''}}Gerçekleşen: tarihsel kayıtlar ve onaylanmış/doğrudan girilmiş mesailer; bekleyen talepler hariç. Planlanan mesai kapasiteye tekrar eklenmez. Kayıtlı plan yoksa 0 gösterilir. Aktif sprint geçicidir.</p>
- @if(!sprintId){<app-list-pager #pager [items]="visible" label="Mesai trendi"/><div class="table-wrap"><table><thead><tr><th scope="col">Sprint</th><th scope="col">Gerçekleşen</th><th scope="col">Planlanan</th><th scope="col">Plan kapsamında</th><th scope="col">Kalan</th><th scope="col">Aşan</th><th scope="col">Plansız</th><th scope="col">Sınıflandırılmamış</th><th scope="col">Mesaiden izin</th></tr></thead><tbody>@for(r of pager.rows;track r.id){<tr><td>{{r.name}}{{r.status==='active'?' · Aktif':''}}</td><td>{{r.earned}} sa</td><td>{{r.planned}} sa</td><td>{{r.matched||0}} sa</td><td>{{r.remaining||0}} sa</td><td>{{r.excess||0}} sa</td><td>{{r.unplanned||0}} sa</td><td>{{r.unclassified||0}} sa</td><td>{{r.usedDays}} gün</td></tr>}</tbody></table></div>}
- @if(!sprintId&&visibleEntries.length){<h3>Görev / Roadmap mesaileri</h3><p class="data-note">Yalnız yeni mesai kayıtları. Tarihsel görev bağlantısı olmayan mesailer üst toplamda kalır; Roadmap’e tahminle dağıtılmaz.</p><app-list-pager #entryPager [items]="visibleEntries" label="Görev mesaileri"/><div class="table-wrap"><table><thead><tr><th scope="col">Kişi / sprint</th><th scope="col">Görev</th><th scope="col">Roadmap</th><th scope="col">Mesai türü</th><th scope="col">Gerçekleşen</th><th scope="col">Planlanan</th></tr></thead><tbody>@for(e of entryPager.rows;track e.id){<tr><td>{{e.memberName}} · {{e.sprintName}}</td><td>{{e.taskTitle||'Genel / bağlantı yok'}}</td><td>{{e.roadmapTitle||'Roadmap bağlantısı yok'}}</td><td>{{e.earnedHours>0?(e.planClassification==='PLANNED'?'Plana bağlı':e.planClassification==='UNPLANNED'?'Plansız':'Sınıflandırılmamış'):'Mesai planı'}}</td><td>{{e.earnedHours}} sa</td><td>{{e.plannedHours}} sa</td></tr>}</tbody></table></div>}
- }
-</section>`,styles:[`.overtime-report{margin:24px 0}.section-head{flex-wrap:wrap;gap:16px}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0}.metrics>div{padding:16px;background:#f8faff;border:1px solid #dce5ef;border-radius:10px}.metrics small,.metrics strong{display:block}.metrics strong{font-size:24px;margin-top:6px}.filters{display:flex;gap:16px;flex-wrap:wrap}.period{flex:1;max-width:300px}.table-wrap{overflow:auto}table{width:100%}@media(max-width:600px){.metrics{grid-template-columns:1fr}}@media print{.period{display:none}}`]})
+
+<div class="rpt-head"><h2>Mesai</h2>@if(!sprintId){<div class="rpt-actions"><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'overtime',rows:visible,scope:scope,entries:visibleEntries}"/></div>}</div>
+
+@if(loading){<p class="rpt-empty" role="status">Mesai bilgileri yükleniyor…</p>}
+@else if(error){<p class="notice warn" role="alert">{{error}} <button class="btn small" (click)="load()">Yeniden dene</button></p>}
+@else{
+
+<p class="rpt-verdict" [innerHTML]="verdict"></p>
+
+@if(!sprintId){<div class="rpt-filters">
+<label class="field">Kişi<select [(ngModel)]="memberId" (ngModelChange)="changePerson()"><option value="">Tüm kişiler</option>@for(m of people;track m.id){<option [value]="m.id">{{m.name}}</option>}</select></label>
+<label class="field">Sprint<select [(ngModel)]="selected" (ngModelChange)="refresh()"><option value="">Tüm sprintler</option>@for(r of rows;track r.id){<option [value]="r.id">{{r.name}}</option>}</select></label>
+</div>}
+
+@if(!history.length){<p class="rpt-empty">Bu kapsamda mesai kaydı yok.</p>}@else{
+
+<dl class="rpt-kpis">
+<div><dt>Gerçekleşen</dt><dd>{{sum('earned')}}<small>sa</small></dd></div>
+<div><dt>Planlanan</dt><dd>{{sum('planned')}}<small>sa</small></dd></div>
+<div><dt>Plansız çalışılan</dt><dd [class.over]="sum('unplanned')>0">{{sum('unplanned')}}<small>sa</small></dd></div>
+<div><dt>Mesaiden izin</dt><dd>{{sum('usedDays')}}<small>gün</small></dd></div>
+</dl>
+
+<div class="rpt-figure"><sb-columns [columns]="columns" unit="sa" [average]="averageEarned" averageLabel="ortalama gerçekleşen" label="Sprint bazlı gerçekleşen mesainin plana göre kırılımı ve planlanan mesai çizgisi" /></div>
+<div class="rpt-key"><span><i style="background:#1f6f78"></i>Plana bağlı</span><span><i style="background:#c0362c"></i>Plan aşımı</span><span><i style="background:#6b5ca5"></i>Plansız</span><span><i style="background:#b9c4cb"></i>Sınıflandırılmamış</span><span><i class="rule"></i>Planlanan mesai</span><span><i class="dash"></i>Ortalama gerçekleşen</span></div>
+
+@if(usedAny){
+<h3 class="rpt-sub">Mesainin karşılığı izne dönüyor mu</h3>
+<div class="rpt-figure"><sb-columns [columns]="leaveColumns" unit="gün" [average]="averageUsed" averageLabel="ortalama" label="Sprint bazlı mesaiden izin kullanımı" /></div>
+@if(unmatched){<p class="rpt-aside">İzin günleriyle eşleştirilmemiş {{unmatched}} saatlik tarihsel kullanım/düzeltme var; gün toplamına çevrilmedi.</p>}}
+
+<div class="rpt-folds">
+@if(!sprintId){<details><summary><span>Sprint sprint rakamlar</span><small>{{visible.length}} sprint</small></summary><div class="fold-body"><div class="table-wrap"><table>
+<thead><tr><th scope="col">Sprint</th><th scope="col">Gerçekleşen</th><th scope="col">Planlanan</th><th scope="col">Plana bağlı</th><th scope="col">Kalan plan</th><th scope="col">Aşan</th><th scope="col">Plansız</th><th scope="col">Sınıflanmamış</th><th scope="col">İzin</th></tr></thead>
+<tbody>@for(r of visible;track r.id){<tr><td>{{r.name}}{{r.status==='active'?' · aktif':''}}</td><td>{{r.earned}} sa</td><td>{{r.planned}} sa</td><td>{{r.matched||0}} sa</td><td>{{r.remaining||0}} sa</td><td>{{r.excess||0}} sa</td><td>{{r.unplanned||0}} sa</td><td>{{r.unclassified||0}} sa</td><td>{{r.usedDays}} gün</td></tr>}</tbody></table></div></div></details>}
+
+@if(!sprintId&&visibleEntries.length){<details><summary><span>Görev ve Roadmap mesaileri</span><small>{{visibleEntries.length}} kayıt</small></summary><div class="fold-body"><div class="table-wrap"><table>
+<thead><tr><th scope="col">Kişi / sprint</th><th scope="col">Görev</th><th scope="col">Roadmap</th><th scope="col">Tür</th><th scope="col">Gerçekleşen</th><th scope="col">Planlanan</th></tr></thead>
+<tbody>@for(e of visibleEntries;track e.id){<tr><td>{{e.memberName}} · {{e.sprintName}}</td><td>{{e.taskTitle||'Genel / bağlantı yok'}}</td><td>{{e.roadmapTitle||'Roadmap bağlantısı yok'}}</td><td>{{e.earnedHours>0?(e.planClassification==='PLANNED'?'Plana bağlı':e.planClassification==='UNPLANNED'?'Plansız':'Sınıflandırılmamış'):'Mesai planı'}}</td><td>{{e.earnedHours}} sa</td><td>{{e.plannedHours}} sa</td></tr>}</tbody></table></div>
+<p>Yalnız yeni mesai kayıtları görev ve Roadmap taşır. Tarihsel görev bağlantısı olmayan mesailer üst toplamda kalır; tahminle dağıtılmaz.</p></div></details>}
+
+<details><summary><span>Nasıl hesaplanıyor?</span></summary><div class="fold-body">
+<p>Gerçekleşen mesai = plana bağlı + plan aşımı + plansız + sınıflandırılmamış. Kalan plan ile aşım her plan için ayrı hesaplanır; kalan plan bir hakediş değildir.</p>
+<p>Gerçekleşen kabul edilenler: tarihsel kayıtlar ve onaylanmış ya da doğrudan girilmiş mesailer. Bekleyen talepler sayılmaz. Planlanan mesai kapasiteye ikinci kez eklenmez. Kayıtlı plan yoksa 0 gösterilir, tahmin üretilmez.</p>
+<p>{{sprintId?'Bu sprint ve öncesindeki en fazla 7 sprint gösterilir. ':''}}Aktif sprintin rakamı geçicidir.</p>
+</div></details>
+</div>
+}}
+</section>`,styleUrls:['./report-design.css'],styles:[`:host{display:block;margin:20px 0}.overtime-report td{overflow-wrap:anywhere}.rpt-sub{margin:32px 0 10px;font-size:15px;color:#15202b}`]})
 export class OvertimeTrendComponent implements OnInit{
  @Input() sprintId='';@Output() readyChange=new EventEmitter<boolean>();@Output() rowsLoaded=new EventEmitter<OvertimeTrendRow[]>();
  private api=inject(ApiService);private cdr=inject(ChangeDetectorRef);rows:OvertimeTrendRow[]=[];selected='';loading=true;error='';
@@ -32,10 +71,33 @@ export class OvertimeTrendComponent implements OnInit{
  ngOnInit(){void this.load()}refresh(){this.cdr.detectChanges()}
  get visible(){const id=this.sprintId||this.selected;return id?this.rows.filter(r=>r.id===id):this.rows}
  get history(){return this.sprintId?this.rows.filter(r=>r.number<=(this.visible[0]?.number??-1)).slice(-8):this.visible}
- get matchingSeries(){return reconciliationSeries(this.history)}
- get labels(){return this.history.map(r=>'S'+r.number)}get series(){return overtimeSeries(this.history)}get usageSeries(){return usageSeries(this.history)}
  sum(k:'earned'|'planned'|'usedDays'|'matched'|'remaining'|'excess'|'unplanned'|'unclassified'){return round(this.visible.reduce((n,r)=>n+(r[k]||0),0))}
  get unmatched(){return round(this.visible.reduce((n,r)=>n+r.unmatchedUsedHours,0))}
+
+ get columns():Column[]{return this.history.map(r=>({key:r.id,label:'S'+r.number,marker:r.planned>0?r.planned:null,
+  caption:r.name+(r.status==='active'?' (aktif)':'')+': '+r.earned+' sa gerçekleşen, '+r.planned+' sa planlanan',
+  segments:[{label:'Plana bağlı',value:r.matched||0,fill:'#1f6f78'},{label:'Plan aşımı',value:r.excess||0,fill:'#c0362c'},{label:'Plansız',value:r.unplanned||0,fill:'#6b5ca5'},{label:'Sınıflandırılmamış',value:r.unclassified||0,fill:'#b9c4cb'}]}));}
+ get leaveColumns():Column[]{return this.history.map(r=>({key:r.id,label:'S'+r.number,caption:r.name+': '+r.usedDays+' gün mesaiden izin',
+  segments:[{label:'Mesaiden izin',value:r.usedDays,fill:'#1f6f78'}]}));}
+ get usedAny(){return this.history.some(r=>r.usedDays>0)}
+ get averageEarned(){return this.history.length?round(this.history.reduce((n,r)=>n+r.earned,0)/this.history.length):null}
+ get averageUsed(){return this.history.length?round(this.history.reduce((n,r)=>n+r.usedDays,0)/this.history.length):null}
+
+ get verdict(){
+  const earned=this.sum('earned'),planned=this.sum('planned'),unplanned=this.sum('unplanned'),excess=this.sum('excess'),days=this.sum('usedDays');
+  const who=this.people.find(p=>p.id===this.memberId)?.name;
+  const span=who?this.esc(who):(this.visible.length===1?this.esc(this.visible[0].name)+' sprintinde ekip':'Ekip');
+  if(earned<=0&&planned<=0)return span+' için kayıtlı mesai yok.';
+  let text=span+' <b>'+earned+' saat</b> mesai yaptı';
+  text+=planned>0?'; planlanan <b>'+planned+' saatti</b>.':'; bu mesainin kayıtlı bir planı yoktu.';
+  const loose=round(unplanned+excess);
+  if(loose>0)text+=' Bunun <b class="over">'+loose+' saati</b> plan dışında kaldı.';
+  if(days>0)text+=' Karşılığında '+days+' gün izin kullanıldı.';
+  else if(earned>0)text+=' Karşılığında henüz izin kullanılmadı.';
+  return text;
+ }
+ private esc(value:string){return value.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));}
+
  async load(){this.loading=true;this.error='';this.readyChange.emit(false);try{
  const [s,r,e,l,m]=await Promise.all([this.api.get<SprintSummary[]>('/sprints'),this.api.get<OvertimeRecord[]>('/overtime'),this.api.get<OvertimeEntry[]>('/overtime/entries'),this.api.get<LeaveRecord[]>('/leaves'),this.api.get<TeamMember[]>('/team')]);
  this.sprints=s;this.records=r;this.entries=e;this.leaves=l;const names=new Map(m.map(p=>[p.id,p.name]));for(const row of [...r,...e,...l])if(!names.has(row.memberId))names.set(row.memberId,row.memberName);this.people=[...names].map(([id,name])=>({id,name})).sort((a,b)=>a.name.localeCompare(b.name,'tr'));this.rows=overtimeTrend(s,r,e,l,this.memberId);this.rowsLoaded.emit(this.rows);

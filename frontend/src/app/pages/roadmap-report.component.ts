@@ -1,5 +1,5 @@
-import { ListPagerComponent } from '../list-pager.component';
 import { ReportHtmlExportComponent } from './report-html-export.component';
+import { SbRankedComponent,Ranked } from './report-charts';
 import {Component,ChangeDetectorRef,EventEmitter,Output,OnInit,inject} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {RouterLink} from '@angular/router';
@@ -10,48 +10,94 @@ interface RoadmapEffort extends RoadmapItem {
   overtimeHours:number;assignedHours:number;doneHours:number;undoneHours:number;openHours:number;poolEstimatedHours:number;
   unassignedTaskCount:number;supportAssignmentCount:number;
 }
-@Component({standalone:true,selector:'app-roadmap-report',imports:[ListPagerComponent,ReportHtmlExportComponent,FormsModule,RouterLink],template:`
-  <section class="card card-pad roadmap-effort-report">
-    <div class="section-head"><div><span class="eyebrow">PROJE / FEATURE SET</span><h2>Roadmap efor raporu</h2><p class="data-note">Tüm dönemler · Aktif, planlanan ve tamamlanan sprintler · Güncel Roadmap bağlantıları</p></div><div class="report-actions"><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'roadmap',rows:visible,scope:'Tüm dönemler · '+kindLabel(kind)+' · '+(query||'Tüm referanslar')}" /><button class="btn" [disabled]="loading||!!error||!visible.length" (click)="exportCsv()">Roadmap CSV indir</button></div></div>
-    <p class="notice">Atanan efor <strong>planlanan</strong> saattir. Mesai ayrı bir gerçekleşen saat kaydıdır; plan toplamına eklenmez. Mesai, kayıt anındaki Roadmap bağlantısına aittir; eski bağlantısız mesailer dahil değildir.</p>
-    <div class="report-filters"><label class="field">Roadmap ara<input [(ngModel)]="query" placeholder="Başlık veya TC / referans ID"></label><label class="field">Tür<select [(ngModel)]="kind"><option value="">Tüm türler</option><option value="PROJECT">Proje</option><option value="FEATURE_SET">Feature set</option><option value="GENERAL">Genel</option><option value="UNSPECIFIED">Tür belirtilmemiş</option></select></label></div>
-    <p class="print-only data-note">Roadmap filtresi: {{ kindLabel(kind) }} · {{ query || 'Tüm referanslar' }}. Tüm dönemlerin atanan planlanan saatleri; gerçek harcanan süre değildir.</p>
-    @if(loading){<p role="status">Roadmap eforu yükleniyor…</p>}@else if(error){<p class="notice warn" role="alert">{{ error }}</p>}@else if(visible.length){
-      <div class="mini-metrics"><div><small>Roadmap öğesi</small><strong>{{ visible.length }}</strong></div><div><small>Toplam atanan efor</small><strong>{{ num(total('assignedHours')) }} sa</strong></div><div><small>Gerçekleşen mesai (ayrı)</small><strong>{{ num(total('overtimeHours')) }} sa</strong></div><div><small>Havuz tahmini (ayrı)</small><strong>{{ num(total('poolEstimatedHours')) }} sa</strong></div></div>
 
-<app-list-pager #roadmapPager [items]="visible" label="Roadmap raporu" />
-      <section class="visual-card roadmap-visual" aria-label="Roadmap bazında sonuç durumuna göre planlanan efor">
-        <h3>Eforun Roadmap dağılımı</h3><p>Çubukların uzunluğu atanan saatle orantılıdır. Havuz tahminleri ayrı tutulur.</p>
-        <div class="visual-legend"><span><i class="v-done"></i>Done</span><span><i class="v-undone"></i>Undone</span><span><i class="v-open"></i>Açık</span></div>
-        <div class="visual-rows">@for(row of roadmapPager.rows;track row.id){<article class="visual-row">
-          <div class="visual-label"><strong>{{row.title}}</strong><small>{{kindLabel(row.kind)}} · {{row.referenceId || 'Referans ID yok'}}</small></div>
-          <div><div class="visual-track" role="img" [attr.aria-label]="row.title+': Done '+num(row.doneHours)+', Undone '+num(row.undoneHours)+', Açık '+num(row.openHours)+' saat'">
-            <span class="v-done" [style.width.%]="segment(row.doneHours)"></span><span class="v-undone" [style.width.%]="segment(row.undoneHours)"></span><span class="v-open" [style.width.%]="segment(row.openHours)"></span>
-          </div><div class="visual-values"><strong>{{num(row.assignedHours)}} sa toplam</strong><span>{{num(row.doneHours)}} Done</span><span>{{num(row.undoneHours)}} Undone</span><span>{{num(row.openHours)}} açık</span><span>Havuz: {{num(row.poolEstimatedHours)}} sa (ayrı)</span></div></div>
-        </article>}</div>
-      </section>
-      <section class="visual-card"><h3>Roadmap bazlı gerçekleşen mesai</h3><p>Planlanan efordan ayrı · Göreve bağlı onaylı/doğrudan mesai kayıtları</p><div class="visual-rows">@for(row of roadmapPager.rows;track row.id){<article class="visual-row"><strong>{{row.title}}</strong><div><div class="visual-track"><span class="v-open" [style.width.%]="overtimeSegment(row.overtimeHours)"></span></div><strong>{{num(row.overtimeHours)}} sa mesai</strong></div></article>}</div></section>
-      <div class="table-wrap"><table><thead><tr><th scope="col">Roadmap</th><th scope="col">Sprint işleri</th><th scope="col">Atanan efor</th><th scope="col">Mesai (ayrı)</th><th scope="col">Done / Undone / Açık efor</th><th scope="col">Havuz tahmini</th></tr></thead><tbody>
-        @for(row of roadmapPager.rows;track row.id){<tr><td><a [routerLink]="['/roadmap',row.id]"><strong>{{ row.title }}</strong></a><small>{{ kindLabel(row.kind) }} · {{ row.referenceId || 'Referans ID yok' }}</small></td>
-          <td>{{ row.taskCount }} iş<small>{{ row.done }} Done · {{ row.undone }} Undone · {{ row.open }} açık</small></td>
-          <td><strong>{{ num(row.assignedHours) }} sa</strong><div class="report-bar"><span [style.width.%]="volume(row)"></span></div><small>{{ row.supportAssignmentCount }} X atama · {{ row.unassignedTaskCount }} atamasız iş</small></td>
-          <td>{{ num(row.overtimeHours) }} sa</td><td>{{ num(row.doneHours) }} / {{ num(row.undoneHours) }} / {{ num(row.openHours) }} sa</td><td>{{ num(row.poolEstimatedHours) }} sa<small>{{ row.poolCount }} sprint dışı iş</small></td></tr>}
-      </tbody></table></div>
-    }@else{<div class="empty"><strong>Bu kapsamda Roadmap öğesi yok</strong>Roadmap oluşturup backlog işlerini bağladığınızda efor burada görünür.</div>}
-    <p class="data-note">Bir görev bir kez, çoklu atamalarda her kişinin saati ayrı toplanır. Tekrar/taşıma işleri kendi sprint atamalarıyla sayılır. X destek ve Leave saat toplamına girmez; diğer BAU dahildir. Atamasız görevler 0 atanan saat gösterir, görev tahmini yerine kullanılmaz. Kapalı sprintlerde varsa sabit kapanış atamaları kullanılır. Bağlantısız işler bu rapora dahil değildir.</p>
-  </section>
-`,styleUrls:['./report-visuals.css'],styles:[`:host{display:block;margin:20px 0}.mini-metrics{margin:18px 0;grid-template-columns:repeat(4,minmax(0,1fr))}.notice strong{display:inline}@media(max-width:800px){.mini-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}th:first-child{width:27%}td{overflow-wrap:anywhere}td small{display:block} .report-bar{margin-top:8px}@media print{.report-filters,button{display:none}.table-wrap{overflow:visible}table{table-layout:fixed;width:100%;min-width:0;font-size:9px}th,td{padding:7px}tr{break-inside:avoid}.mini-metrics{break-inside:avoid}}`]})
+/**
+ * One question: where is the effort going, and how much of it landed? The ranking answers
+ * both at once, and the dashed line marks the roadmap item of ordinary size so an outlier
+ * is visible without reading a single number.
+ */
+@Component({standalone:true,selector:'app-roadmap-report',imports:[ReportHtmlExportComponent,SbRankedComponent,FormsModule,RouterLink],template:`
+<section class="card card-pad roadmap-effort-report">
+
+<div class="rpt-head"><h2>Roadmap eforu</h2><div class="rpt-actions"><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'roadmap',rows:visible,scope:'Tüm dönemler · '+kindLabel(kind)+' · '+(query||'Tüm referanslar')}" /><button class="btn" [disabled]="loading||!!error||!visible.length" (click)="exportCsv()">CSV indir</button></div></div>
+<p class="rpt-verdict" [innerHTML]="verdict"></p>
+
+<div class="rpt-filters">
+<label class="field">Roadmap ara<input [(ngModel)]="query" placeholder="Başlık veya TC / referans ID"></label>
+<label class="field">Tür<select [(ngModel)]="kind"><option value="">Tüm türler</option><option value="PROJECT">Proje</option><option value="FEATURE_SET">Feature set</option><option value="GENERAL">Genel</option><option value="UNSPECIFIED">Tür belirtilmemiş</option></select></label>
+</div>
+
+@if(loading){<p class="rpt-empty" role="status">Roadmap eforu yükleniyor…</p>}
+@else if(error){<p class="notice warn" role="alert">{{ error }}</p>}
+@else if(!visible.length){<p class="rpt-empty">Bu kapsamda Roadmap öğesi yok. Roadmap oluşturup backlog işlerini bağladığınızda efor burada görünür.</p>}
+@else{
+
+<dl class="rpt-kpis">
+<div><dt>Roadmap öğesi</dt><dd>{{visible.length}}</dd></div>
+<div><dt>Atanan efor</dt><dd>{{fmt(total('assignedHours'))}}<small>sa</small></dd></div>
+<div><dt>Tamamlanan</dt><dd>{{doneShare===null?'—':'%'+fmt(doneShare)}}</dd></div>
+<div><dt>Gerçekleşen mesai</dt><dd>{{fmt(total('overtimeHours'))}}<small>sa</small></dd></div>
+</dl>
+
+<div class="rpt-figure"><sb-ranked [rows]="ranked" unit="sa" [average]="averageEffort" averageLabel="ortalama" label="Roadmap öğelerine atanan planlanan efor; Done, Undone ve açık kırılımıyla" /></div>
+<div class="rpt-key"><span><i class="f-measure"></i>Done</span><span><i class="f-over"></i>Undone</span><span><i class="f-spare"></i>Açık</span><span><i class="dash"></i>Ortalama efor</span></div>
+
+@if(total('overtimeHours')>0){
+<h3 class="rpt-sub">Bu eforun üstüne yazılan mesai</h3>
+<div class="rpt-figure"><sb-ranked [rows]="overtimeRanked" unit="sa" [average]="averageOvertime" averageLabel="ortalama" label="Roadmap bazlı gerçekleşen mesai" /></div>
+<p class="rpt-aside">Mesai planlanan efora eklenmez; kayıt anındaki Roadmap bağlantısına yazılır.</p>}
+
+<div class="rpt-folds">
+<details><summary><span>Roadmap rakamları</span><small>{{visible.length}} öğe</small></summary><div class="fold-body"><div class="table-wrap"><table>
+<thead><tr><th scope="col">Roadmap</th><th scope="col">İş</th><th scope="col">Atanan</th><th scope="col">Done</th><th scope="col">Undone</th><th scope="col">Açık</th><th scope="col">Mesai</th><th scope="col">Havuz</th></tr></thead>
+<tbody>@for(row of visible;track row.id){<tr>
+ <td><a [routerLink]="['/roadmap',row.id]">{{row.title}}</a><small>{{kindLabel(row.kind)}} · {{row.referenceId||'Referans ID yok'}}</small></td>
+ <td>{{row.taskCount}}<small>{{row.supportAssignmentCount}} X · {{row.unassignedTaskCount}} atamasız</small></td>
+ <td>{{fmt(row.assignedHours)}} sa</td><td>{{fmt(row.doneHours)}} sa</td><td>{{fmt(row.undoneHours)}} sa</td><td>{{fmt(row.openHours)}} sa</td>
+ <td>{{fmt(row.overtimeHours)}} sa</td><td>{{fmt(row.poolEstimatedHours)}} sa<small>{{row.poolCount}} sprint dışı</small></td>
+</tr>}</tbody></table></div></div></details>
+
+<details><summary><span>Nasıl hesaplanıyor?</span></summary><div class="fold-body">
+<p>Atanan efor <b>planlanan</b> saattir, gerçek harcanan süre değildir. Tüm dönemler kapsanır: aktif, planlanan ve tamamlanan sprintler.</p>
+<p>Mesai ayrı bir gerçekleşen saat kaydıdır ve plan toplamına eklenmez. Kayıt anındaki Roadmap bağlantısına aittir; eski bağlantısız mesailer bu dağılımda görünmez.</p>
+<p>Bir görev bir kez sayılır; çoklu atamada her kişinin saati ayrı toplanır. Tekrar ve taşıma işleri kendi sprint atamalarıyla sayılır. X destek ve Leave saat toplamına girmez, diğer BAU dahildir.</p>
+<p>Atamasız görevler 0 atanan saat gösterir; görev tahmini onun yerine kullanılmaz. Havuz tahmini sprinte girmemiş işlerindir ve atanan efora eklenmez. Kapalı sprintlerde varsa sabit kapanış atamaları kullanılır. Roadmap'e bağlanmamış işler bu rapora hiç girmez.</p>
+</div></details>
+</div>
+}
+</section>
+`,styleUrls:['./report-design.css'],styles:[`:host{display:block;margin:20px 0}.roadmap-effort-report td small{display:block;color:#5a6b7b;font-size:11px}.roadmap-effort-report td{overflow-wrap:anywhere}.rpt-sub{margin:30px 0 10px;font-size:15px;color:#15202b}`]})
 export class RoadmapReportComponent implements OnInit {
   @Output() readyChange=new EventEmitter<boolean>();
   private api=inject(ApiService);private cdr=inject(ChangeDetectorRef);
   rows:RoadmapEffort[]=[];loading=true;error='';query='';kind='';
   kindLabel(value:string){return ({PROJECT:'Proje',FEATURE_SET:'Feature set',GENERAL:'Genel',UNSPECIFIED:'Tür belirtilmemiş'} as Record<string,string>)[value]||'Tüm türler';}
-  num(value:number){return new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(value);}
+  fmt(value:number){return new Intl.NumberFormat('tr-TR',{maximumFractionDigits:1}).format(value);}
   get visible(){const q=this.query.trim().toLocaleLowerCase('tr-TR');return this.rows.filter(r=>(!this.kind||r.kind===this.kind)&&(!q||(r.title+' '+(r.referenceId||'')).toLocaleLowerCase('tr-TR').includes(q))).sort((a,b)=>b.assignedHours-a.assignedHours);}
-  total(key:'assignedHours'|'doneHours'|'poolEstimatedHours'|'overtimeHours'){return this.visible.reduce((sum,row)=>sum+row[key],0);}
-  segment(hours:number){return 100*Math.max(0,hours)/Math.max(1,...this.visible.map(r=>r.assignedHours));}
-  overtimeSegment(hours:number){return 100*Math.max(0,hours)/Math.max(1,...this.visible.map(r=>r.overtimeHours));}
-  volume(row:RoadmapEffort){return 100*row.assignedHours/Math.max(1,...this.visible.map(r=>r.assignedHours));}
+  total(key:'assignedHours'|'doneHours'|'undoneHours'|'openHours'|'poolEstimatedHours'|'overtimeHours'){return this.visible.reduce((sum,row)=>sum+row[key],0);}
+
+  /** Only the first dozen fit on a readable chart; the rest stay in the table. */
+  get ranked():Ranked[]{return this.visible.slice(0,12).map(r=>({key:r.id,label:r.title,note:this.kindLabel(r.kind)+(r.referenceId?' · '+r.referenceId:''),
+    caption:r.title+': '+this.fmt(r.assignedHours)+' sa atanan, '+this.fmt(r.doneHours)+' Done, '+this.fmt(r.undoneHours)+' Undone, '+this.fmt(r.openHours)+' açık',
+    segments:[{label:'Done',value:r.doneHours,fill:'#1f6f78'},{label:'Undone',value:r.undoneHours,fill:'#c0362c'},{label:'Açık',value:r.openHours,fill:'#b9c4cb'}]}));}
+  get overtimeRanked():Ranked[]{return this.visible.filter(r=>r.overtimeHours>0).sort((a,b)=>b.overtimeHours-a.overtimeHours).slice(0,8)
+    .map(r=>({key:r.id,label:r.title,caption:r.title+': '+this.fmt(r.overtimeHours)+' sa mesai',segments:[{label:'Mesai',value:r.overtimeHours,fill:'#6b5ca5'}]}));}
+  get averageEffort(){return this.visible.length?this.total('assignedHours')/this.visible.length:null;}
+  get averageOvertime(){const w=this.visible.filter(r=>r.overtimeHours>0);return w.length?this.total('overtimeHours')/w.length:null;}
+  get doneShare(){const t=this.total('assignedHours');return t>0?Math.round(this.total('doneHours')/t*1000)/10:null;}
+
+  get verdict(){
+   const n=this.visible.length,top=this.visible[0],effort=this.total('assignedHours'),share=this.doneShare;
+   if(!n||effort<=0)return 'Bu kapsamdaki Roadmap öğelerine henüz saatli atama yapılmamış.';
+   let text=n+' Roadmap öğesine toplam <b>'+this.fmt(effort)+' saat</b> plan atandı.';
+   if(top&&n>1)text+=' Eforun en büyük payı '+this.esc(top.title)+' (%'+this.fmt(Math.round(top.assignedHours/effort*1000)/10)+').';
+   if(share!==null)text+=' Bu planın <b>%'+this.fmt(share)+'</b>\u2019i Done oldu';
+   const undone=this.total('undoneHours');
+   text+=undone>0?', <b class="over">'+this.fmt(undone)+' saat</b> Undone kaldı.':'.';
+   return text;
+  }
+  private esc(value:string){return value.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));}
+
   async ngOnInit(){this.readyChange.emit(false);try{this.rows=await this.api.get<RoadmapEffort[]>('/reports/roadmap');}catch(e){this.error=String(e);}finally{this.loading=false;this.cdr.detectChanges();this.readyChange.emit(!this.error);}}
   exportCsv(){if(this.loading||this.error)return;downloadText(csv([['Kapsam','Tür','Referans ID','Roadmap','Sprint işleri','Done','Undone','Açık','Atanan planlanan saat','Gerçekleşen mesai saat (ayrı)','Done atanan saat','Undone atanan saat','Açık atanan saat','Havuz iş','Havuz tahmini saat','X atama','Atamasız iş'],...this.visible.map(r=>['Tüm dönemler; gerçek harcanan süre değildir',this.kindLabel(r.kind),r.referenceId,r.title,r.taskCount,r.done,r.undone,r.open,r.assignedHours,r.overtimeHours,r.doneHours,r.undoneHours,r.openHours,r.poolCount,r.poolEstimatedHours,r.supportAssignmentCount,r.unassignedTaskCount])]),'text/csv;charset=utf-8','sprintboard-roadmap-efor.csv');}
 }

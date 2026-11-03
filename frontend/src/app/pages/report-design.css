@@ -1,0 +1,73 @@
+/*
+ * Shared language for the report tabs. A report answers one question: the verdict
+ * says it in words, the figure shows it, and everything else stays folded away.
+ * Red is reserved for exceedance so that a glance at colour alone carries meaning.
+ */
+:host{--ink:#15202b;--slate:#5a6b7b;--rule:#d9e0e6;--field:#f6f8f9;--measure:#1f6f78;--over:#c0362c;--spare:#b9c4cb;--support:#6b5ca5}
+
+.rpt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+.rpt-head h2{margin:0;font-size:20px;letter-spacing:-.01em;color:var(--ink)}
+.rpt-head .rpt-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.rpt-verdict{margin:10px 0 0;max-width:68ch;font-size:16px;line-height:1.55;color:var(--ink)}
+.rpt-verdict b{font-weight:650}
+.rpt-verdict .over{color:var(--over)}
+.rpt-aside{margin:8px 0 0;max-width:68ch;font-size:13px;line-height:1.6;color:var(--slate)}
+
+.rpt-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--rule);border-block:1px solid var(--rule);margin:22px 0}
+.rpt-kpis>div{background:#fff;padding:14px 16px;min-width:0}
+.rpt-kpis dt{margin:0;font-size:12px;color:var(--slate)}
+.rpt-kpis dd{margin:4px 0 0;font-size:27px;line-height:1.1;color:var(--ink);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.rpt-kpis dd small{font-size:13px;color:var(--slate);margin-left:3px}
+.rpt-kpis dd.over{color:var(--over)}
+.rpt-kpis .muted dd{color:var(--slate)}
+
+.rpt-filters{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0}
+.rpt-filters .field{flex:1 1 190px;margin:0;font-size:12px;color:var(--slate)}
+
+.rpt-figure{margin:4px 0 0;overflow-x:auto}
+.rpt-figure svg{display:block;width:100%;min-width:520px;height:auto}
+.rpt-figure text{fill:var(--slate);font-family:inherit;font-size:11px;font-variant-numeric:tabular-nums}
+.rpt-figure .axis{stroke:var(--rule)}
+.rpt-figure .zero{stroke:#c3ccd3}
+.rpt-key{display:flex;flex-wrap:wrap;gap:8px 18px;margin:12px 0 0;font-size:12px;color:var(--slate)}
+.rpt-key span{display:flex;align-items:center;gap:7px}
+.rpt-key i{width:11px;height:11px;border-radius:2px;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.rpt-key i.line{height:3px;border-radius:2px;width:14px}
+.rpt-key i.rule{height:0;width:16px;border-top:2.5px solid var(--ink);border-radius:0}
+.rpt-key i.dash{height:0;width:16px;border-top:2px dashed var(--ink);opacity:.6;border-radius:0}
+.rpt-figure.gaps{margin-top:18px}
+.rpt-figure.gaps svg{max-height:120px}
+
+.f-measure{fill:var(--measure);background:var(--measure)}
+.f-support{fill:var(--support);background:var(--support)}
+.f-over{fill:var(--over);background:var(--over)}
+.f-spare{fill:var(--spare);background:var(--spare)}
+.s-capacity{stroke:var(--ink);stroke-width:2.5;stroke-linecap:round;background:var(--ink)}
+
+.rpt-folds{margin-top:26px;border-top:1px solid var(--rule)}
+.rpt-folds details{border-bottom:1px solid var(--rule)}
+.rpt-folds summary{cursor:pointer;padding:14px 2px;font-size:14px;color:var(--ink);display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.rpt-folds summary::-webkit-details-marker{display:none}
+.rpt-folds summary::marker{content:""}
+.rpt-folds summary::before{content:"+";color:var(--slate);font-size:15px;width:14px;flex:0 0 14px}
+.rpt-folds details[open] summary::before{content:"\2212"}
+.rpt-folds summary span{flex:1}
+.rpt-folds summary small{color:var(--slate);font-variant-numeric:tabular-nums}
+.rpt-folds .fold-body{padding:0 0 20px 14px}
+.rpt-folds .fold-body p{font-size:13px;line-height:1.7;color:var(--slate);max-width:76ch;margin:0 0 12px}
+.rpt-folds table{width:100%;font-variant-numeric:tabular-nums}
+
+.rpt-empty{padding:34px 0;color:var(--slate);font-size:14px}
+
+@media(max-width:720px){.rpt-kpis{grid-template-columns:1fr 1fr}.rpt-verdict{font-size:15px}}
+@media print{
+ .rpt-filters,.rpt-actions{display:none}
+ .rpt-figure{overflow:visible;break-inside:avoid}
+ .rpt-figure svg{min-width:0}
+ .rpt-folds details{break-inside:avoid}
+ .rpt-folds .fold-body{display:block}
+ .rpt-folds details:not([open])>.fold-body{display:block}
+ .rpt-kpis{break-inside:avoid}
+ .rpt-figure rect,.rpt-key i{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+}

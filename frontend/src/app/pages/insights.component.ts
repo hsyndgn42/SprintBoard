@@ -24,6 +24,7 @@ import { SbToastService } from '../shared/sb-toast';
 /** Keeps the bar chart readable by default; the operator can open it up to the full filtered list. */
 const CHART_MEMBER_LIMIT = 8;
 import { SbStateComponent } from '../shared/sb-state.component';
+import { SbColumnsComponent, SbRankedComponent, Column, Ranked } from './report-charts';
 import { TASK_CATEGORIES, TASK_CATEGORY_COLORS, taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
 
 interface MemberReportSummary {
@@ -43,10 +44,10 @@ interface WorkSubtypeSummary {
 
 @Component({
   standalone: true,
-  imports: [OvertimeTrendComponent,ListPagerComponent, ScopeReportComponent,ReportHtmlExportComponent, RouterLink, FormsModule, DefectReportComponent, MemberContextComponent, RoadmapReportComponent, CapacityTrendComponent, SbStateComponent],
+  imports: [OvertimeTrendComponent, ScopeReportComponent,ReportHtmlExportComponent, RouterLink, FormsModule, DefectReportComponent, MemberContextComponent, RoadmapReportComponent, CapacityTrendComponent, SbStateComponent, SbColumnsComponent, SbRankedComponent],
   host: {'class':'reports-page'},
   templateUrl: './reports.component.html',
-  styleUrl: './reports.component.css',
+  styleUrls: ['./reports.component.css','./report-design.css'],
 })
 export class ReportsComponent implements OnInit {
   readonly chartMemberLimit = CHART_MEMBER_LIMIT;
@@ -102,6 +103,82 @@ export class ReportsComponent implements OnInit {
   get recentChartRows(): ReportRow[] { return [...this.rows].sort((a,b) => a.number-b.number).slice(-8); }
   get averageDelivery(): number | null { const total = this.rows.reduce((sum,row) => sum + row.tasks,0); return total ? Math.round(this.totalDone * 100 / total) : null; }
   get deliveryTrendPoints(): string { return this.chartRows.map((row, index) => `${this.chartX(index)},${this.chartY(row.deliveryRate)}`).join(' '); }
+
+  // --- Charts and verdicts -------------------------------------------------
+  // Each tab opens with one sentence drawn from its own numbers, so the reader
+  // is told what happened instead of being handed figures to interpret.
+  private esc(value:string){return value.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));}
+  private nf(n:number){return new Intl.NumberFormat('tr-TR',{maximumFractionDigits:1}).format(n);}
+
+  get deliveryColumns(): Column[] { return [...this.rows].sort((a,b)=>a.number-b.number).map(r=>({key:r.id,label:'S'+r.number,
+    caption:r.name+': '+r.done+' Done, '+r.undone+' Undone'+(r.deliveryRate===null?'':', teslimat %'+r.deliveryRate),
+    segments:[{label:'Done',value:r.done,fill:'#1f6f78'},{label:'Undone',value:r.undone,fill:'#c0362c'}]})); }
+  get averageDelivered(): number|null { return this.rows.length?this.totalDone/this.rows.length:null; }
+  get sizeColumns(): Column[] { return this.recentChartRows.map(r=>({key:r.id,label:'S'+r.number,
+    caption:this.sizeText(r),
+    segments:this.settings.estimationMode==='SIZE_AND_HOURS'
+      ?[{label:'Small',value:r.sizeSmall,fill:'#bcd4d6'},{label:'Medium',value:r.sizeMedium,fill:'#79aeb2'},{label:'Large',value:r.sizeLarge,fill:'#3a8991'},{label:'X-Large',value:r.sizeXLarge,fill:'#15505a'}]
+      :[{label:'Story Point',value:r.storyPointsTotal,fill:'#1f6f78'}]})); }
+  get averageSizeVolume(): number|null { const rows=this.recentChartRows; if(!rows.length)return null;
+    return this.settings.estimationMode==='SIZE_AND_HOURS'
+      ?rows.reduce((n,r)=>n+r.sizeSmall+r.sizeMedium+r.sizeLarge+r.sizeXLarge,0)/rows.length
+      :rows.reduce((n,r)=>n+r.storyPointsTotal,0)/rows.length; }
+  get deliveryVerdict(): string {
+    const n=this.rows.length,rate=this.averageDelivery;
+    if(!n)return 'Henüz tamamlanan sprint yok.';
+    const worst=[...this.rows].filter(r=>r.deliveryRate!==null).sort((a,b)=>(a.deliveryRate??0)-(b.deliveryRate??0))[0];
+    let text=n+' tamamlanan sprintte '+this.totalDone+' iş teslim edildi';
+    text+=rate===null?'.':'; genel teslimat oranı <b'+(rate<80?' class="over"':'')+'>%'+rate+'</b>.';
+    if(this.totalUndone>0)text+=' <b class="over">'+this.totalUndone+' iş</b> Undone kapandı';
+    if(this.totalUndone>0&&worst&&n>1)text+=', en düşük oran '+this.esc(worst.name)+' (%'+worst.deliveryRate+').';
+    else if(this.totalUndone>0)text+='.';
+    else text+=' Hiçbir sprint Undone iş bırakmadı.';
+    return text;
+  }
+
+  get memberRanked(): Ranked[] { return this.chartMembers.map(m=>({key:m.memberId,label:m.memberName,
+    note:this.nf(m.effortHours)+' sa'+(m.supportTaskCount?' · '+m.supportTaskCount+' X destek':''),
+    caption:m.memberName+': '+m.taskCount+' iş, '+this.nf(m.effortHours)+' sa, '+m.done+' Done, '+m.undone+' Undone',
+    segments:[{label:'Done',value:m.done,fill:'#1f6f78'},{label:'Undone',value:m.undone,fill:'#c0362c'},{label:'Diğer',value:m.other,fill:'#b9c4cb'}]})); }
+  get averageMemberTasks(): number|null { return this.memberSummary.length?this.memberTaskTotal/this.memberSummary.length:null; }
+  get memberVerdict(): string {
+    const people=this.memberSummary;
+    if(!people.length)return 'Seçili kapsamda atama kaydı yok.';
+    const busiest=[...people].sort((a,b)=>b.taskCount-a.taskCount)[0];
+    const average=this.averageMemberTasks??0;
+    let text=people.length+' kişiye '+this.memberTaskTotal+' iş ve <b>'+this.nf(this.memberEffortTotal)+' saat</b> plan düştü; Done oranı <b>%'+this.memberDoneRate+'</b>.';
+    text+=' Kişi başına ortalama '+this.nf(Math.round(average*10)/10)+' iş var';
+    if(busiest&&people.length>1)text+=', en çok iş '+this.esc(busiest.memberName)+'\u2019de ('+busiest.taskCount+').';
+    else text+='.';
+    const undone=people.reduce((n,p)=>n+p.undone,0);
+    if(undone>0)text+=' Toplam <b class="over">'+undone+' iş</b> Undone kaldı.';
+    return text;
+  }
+
+  get typeRanked(): Ranked[] { return [...this.workTypeSummary].sort((a,b)=>b.effortHours-a.effortHours).map(r=>({key:r.taskCategory,label:this.categoryLabel(r.taskCategory),
+    note:r.taskCount+' iş · '+r.done+' Done · '+r.undone+' Undone',
+    caption:this.categoryLabel(r.taskCategory)+': '+this.nf(r.effortHours)+' sa, '+r.taskCount+' iş',
+    segments:[{label:this.categoryLabel(r.taskCategory),value:r.effortHours,fill:r.color}]})); }
+  get averageTypeEffort(): number|null { return this.workTypeSummary.length?this.taxonomyEffortTotal/this.workTypeSummary.length:null; }
+  subtypeRanked(category: TaskCategory): Ranked[] { const color=this.categoryColor(category);
+    return this.subtypeSummary(category).map(r=>({key:String(r.taskSubtype),label:this.subtypeLabel(r.taskSubtype),
+      note:this.nf(r.effortHours)+' sa · %'+this.subtypeDoneRate(r)+' Done',
+      caption:this.subtypeLabel(r.taskSubtype)+': '+r.taskCount+' iş',
+      segments:[{label:this.subtypeLabel(r.taskSubtype),value:r.taskCount,fill:color}]})); }
+  get typeVerdict(): string {
+    const rows=this.workTypeSummary;
+    if(!rows.length)return 'Seçili dönemde iş tipi kaydı yok.';
+    const top=[...rows].sort((a,b)=>b.effortHours-a.effortHours)[0];
+    const effort=this.taxonomyEffortTotal;
+    let text=this.esc(this.typePeriod)+' kapsamında '+this.taxonomyTaskTotal+' iş ve <b>'+this.nf(effort)+' saat</b> plan var.';
+    if(top&&effort>0)text+=' Eforun en büyük payı '+this.esc(this.categoryLabel(top.taskCategory))+' (%'+Math.round(top.effortHours*100/effort)+').';
+    const bau=rows.find(r=>r.taskCategory==='BAU'),defect=rows.find(r=>r.taskCategory==='DEFECT');
+    const unplanned=(bau?.effortHours||0)+(defect?.effortHours||0);
+    if(unplanned>0&&effort>0)text+=' BAU ve defect birlikte eforun <b'+(unplanned/effort>0.3?' class="over"':'')+'>%'+Math.round(unplanned*100/effort)+'</b>\u2019ini alıyor.';
+    text+=' Done oranı %'+this.taxonomyDoneRate+'.';
+    return text;
+  }
+
   get memberSummary(): MemberReportSummary[] {
     const summaries = new Map<string, MemberReportSummary>();
     for (const row of this.memberRows) {
