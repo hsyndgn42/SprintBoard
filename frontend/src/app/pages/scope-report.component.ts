@@ -3,7 +3,7 @@ import {FormsModule} from '@angular/forms';
 import {ApiService,Sprint} from '../api.service';
 import {ScopeSummaryComponent} from './scope-summary.component';
 import {scopeReportHtml,buildScope} from './scope-summary.model';
-import {SbColumnsComponent,SbFlowComponent,Column,Step} from './report-charts';
+import {SbDumbbellComponent,SbFlowComponent,Dumbbell,Step} from './report-charts';
 import {downloadText} from './share-export';
 
 /**
@@ -11,7 +11,7 @@ import {downloadText} from './share-export';
  * the opening plan with what was added afterwards. Inside one sprint it reads as a sequence of
  * moves, so the chart becomes a flow. The reasons people typed stay in the per-sprint detail.
  */
-@Component({selector:'app-scope-report',standalone:true,imports:[FormsModule,ScopeSummaryComponent,SbColumnsComponent,SbFlowComponent],template:`
+@Component({selector:'app-scope-report',standalone:true,imports:[FormsModule,ScopeSummaryComponent,SbDumbbellComponent,SbFlowComponent],template:`
 <section class="card card-pad scope-report">
 
 <div class="rpt-head"><h2>Acil işler ve kapsam değişimi</h2><div class="rpt-actions"><button class="btn" [disabled]="loading||!!error" (click)="download()">HTML indir</button></div></div>
@@ -35,8 +35,8 @@ import {downloadText} from './share-export';
 <div class="rpt-figure"><sb-flow [steps]="flow" unit="sa" [label]="one.name+' kapsamının açılıştan bugüne akışı'" /></div>
 <div class="rpt-key"><span><i style="background:#1f6f78"></i>Başlangıç planı</span><span><i style="background:#c0362c"></i>Eklenen</span><span><i style="background:#b9c4cb"></i>Çıkarılan</span><span><i style="background:#15202b"></i>Güncel kapsam</span></div>
 }@else{
-<div class="rpt-figure"><sb-columns [columns]="columns" unit="sa" [average]="averageBaseline" averageLabel="ortalama açılış planı" label="Sprintlerin açılış planı ve üstüne sonradan eklenen iş" /></div>
-<div class="rpt-key"><span><i style="background:#1f6f78"></i>Açılış planı</span><span><i style="background:#c0362c"></i>Sonradan eklenen</span><span><i class="rule"></i>Güncel kapsam</span><span><i class="dash"></i>Ortalama açılış planı</span></div>
+<div class="rpt-figure"><sb-dumbbell [rows]="moves" unit="sa" label="Sprintlerin açılış planı ile güncel kapsamı arasındaki mesafe" fromColor="#1f6f78" toColor="#c0362c" /></div>
+<div class="rpt-key"><span><i style="background:#1f6f78"></i>Açılış planı</span><span><i style="background:#c0362c"></i>Güncel kapsam</span><span>Sağdaki rakam: güncel / açılış (sa)</span></div>
 }
 
 <h3 class="rpt-sub">Sprint sprint gerekçeler</h3>
@@ -58,10 +58,11 @@ export class ScopeReportComponent implements OnInit,OnDestroy{
  total(key:'baselineHours'|'addedHours'|'removedHours'|'currentHours'|'emergencyHours'){return this.tracked.reduce((n,s)=>n+buildScope(s)[key],0);}
  get emergencyCount(){return this.tracked.reduce((n,s)=>n+buildScope(s).emergencies.length,0);}
 
- get columns():Column[]{return this.tracked.map(s=>{const m=buildScope(s);return {key:s.id,label:'S'+s.number,marker:m.currentHours,
-  caption:s.name+': açılış '+this.fmt(m.baselineHours)+' sa, eklenen '+this.fmt(m.addedHours)+' sa, çıkarılan '+this.fmt(m.removedHours)+' sa, güncel '+this.fmt(m.currentHours)+' sa',
-  segments:[{label:'Açılış planı',value:m.baselineHours,fill:'#1f6f78'},{label:'Sonradan eklenen',value:m.addedHours,fill:'#c0362c'}]};});}
- get averageBaseline(){return this.tracked.length?this.total('baselineHours')/this.tracked.length:null;}
+ /** The distance between the two dots is the scope change; the colour says which way it went. */
+ get moves():Dumbbell[]{return this.tracked.slice(-12).map(s=>{const m=buildScope(s);return {key:s.id,label:s.name,
+  note:(m.addedHours>0?'+'+this.fmt(m.addedHours)+' sa eklendi':'ekleme yok')+(m.removedHours>0?' · −'+this.fmt(m.removedHours)+' sa çıktı':''),
+  from:m.baselineHours,to:m.currentHours,
+  caption:s.name+': açılış '+this.fmt(m.baselineHours)+' sa, eklenen '+this.fmt(m.addedHours)+' sa, çıkarılan '+this.fmt(m.removedHours)+' sa, güncel '+this.fmt(m.currentHours)+' sa'};});}
  get flow():Step[]{const s=this.one;if(!s)return [];const m=buildScope(s);
   return [{label:'Açılış planı',value:m.baselineHours,kind:'base'},{label:'Eklenen',value:m.addedHours,kind:'add'},{label:'Çıkarılan',value:m.removedHours,kind:'remove'},{label:'Güncel kapsam',value:m.currentHours,kind:'total'}];}
 

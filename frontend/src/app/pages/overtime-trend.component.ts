@@ -1,7 +1,7 @@
 import {Component,Input,Output,EventEmitter,OnInit,inject,ChangeDetectorRef} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {ApiService,SprintSummary,OvertimeRecord,OvertimeEntry,LeaveRecord,TeamMember} from '../api.service';
-import {SbColumnsComponent,Column} from './report-charts';
+import {SbColumnsComponent,SbLinesComponent,Column,Series,Point} from './report-charts';
 import {ReportHtmlExportComponent} from './report-html-export.component';
 import {OvertimeTrendRow,overtimeTrend,round} from './operational-trends.model';
 
@@ -10,7 +10,7 @@ import {OvertimeTrendRow,overtimeTrend,round} from './operational-trends.model';
  * planned? The columns break the worked hours into their causes and the tick marks the plan,
  * so the gap between intent and reality is the shape of the chart rather than a number.
  */
-@Component({selector:'app-overtime-trend',standalone:true,imports:[FormsModule,SbColumnsComponent,ReportHtmlExportComponent],template:`
+@Component({selector:'app-overtime-trend',standalone:true,imports:[FormsModule,SbColumnsComponent,SbLinesComponent,ReportHtmlExportComponent],template:`
 <section class="card card-pad overtime-report">
 
 <div class="rpt-head"><h2>Mesai</h2>@if(!sprintId){<div class="rpt-actions"><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'overtime',rows:visible,scope:scope,entries:visibleEntries}"/></div>}</div>
@@ -35,12 +35,13 @@ import {OvertimeTrendRow,overtimeTrend,round} from './operational-trends.model';
 <div><dt>Mesaiden izin</dt><dd>{{sum('usedDays')}}<small>gün</small></dd></div>
 </dl>
 
-<div class="rpt-figure"><sb-columns [columns]="columns" unit="sa" [average]="averageEarned" averageLabel="ortalama gerçekleşen" label="Sprint bazlı gerçekleşen mesainin plana göre kırılımı ve planlanan mesai çizgisi" /></div>
-<div class="rpt-key"><span><i style="background:#1f6f78"></i>Plana bağlı</span><span><i style="background:#c0362c"></i>Plan aşımı</span><span><i style="background:#6b5ca5"></i>Plansız</span><span><i style="background:#b9c4cb"></i>Sınıflandırılmamış</span><span><i class="rule"></i>Planlanan mesai</span><span><i class="dash"></i>Ortalama gerçekleşen</span></div>
+<div class="rpt-figure"><sb-columns [columns]="columns" unit="sa" markerLabel="planlanan" label="Sprint bazlı gerçekleşen mesainin plana göre kırılımı ve planlanan mesai çizgisi" /></div>
+<div class="rpt-key"><span><i style="background:#1f6f78"></i>Plana bağlı</span><span><i style="background:#c0362c"></i>Plan aşımı</span><span><i style="background:#6b5ca5"></i>Plansız</span><span><i style="background:#b9c4cb"></i>Sınıflandırılmamış</span><span><i class="rule"></i>Planlanan mesai</span></div>
 
 @if(usedAny){
 <h3 class="rpt-sub">Mesainin karşılığı izne dönüyor mu</h3>
-<div class="rpt-figure"><sb-columns [columns]="leaveColumns" unit="gün" [average]="averageUsed" averageLabel="ortalama" label="Sprint bazlı mesaiden izin kullanımı" /></div>
+<div class="rpt-figure"><sb-lines [series]="leaveSeries" [points]="leavePoints" unit="gün" label="Sprint bazlı mesaiden izin kullanımı" /></div>
+<div class="rpt-key"><span><i style="background:#1f6f78"></i>Kullanılan izin günü</span></div>
 @if(unmatched){<p class="rpt-aside">İzin günleriyle eşleştirilmemiş {{unmatched}} saatlik tarihsel kullanım/düzeltme var; gün toplamına çevrilmedi.</p>}}
 
 <div class="rpt-folds">
@@ -77,11 +78,9 @@ export class OvertimeTrendComponent implements OnInit{
  get columns():Column[]{return this.history.map(r=>({key:r.id,label:'S'+r.number,marker:r.planned>0?r.planned:null,
   caption:r.name+(r.status==='active'?' (aktif)':'')+': '+r.earned+' sa gerçekleşen, '+r.planned+' sa planlanan',
   segments:[{label:'Plana bağlı',value:r.matched||0,fill:'#1f6f78'},{label:'Plan aşımı',value:r.excess||0,fill:'#c0362c'},{label:'Plansız',value:r.unplanned||0,fill:'#6b5ca5'},{label:'Sınıflandırılmamış',value:r.unclassified||0,fill:'#b9c4cb'}]}));}
- get leaveColumns():Column[]{return this.history.map(r=>({key:r.id,label:'S'+r.number,caption:r.name+': '+r.usedDays+' gün mesaiden izin',
-  segments:[{label:'Mesaiden izin',value:r.usedDays,fill:'#1f6f78'}]}));}
+ get leaveSeries():Series[]{return [{label:'Mesaiden izin',color:'#1f6f78',kind:'area'}];}
+ get leavePoints():Point[]{return this.history.map(r=>({label:'S'+r.number,caption:r.name+': '+r.usedDays+' gün mesaiden izin',values:[r.usedDays]}));}
  get usedAny(){return this.history.some(r=>r.usedDays>0)}
- get averageEarned(){return this.history.length?round(this.history.reduce((n,r)=>n+r.earned,0)/this.history.length):null}
- get averageUsed(){return this.history.length?round(this.history.reduce((n,r)=>n+r.usedDays,0)/this.history.length):null}
 
  get verdict(){
   const earned=this.sum('earned'),planned=this.sum('planned'),unplanned=this.sum('unplanned'),excess=this.sum('excess'),days=this.sum('usedDays');

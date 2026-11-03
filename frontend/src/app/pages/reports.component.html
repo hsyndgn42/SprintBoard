@@ -21,14 +21,16 @@
       <div><dt>Undone</dt><dd [class.over]="totalUndone>0">{{ totalUndone }}</dd></div>
       <div><dt>Teslimat oranı</dt><dd [class.over]="averageDelivery!==null&&averageDelivery<80">{{ averageDelivery === null ? '—' : '%'+averageDelivery }}</dd></div>
     </dl>
-    <div class="rpt-figure"><sb-columns [columns]="deliveryColumns" unit="iş" [average]="averageDelivered" averageLabel="ortalama teslim" label="Sprint başına Done ve Undone iş sayıları" /></div>
-    <div class="rpt-key"><span><i style="background:#1f6f78"></i>Done</span><span><i style="background:#c0362c"></i>Undone</span><span><i class="dash"></i>Sprint başına ortalama teslim</span></div>
+    <div class="rpt-figure"><sb-lines [series]="deliverySeries" [points]="deliveryPoints" unit="%" label="Sprint bazlı teslimat oranı" /></div>
+    <div class="rpt-key"><span><i style="background:#1f6f78"></i>Teslimat oranı (%)</span><span>BAU hariç Done / tüm teslimat işleri</span></div>
+
+    <h3 class="rpt-sub">Alınan iş ile teslim edilen iş arasındaki fark</h3>
+    <div class="rpt-figure"><sb-dumbbell [rows]="deliveryVolume" unit="iş" label="Sprint başına alınan ve teslim edilen iş sayısı" fromColor="#b9c4cb" toColor="#1f6f78" /></div>
+    <div class="rpt-key"><span><i style="background:#b9c4cb"></i>Sprinte alınan iş</span><span><i style="background:#1f6f78"></i>Teslim edilen</span><span>Sağdaki rakam: teslim / alınan</span></div>
 
     <h3 class="rpt-sub">{{ settings.estimationMode === 'SIZE_AND_HOURS' ? 'İşlerin büyüklük dağılımı' : 'Story Point hacmi' }}</h3>
-    <p class="rpt-aside">Son {{ recentChartRows.length }} sprint. Aynı iş sayısı farklı büyüklükte olabilir, bu yüzden teslimat oranıyla birlikte okunmalı.</p>
-    <div class="rpt-figure"><sb-columns [columns]="sizeColumns" [unit]="settings.estimationMode === 'SIZE_AND_HOURS' ? 'iş' : 'SP'" [average]="averageSizeVolume" averageLabel="ortalama" label="Sprintlerin büyüklük kompozisyonu" /></div>
-    @if (settings.estimationMode === 'SIZE_AND_HOURS') { <div class="rpt-key"><span><i style="background:#bcd4d6"></i>Small</span><span><i style="background:#79aeb2"></i>Medium</span><span><i style="background:#3a8991"></i>Large</span><span><i style="background:#15505a"></i>X-Large</span><span><i class="dash"></i>Ortalama</span></div> }
-    @else { <div class="rpt-key"><span><i style="background:#1f6f78"></i>Story Point</span><span><i class="dash"></i>Ortalama</span></div> }
+    <p class="rpt-aside">Aynı iş sayısı farklı büyüklükte olabilir, bu yüzden teslimat oranıyla birlikte okunmalı.</p>
+    <div class="rpt-figure"><sb-donut [slices]="sizeSlices" [unit]="settings.estimationMode === 'SIZE_AND_HOURS' ? 'iş' : 'SP'" label="Tamamlanan sprintlerin büyüklük kompozisyonu" /></div>
 
     <div class="rpt-folds">
       <details><summary><span>Sprint sprint rakamlar</span><small>{{ rows.length }} sprint</small></summary><div class="fold-body"><div class="table-wrap"><table class="sprint-report-table"><caption class="sr-only">Sprint karşılaştırması: bitiş tarihi, iş sayısı, done ve undone dağılımı ile teslimat oranı.</caption><thead><tr><th scope="col">Sprint</th><th scope="col">Bitiş</th><th scope="col">İş</th><th scope="col">Done</th><th scope="col">Undone</th><th scope="col">Teslimat</th><th scope="col">{{ settings.estimationMode === 'SIZE_AND_HOURS' ? 'Size dağılımı' : 'Story Point' }}</th></tr></thead><tbody>
@@ -59,8 +61,8 @@
       <div><dt>Planlanan efor</dt><dd>{{ memberEffortTotal }}<small>sa</small></dd></div>
       <div><dt>Done oranı</dt><dd [class.over]="memberTaskTotal>0&&memberDoneRate<80">{{ memberTaskTotal ? '%'+memberDoneRate : '—' }}</dd></div>
     </dl>
-    <div class="rpt-figure"><sb-ranked [rows]="memberRanked" unit="iş" [average]="averageMemberTasks" averageLabel="kişi ortalaması" label="Kişi başına iş hacmi ve sonuç dağılımı" /></div>
-    <div class="rpt-key"><span><i style="background:#1f6f78"></i>Done</span><span><i style="background:#c0362c"></i>Undone</span><span><i style="background:#b9c4cb"></i>Diğer</span><span><i class="dash"></i>Kişi başına ortalama iş</span></div>
+    <div class="rpt-figure"><sb-dumbbell [rows]="memberMoves" unit="iş" label="Kişi başına alınan iş ve teslim edilen iş" fromColor="#b9c4cb" toColor="#1f6f78" /></div>
+    <div class="rpt-key"><span><i style="background:#b9c4cb"></i>Alınan iş</span><span><i style="background:#1f6f78"></i>Teslim edilen</span><span><i style="background:#c0362c"></i>Teslim, alınandan az</span><span>Sağdaki rakam: teslim / alınan</span></div>
     @if (hiddenChartMembers || showAllChartMembers) { <p class="rpt-aside"><button type="button" class="btn small" (click)="toggleChartMembers()">{{ showAllChartMembers ? 'İlk '+chartMemberLimit+' kişiyi göster' : 'Tümünü göster ('+memberSummary.length+')' }}</button> @if(hiddenChartMembers){<span>{{ hiddenChartMembers }} kişi grafikte gizli; tabloda hepsi var.</span>}</p> }
 
     <div class="rpt-folds">
@@ -95,13 +97,11 @@
       <div><dt>Done oranı</dt><dd [class.over]="taxonomyTaskTotal>0&&taxonomyDoneRate<80">{{ taxonomyTaskTotal ? '%'+taxonomyDoneRate : '—' }}</dd></div>
       <div><dt>Kategori</dt><dd>{{ workTypeSummary.length }}</dd></div>
     </dl>
-    <div class="rpt-figure"><sb-ranked [rows]="typeRanked" unit="sa" [average]="averageTypeEffort" averageLabel="kategori ortalaması" label="İş tiplerinin efor payı" /></div>
-    <div class="rpt-key"><span><i class="dash"></i>Kategori başına ortalama efor</span></div>
+    <div class="rpt-figure"><sb-donut [slices]="typeSlices" unit="sa" label="İş tiplerinin planlanan efor payı" /></div>
 
-    <h3 class="rpt-sub">Kategorilerin alt kırılımı</h3>
-    <div class="rpt-grid">@for (category of detailCategories; track category) { <div class="rpt-cell"><h4>{{ breakdownTitle(category) }}<small>{{ categoryTaskCount(category) }} iş</small></h4>
-      @if (subtypeRanked(category).length) { <sb-ranked [rows]="subtypeRanked(category)" unit="iş" [label]="breakdownTitle(category)" /> } @else { <p class="rpt-empty">Bu kırılımda kayıt yok.</p> }
-    </div> }</div>
+    <h3 class="rpt-sub">Alt kırılımlar</h3>
+    <p class="rpt-aside">Her satır bir kategorinin kendi içindeki iş adedi dağılımıdır.</p>
+    <div class="rpt-figure"><sb-stack [rows]="subtypeStacks" unit="iş" label="Kategori içinde alt türlerin adet payı" /></div>
 
     <div class="rpt-folds">
       <details><summary><span>Nasıl hesaplanıyor?</span></summary><div class="fold-body">

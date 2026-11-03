@@ -36,6 +36,7 @@
 .rpt-key i.line{height:3px;border-radius:2px;width:14px}
 .rpt-key i.rule{height:0;width:16px;border-top:2.5px solid var(--ink);border-radius:0}
 .rpt-key i.dash{height:0;width:16px;border-top:2px dashed var(--ink);opacity:.6;border-radius:0}
+.rpt-key i.band{background:#9bb4b8;opacity:.45;width:16px;height:12px;border-radius:2px}
 .rpt-figure.gaps{margin-top:18px}
 .rpt-figure.gaps svg{max-height:120px}
 

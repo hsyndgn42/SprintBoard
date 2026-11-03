@@ -1,5 +1,5 @@
 import {DefectTrendBucket,defectTrend} from './operational-trends.model';
-import {SbColumnsComponent,SbRankedComponent,Column,Ranked} from './report-charts';
+import {SbLinesComponent,SbDonutComponent,Series,Point,Slice} from './report-charts';
 import {DefectReservesComponent} from './defect-reserve.component';
 import type {DefectReserveSummary} from '../api.service';
 import { ReportHtmlExportComponent } from './report-html-export.component';
@@ -15,7 +15,7 @@ import { emptyDefect,defectLabel,severityOptions,environmentOptions } from '../d
  * The columns answer the first, the four rankings answer the second, and the defect
  * titles stay folded because they are private to the people working them.
  */
-@Component({selector:'app-defect-report',standalone:true,imports:[SbColumnsComponent,SbRankedComponent,DefectReservesComponent,ReportHtmlExportComponent,FormsModule,RouterLink],template:`
+@Component({selector:'app-defect-report',standalone:true,imports:[SbLinesComponent,SbDonutComponent,DefectReservesComponent,ReportHtmlExportComponent,FormsModule,RouterLink],template:`
 <section class="card card-pad defect-report">
 
 <div class="rpt-head"><h2>Defect analizi</h2><div class="rpt-actions"><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'defects',trend:trend,reserves:visibleReserves,rows:exportRows,charts:exportCharts,counts:{done:count('status','done'),open:filtered.length-count('status','done')-count('status','undone'),undone:count('status','undone')},scope:filterDescription}" /></div></div>
@@ -41,12 +41,12 @@ import { emptyDefect,defectLabel,severityOptions,environmentOptions } from '../d
 
 @if(scope==='pool'){<p class="rpt-aside">Backlog havuzundaki işler henüz bir sprinte bağlı değil, bu yüzden sprint trendi gösterilmiyor.</p>}
 @else{
-<div class="rpt-figure"><sb-columns [columns]="trendColumns" unit="defect" [average]="averagePerSprint" averageLabel="sprint ortalaması" label="Sprint bazlı Test, Prod ve diğer defect sayıları" /></div>
-<div class="rpt-key"><span><i style="background:#1f6f78"></i>Test defect</span><span><i style="background:#c0362c"></i>Prod defect</span><span><i style="background:#b9c4cb"></i>Diğer</span><span><i class="dash"></i>Sprint ortalaması</span></div>
+<div class="rpt-figure"><sb-lines [series]="trendSeries" [points]="trendPoints" unit="defect" label="Sprint bazlı açılan defect sayısı; Test ve Prod kırılımıyla" /></div>
+<div class="rpt-key"><span><i style="background:#15202b"></i>Toplam açılan</span><span><i style="background:#1f6f78"></i>Test defect</span><span><i style="background:#c0362c"></i>Prod defect</span></div>
 }
 
 <h3 class="rpt-sub">Defectler nerede yoğunlaşıyor</h3>
-<div class="rpt-grid">@for(chart of charts;track chart.key){<section><h4>{{chart.title}}</h4><sb-ranked [rows]="ranked(chart.key,chart.options,chart.color)" unit="defect" [label]="chart.title" /></section>}</div>
+<div class="rpt-grid">@for(chart of charts;track chart.key){<section><h4>{{chart.title}}</h4><sb-donut [slices]="slices(chart.key,chart.options,chart.palette)" unit="defect" [label]="chart.title" /></section>}</div>
 
 <div class="rpt-folds">
 @if(visibleReserves.length){<details><summary><span>Defect rezervi</span><small>{{visibleReserves.length}} sprint</small></summary><div class="fold-body"><app-defect-reserves [rows]="visibleReserves" /><p>Rezerv özeti seçili sprint kapsamını gösterir; tür, önem ve ortam filtreleri yalnız defect sonuçlarına uygulanır.</p></div></details>}
@@ -84,10 +84,10 @@ export class DefectReportComponent implements OnInit {
   severities=severityOptions;environments=environmentOptions;label=defectLabel;statusText=statusText;
   subtypeLabel=(_category:string,subtype:string|null)=>taskSubtypeLabel(subtype);get subtypeOptions(){return TASK_SUBTYPES['DEFECT']||[];}
   get charts(){return [
-    {key:'severity',title:'Önem',options:severityOptions,color:'#c0362c'},
-    {key:'environment',title:'Ortam',options:environmentOptions,color:'#1f6f78'},
-    {key:'subtype',title:'Defect türü',options:this.subtypeOptions,color:'#6b5ca5'},
-    {key:'status',title:'Sonuç',options:[{value:'done',label:'Done'},{value:'undone',label:'Undone'},{value:'doing',label:'Devam ediyor'},{value:'todo',label:'Yapılacak'},{value:'Ready',label:'Havuzda'}],color:'#5a6b7b'}];}
+    {key:'severity',title:'Önem',options:severityOptions,palette:['#c0362c','#d4674f','#e0997a','#ecc6b3','#b9c4cb']},
+    {key:'environment',title:'Ortam',options:environmentOptions,palette:['#1f6f78','#3f8f8a','#6fae9f','#a8c9bc','#b9c4cb']},
+    {key:'subtype',title:'Defect türü',options:this.subtypeOptions,palette:['#6b5ca5','#8c7fbb','#afa5d1','#d0cae5','#b9c4cb']},
+    {key:'status',title:'Sonuç',options:[{value:'done',label:'Done'},{value:'undone',label:'Undone'},{value:'doing',label:'Devam ediyor'},{value:'todo',label:'Yapılacak'},{value:'Ready',label:'Havuzda'}],palette:['#1f6f78','#c0362c','#6b5ca5','#8d9aa4','#b9c4cb']}];}
   detail(item:BacklogItem){return item.defect||emptyDefect();}refresh(){this.cdr.detectChanges();}
   get filtered(){return this.items.filter(i=>(this.scope==='all'||(this.scope==='sprints'?!!i.sprintId:this.scope==='pool'?!i.sprintId:i.sprintId===this.scope))&&(!this.subtype||i.taskSubtype===this.subtype)&&(!this.severity||this.detail(i).severity===this.severity)&&(!this.environment||this.detail(i).environment===this.environment));}
   get open(){return this.filtered.length-this.count('status','done')-this.count('status','undone');}
@@ -95,16 +95,16 @@ export class DefectReportComponent implements OnInit {
   get exportCharts(){return this.charts.map(c=>({title:c.title,rows:this.bars(c.key,c.options).map(b=>({label:b.label,count:b.count}))}));}
   count(key:string,value:string){return this.filtered.filter(i=>(key==='subtype'?i.taskSubtype:key==='status'?(i.taskStatus||i.state):(this.detail(i) as unknown as Record<string,unknown>)[key])===value).length;}
   bars(key:string,options:{value:string;label:string}[]){return options.map(o=>({...o,count:this.count(key,o.value),percent:this.filtered.length?100*this.count(key,o.value)/this.filtered.length:0}));}
-  /** Empty buckets are dropped so a chart never shows a row the team has no example of. */
-  ranked(key:string,options:{value:string;label:string}[],color:string):Ranked[]{
+  /** Empty buckets are dropped so a chart never shows a slice the team has no example of. */
+  slices(key:string,options:{value:string;label:string}[],palette:string[]):Slice[]{
    return this.bars(key,options).filter(b=>b.count>0).sort((a,b)=>b.count-a.count)
-    .map(b=>({key:b.value,label:b.label,caption:b.label+': '+b.count+' defect',segments:[{label:b.label,value:b.count,fill:color}]}));}
+    .map((b,i)=>({label:b.label,value:b.count,fill:palette[Math.min(i,palette.length-1)]}));}
   sprintName(id:string|null){return this.sprints.find(s=>s.id===id)?.name||'Backlog havuzu';}
 
-  get trendColumns():Column[]{return this.trend.map(r=>({key:r.id,label:'S'+r.number,
+  get trendSeries():Series[]{return [{label:'Toplam',color:'#15202b',kind:'line'},{label:'Test',color:'#1f6f78',kind:'area'},{label:'Prod',color:'#c0362c',kind:'area'}];}
+  get trendPoints():Point[]{return this.trend.map(r=>({label:'S'+r.number,
    caption:r.name+(r.status==='active'?' (aktif)':'')+': '+r.test+' Test, '+r.prod+' Prod, '+r.other+' diğer; '+r.done+' Done, '+r.open+' açık',
-   segments:[{label:'Test',value:r.test,fill:'#1f6f78'},{label:'Prod',value:r.prod,fill:'#c0362c'},{label:'Diğer',value:r.other,fill:'#b9c4cb'}]}));}
-  get averagePerSprint(){const t=this.trend;return t.length?t.reduce((n,r)=>n+r.test+r.prod+r.other,0)/t.length:null;}
+   values:[r.test+r.prod+r.other,r.test,r.prod]}));}
 
   get verdict(){
    const total=this.filtered.length,done=this.count('status','done'),undone=this.count('status','undone'),prod=this.count('subtype','PROD_DEFECT');

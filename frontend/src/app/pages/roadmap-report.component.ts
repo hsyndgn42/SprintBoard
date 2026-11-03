@@ -1,5 +1,5 @@
 import { ReportHtmlExportComponent } from './report-html-export.component';
-import { SbRankedComponent,Ranked } from './report-charts';
+import { SbDonutComponent,SbDumbbellComponent,Dumbbell,Slice } from './report-charts';
 import {Component,ChangeDetectorRef,EventEmitter,Output,OnInit,inject} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {RouterLink} from '@angular/router';
@@ -16,7 +16,7 @@ interface RoadmapEffort extends RoadmapItem {
  * both at once, and the dashed line marks the roadmap item of ordinary size so an outlier
  * is visible without reading a single number.
  */
-@Component({standalone:true,selector:'app-roadmap-report',imports:[ReportHtmlExportComponent,SbRankedComponent,FormsModule,RouterLink],template:`
+@Component({standalone:true,selector:'app-roadmap-report',imports:[ReportHtmlExportComponent,SbDonutComponent,SbDumbbellComponent,FormsModule,RouterLink],template:`
 <section class="card card-pad roadmap-effort-report">
 
 <div class="rpt-head"><h2>Roadmap eforu</h2><div class="rpt-actions"><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'roadmap',rows:visible,scope:'Tüm dönemler · '+kindLabel(kind)+' · '+(query||'Tüm referanslar')}" /><button class="btn" [disabled]="loading||!!error||!visible.length" (click)="exportCsv()">CSV indir</button></div></div>
@@ -39,12 +39,15 @@ interface RoadmapEffort extends RoadmapItem {
 <div><dt>Gerçekleşen mesai</dt><dd>{{fmt(total('overtimeHours'))}}<small>sa</small></dd></div>
 </dl>
 
-<div class="rpt-figure"><sb-ranked [rows]="ranked" unit="sa" [average]="averageEffort" averageLabel="ortalama" label="Roadmap öğelerine atanan planlanan efor; Done, Undone ve açık kırılımıyla" /></div>
-<div class="rpt-key"><span><i class="f-measure"></i>Done</span><span><i class="f-over"></i>Undone</span><span><i class="f-spare"></i>Açık</span><span><i class="dash"></i>Ortalama efor</span></div>
+<div class="rpt-figure"><sb-donut [slices]="effortSlices" unit="sa" label="Roadmap öğelerinin planlanan efor payı" /></div>
+
+<h3 class="rpt-sub">Planın ne kadarı Done oldu</h3>
+<div class="rpt-figure"><sb-dumbbell [rows]="landed" unit="sa" label="Roadmap başına atanan efor ve Done olan efor" fromColor="#b9c4cb" toColor="#1f6f78" /></div>
+<div class="rpt-key"><span><i style="background:#b9c4cb"></i>Atanan efor</span><span><i style="background:#1f6f78"></i>Done olan</span><span>Sağdaki rakam: Done / Atanan (sa)</span></div>
 
 @if(total('overtimeHours')>0){
 <h3 class="rpt-sub">Bu eforun üstüne yazılan mesai</h3>
-<div class="rpt-figure"><sb-ranked [rows]="overtimeRanked" unit="sa" [average]="averageOvertime" averageLabel="ortalama" label="Roadmap bazlı gerçekleşen mesai" /></div>
+<div class="rpt-figure"><sb-donut [slices]="overtimeSlices" unit="sa" label="Roadmap bazlı gerçekleşen mesai dağılımı" /></div>
 <p class="rpt-aside">Mesai planlanan efora eklenmez; kayıt anındaki Roadmap bağlantısına yazılır.</p>}
 
 <div class="rpt-folds">
@@ -76,14 +79,18 @@ export class RoadmapReportComponent implements OnInit {
   get visible(){const q=this.query.trim().toLocaleLowerCase('tr-TR');return this.rows.filter(r=>(!this.kind||r.kind===this.kind)&&(!q||(r.title+' '+(r.referenceId||'')).toLocaleLowerCase('tr-TR').includes(q))).sort((a,b)=>b.assignedHours-a.assignedHours);}
   total(key:'assignedHours'|'doneHours'|'undoneHours'|'openHours'|'poolEstimatedHours'|'overtimeHours'){return this.visible.reduce((sum,row)=>sum+row[key],0);}
 
-  /** Only the first dozen fit on a readable chart; the rest stay in the table. */
-  get ranked():Ranked[]{return this.visible.slice(0,12).map(r=>({key:r.id,label:r.title,note:this.kindLabel(r.kind)+(r.referenceId?' · '+r.referenceId:''),
-    caption:r.title+': '+this.fmt(r.assignedHours)+' sa atanan, '+this.fmt(r.doneHours)+' Done, '+this.fmt(r.undoneHours)+' Undone, '+this.fmt(r.openHours)+' açık',
-    segments:[{label:'Done',value:r.doneHours,fill:'#1f6f78'},{label:'Undone',value:r.undoneHours,fill:'#c0362c'},{label:'Açık',value:r.openHours,fill:'#b9c4cb'}]}));}
-  get overtimeRanked():Ranked[]{return this.visible.filter(r=>r.overtimeHours>0).sort((a,b)=>b.overtimeHours-a.overtimeHours).slice(0,8)
-    .map(r=>({key:r.id,label:r.title,caption:r.title+': '+this.fmt(r.overtimeHours)+' sa mesai',segments:[{label:'Mesai',value:r.overtimeHours,fill:'#6b5ca5'}]}));}
-  get averageEffort(){return this.visible.length?this.total('assignedHours')/this.visible.length:null;}
-  get averageOvertime(){const w=this.visible.filter(r=>r.overtimeHours>0);return w.length?this.total('overtimeHours')/w.length:null;}
+  /** Eight colours is as many as a reader can hold; the rest collapse into one slice. */
+  private readonly wheel=['#1f6f78','#c0362c','#6b5ca5','#d98c2b','#3f8f8a','#4a7fb5','#8d6e63','#9aa7b1'];
+  get effortSlices():Slice[]{const rows=this.visible.filter(r=>r.assignedHours>0);
+    const head=rows.slice(0,7).map((r,i)=>({label:r.title,value:r.assignedHours,fill:this.wheel[i],
+      note:this.kindLabel(r.kind)+' · %'+this.fmt(Math.round(r.doneHours/r.assignedHours*1000)/10)+' Done'}));
+    const rest=rows.slice(7).reduce((n,r)=>n+r.assignedHours,0);
+    return rest>0?[...head,{label:'Diğer '+(rows.length-7)+' öğe',value:rest,fill:'#c3ccd3'}]:head;}
+  get landed():Dumbbell[]{return this.visible.filter(r=>r.assignedHours>0).slice(0,10).map(r=>({key:r.id,label:r.title,
+    from:r.assignedHours,to:r.doneHours,
+    caption:r.title+': '+this.fmt(r.assignedHours)+' sa atanan, '+this.fmt(r.doneHours)+' sa Done, '+this.fmt(r.undoneHours)+' sa Undone, '+this.fmt(r.openHours)+' sa açık'}));}
+  get overtimeSlices():Slice[]{return this.visible.filter(r=>r.overtimeHours>0).sort((a,b)=>b.overtimeHours-a.overtimeHours).slice(0,8)
+    .map((r,i)=>({label:r.title,value:r.overtimeHours,fill:this.wheel[i],note:this.kindLabel(r.kind)}));}
   get doneShare(){const t=this.total('assignedHours');return t>0?Math.round(this.total('doneHours')/t*1000)/10:null;}
 
   get verdict(){
