@@ -66,7 +66,7 @@ public class HistoricalTestDataLoader implements ApplicationRunner {
     }
     for (JsonNode sprint : root.path("sprints")) {
       sprintByNumber.put(sprint.path("number").asInt(), text(sprint, "id", ""));
-      jdbc.update("INSERT INTO sprint VALUES (?,?,?,?,?,?,?,?)", text(sprint, "id", ""), sprint.path("number").asInt(),
+      jdbc.update("INSERT INTO sprint(id,number,name,goal,start_date,end_date,status,story_points_available) VALUES (?,?,?,?,?,?,?,?)", text(sprint, "id", ""), sprint.path("number").asInt(),
           text(sprint, "name", ""), text(sprint, "goal", ""), date(sprint, "start"), date(sprint, "end"),
           text(sprint, "status", "completed"), sprint.path("storyPointsAvailable").asBoolean(false));
     }

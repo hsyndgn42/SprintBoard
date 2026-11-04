@@ -28,6 +28,9 @@ import { SprintAddDialogComponent } from './sprint-add-dialog.component';
 import { SprintBoardComponent } from './sprint-board.component';
 import { TaskRemoveDialogComponent } from './task-remove-dialog.component';
 
+/** What the Jira sprint endpoint reports: whether it exists yet and how much of the sprint reached it. */
+interface JiraSprintStatus { enabled:boolean; jiraSprintId:string; name:string; state:string; error:string; placed:number; pending:number }
+
 @Component({
   standalone: true,
   imports: [ListPagerComponent, ModalAccessibilityDirective, FormsModule, RouterLink, SbStateComponent],
@@ -130,9 +133,15 @@ export class SprintsComponent implements OnInit, OnDestroy {
           @if (auth.isAdmin() && current.status === 'planned') { <button class="btn closing-action" (click)="start()">Sprinti başlat</button> }
           @if (auth.isAdmin() && wikiEnabled && current.status !== 'completed') { <button class="btn" [disabled]="wikiBusy" (click)="publishWiki()">{{ wikiBusy ? 'Wikiye gönderiliyor…' : (wikiUrl ? 'Wiki sayfasını güncelle' : 'Wikiye gönder') }}</button> }
           @if (wikiUrl) { <a class="btn subtle" [href]="wikiUrl" target="_blank" rel="noopener noreferrer">Wiki sayfası</a> }
+          @if (auth.isAdmin() && jira && !jira.jiraSprintId && current.status !== 'completed') { <button class="btn" [disabled]="jiraBusy" (click)="openJiraSprint()">{{ jiraBusy ? 'Jira sprinti açılıyor…' : (jira.state ? 'Jira sprintini tekrar dene' : 'Jira sprintini aç') }}</button> }
+          @else if (auth.isAdmin() && jira?.pending && current.status !== 'completed') { <button class="btn subtle" [disabled]="jiraBusy" (click)="openJiraSprint()">Jira sprintine aktar</button> }
         </div></div>
       @if (wikiError) { <p class="notice warn" role="alert">{{ wikiError }}</p> }
       @if (wikiMessage) { <p class="inline-success" role="status">{{ wikiMessage }}</p> }
+      @if (jiraError) { <p class="notice warn" role="alert">{{ jiraError }}</p> }
+      @if (jira && (jira.state==='FAILED'||jira.state==='BLOCKED')) { <p class="notice warn" role="alert">Jira sprinti açılamadı — {{ jira.error || 'bilinmeyen hata' }}</p> }
+      @else if (jira?.error) { <p class="notice" role="status">{{ jira?.error }}</p> }
+      @else if (jiraSprintNote) { <p class="data-note" role="status">{{ jiraSprintNote }}</p> }
       @if(current.closureFrozen){<p class="notice" data-testid="closure-frozen">Kapanış kaydı sabitlendi · {{ current.closedAt }}. Görevler, atamalar, kapasite ve tahmin yöntemi kapanış anını gösterir.</p>}
       <nav class="subtabs" aria-label="Sprint alanları"><a [routerLink]="['/sprints', current.id, 'summary']" [class.active]="tab==='summary'">Özet</a><a [routerLink]="['/sprints', current.id, 'planning']" [class.active]="tab==='planning'">Planlama</a><a [routerLink]="['/sprints', current.id, 'capacity']" [class.active]="tab==='capacity'">Kapasite</a><a [routerLink]="['/sprints', current.id, 'effort']" [class.active]="tab==='effort'">Efor matrisi</a><a [routerLink]="['/sprints', current.id, 'board']" [class.active]="tab==='board'">Pano</a><a [routerLink]="['/sprints', current.id, 'journal']" [class.active]="tab==='journal'">Sprint günlüğü</a><a [routerLink]="['/sprints', current.id, 'review']" [class.active]="tab==='review'">Review</a><a [routerLink]="['/sprints', current.id, 'retro']" [class.active]="tab==='retro'">Retro</a></nav>
       @if(tab==='planning'||tab==='capacity'){@defer(on immediate){<app-planning-insights [items]="current.items" [rows]="capacityRows" [loaded]="capacityLoaded" [mode]="settings.estimationMode" [historical]="current.status==='completed'" [editable]="auth.isAdmin()&&current.status!=='completed'" (allocate)="openAllocation($event)" (assign)="openAssignments($event)" />}}
@@ -385,12 +394,34 @@ export class SprintDetailComponent implements OnInit, OnDestroy {
    *  refresh; blanking them to "—" every 30 seconds reads as data loss. */
   async load(id: string, quiet = false): Promise<void> {
     const version=++this.sprintLoadVersion;if(!quiet)this.capacityLoaded=false;++this.capacityRequestId;if(id!==this.sprint?.id)this.sprint=null;
-    try { const [sprint,settings]=await Promise.all([this.api.get<Sprint>(`/sprints/${encodeURIComponent(id)}`),this.api.get<ProductSettings>('/settings')]);if(version!==this.sprintLoadVersion)return;this.sprint=sprint;this.breadcrumb.set(sprint?.name||'');this.settings=sprint?.closureSettings||sprint?.workSettings||settings;this.error='';if(['planning','capacity','summary'].includes(this.tab))await this.loadCapacity(id);void this.loadWikiLink(id);}
+    try { const [sprint,settings]=await Promise.all([this.api.get<Sprint>(`/sprints/${encodeURIComponent(id)}`),this.api.get<ProductSettings>('/settings')]);if(version!==this.sprintLoadVersion)return;this.sprint=sprint;this.breadcrumb.set(sprint?.name||'');this.settings=sprint?.closureSettings||sprint?.workSettings||settings;this.error='';if(['planning','capacity','summary'].includes(this.tab))await this.loadCapacity(id);void this.loadWikiLink(id);void this.loadJiraSprint(id);}
     catch(error){if(version===this.sprintLoadVersion){this.error=String(error);this.sprint=null;}}
     finally{if(version===this.sprintLoadVersion)this.cdr.detectChanges();}
   }
 
   wikiEnabled=false; wikiUrl=''; wikiBusy=false; wikiError=''; wikiMessage='';
+  jira:JiraSprintStatus|null=null; jiraBusy=false; jiraError='';
+  /** Only admins can read the Jira endpoint, and a disabled integration simply shows nothing. */
+  private async loadJiraSprint(id:string):Promise<void>{
+    if(!this.auth.isAdmin()){this.jira=null;return;}
+    try{const status=await this.api.get<JiraSprintStatus>(`/admin/jira/sprints/${encodeURIComponent(id)}`);if(this.sprint?.id!==id)return;this.jira=status.enabled?status:null;}
+    catch{this.jira=null;}
+    finally{this.cdr.detectChanges();}
+  }
+  /** Opens the Jira sprint, or queues another attempt when a previous one failed. */
+  async openJiraSprint():Promise<void>{
+    const id=this.sprint?.id; if(!id||this.jiraBusy)return;
+    this.jiraBusy=true;this.jiraError='';this.cdr.detectChanges();
+    try{this.jira=await this.api.post(`/admin/jira/sprints/${encodeURIComponent(id)}`,{});}
+    catch(error){this.jiraError=String(error);}
+    finally{this.jiraBusy=false;this.cdr.detectChanges();}
+  }
+  get jiraSprintNote():string{
+    if(!this.jira)return '';
+    if(this.jira.jiraSprintId)return `Jira sprinti ${this.jira.name||'açıldı'} · ${this.jira.placed} iş aktarıldı`+(this.jira.pending?` · ${this.jira.pending} iş sırada`:'');
+    if(this.jira.state==='PENDING')return 'Jira sprinti açılıyor…';
+    return '';
+  }
   /** A missing or disabled Confluence setup simply hides the button; it is not an error. */
   private async loadWikiLink(id: string): Promise<void> {
     try { const link=await this.api.get<{enabled:boolean;pageUrl:string}>(`/admin/confluence/sprint/${encodeURIComponent(id)}`); if(this.sprint?.id!==id)return; this.wikiEnabled=link.enabled; this.wikiUrl=link.pageUrl; }

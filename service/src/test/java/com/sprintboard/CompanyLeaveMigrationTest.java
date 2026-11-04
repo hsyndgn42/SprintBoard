@@ -17,7 +17,7 @@ class CompanyLeaveMigrationTest {
      for(String suffix:List.of("huseyin","elcim","isa","cemil","umran","gorkem","akin","sakir","ali-firat")){
        db.update("INSERT INTO member VALUES (?,?,'','Member','DEVELOPER','CORE',TRUE,NULL,NULL)","legacy-member-"+suffix,suffix);
      }
-     db.update("INSERT INTO sprint VALUES ('legacy-sprint-13',13,'Sprint 13','',DATE '2026-08-04',DATE '2026-08-24','completed',FALSE)");
+     db.update("INSERT INTO sprint(id,number,name,goal,start_date,end_date,status,story_points_available) VALUES ('legacy-sprint-13',13,'Sprint 13','',DATE '2026-08-04',DATE '2026-08-24','completed',FALSE)");
      db.update("INSERT INTO leave_record(id,member_id,sprint_id,days,precision_label,status) VALUES ('existing-personal','legacy-member-isa','legacy-sprint-13',1,'sprint-level','used')");
      db.update("INSERT INTO overtime_snapshot VALUES ('existing-overtime','legacy-member-isa','legacy-sprint-13',62,24,38)");
      var balances=db.queryForList("SELECT * FROM overtime_snapshot");

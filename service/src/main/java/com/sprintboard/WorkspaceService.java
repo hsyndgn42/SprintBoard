@@ -33,9 +33,9 @@ public class WorkspaceService {
   private final WorkScheduleService schedules;
   private final MemberCapacityService memberCapacity;
   private final ParticipationService participation;
-  private final JiraOutbox jiraOutbox;
+  private final JiraOutbox jiraOutbox; private final JiraSprintService jiraSprints;
 
-  public WorkspaceService(JdbcTemplate jdbc, ObjectMapper mapper, BacklogPlanningService planning, SprintClosureStore closures,DefectService defects,TaskSubtypeService subtypes,SprintFlowService flow,JiraOutbox jiraOutbox) {
+  public WorkspaceService(JdbcTemplate jdbc, ObjectMapper mapper, BacklogPlanningService planning, SprintClosureStore closures,DefectService defects,TaskSubtypeService subtypes,SprintFlowService flow,JiraOutbox jiraOutbox,JiraSprintService jiraSprints) {
     this.jdbc = jdbc;
     this.schedules = new WorkScheduleService(jdbc,mapper);
     this.memberCapacity=new MemberCapacityService(jdbc);
@@ -47,6 +47,7 @@ public class WorkspaceService {
     this.subtypes = subtypes;
     this.flow = flow;
     this.jiraOutbox = jiraOutbox;
+    this.jiraSprints = jiraSprints;
   }
 
   private static Map<String, Object> map(Object... entries) {
@@ -1012,7 +1013,7 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
     jdbc.queryForObject("SELECT setting_value FROM product_setting WHERE setting_key='estimation_mode' FOR UPDATE",String.class);
     int number = jdbc.queryForObject("SELECT COALESCE(MAX(number),0)+1 FROM sprint", Integer.class);
     String newId = id("sprint");
-    jdbc.update("INSERT INTO sprint VALUES (?,?,?,?,?,?,?,?)", newId, number, name, text(input, "goal"),
+    jdbc.update("INSERT INTO sprint(id,number,name,goal,start_date,end_date,status,story_points_available) VALUES (?,?,?,?,?,?,?,?)", newId, number, name, text(input, "goal"),
         java.sql.Date.valueOf(start), java.sql.Date.valueOf(end), "planned", false);
     schedules.capture(newId,LocalDate.parse(start));
     memberCapacity.capture(newId,LocalDate.parse(start),schedules.forSprint(newId).hoursPerDay());
@@ -1174,6 +1175,7 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
     if (sprints().stream().anyMatch(item -> "active".equals(item.get("status")))) throw new IllegalArgumentException("Önce aktif sprinti tamamlayın.");
     jdbc.update("UPDATE sprint SET status='active' WHERE id=?", id);
     jiraOutbox.enqueueSprint(id);
+    jiraSprints.request(id);
     flow.begin(id,(List<Map<String,Object>>)row.get("items"),true);
     audit("sprint", id, "started", map());
     return map("id", id, "status", "active");
