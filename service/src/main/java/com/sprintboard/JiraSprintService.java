@@ -39,6 +39,24 @@ public class JiraSprintService {
   db.update("UPDATE sprint SET jira_sprint_state=CASE WHEN jira_sprint_id IS NULL THEN 'PENDING' ELSE 'SENT' END,jira_sprint_error='',jira_sprint_attempts=0,jira_sprint_retry_at=NULL WHERE id=?",sprintId);
  }
 
+ /** Lists the board's open sprints so an operator picks a name instead of hunting for a number. */
+ public List<Map<String,Object>> boardSprints(){
+  var config=configs.load();
+  if(!config.enabled())throw new IllegalArgumentException("Jira entegrasyonu kapalı.");
+  String board=config.boardId().trim();
+  if(!board.matches("[0-9]{1,18}"))throw new IllegalArgumentException("Jira ayarlarında geçerli bir Board ID yok. Sprintlerin listelenmesi için panoyu girin.");
+  var found=transport.get(config.baseUrl(),configs.token(),"/rest/agile/1.0/board/"+board+"/sprint",Map.of("state","active,future","maxResults","50"));
+  var out=new ArrayList<Map<String,Object>>();
+  for(var sprint:found.path("values")){
+   long id=sprint.path("id").asLong();
+   if(id<=0)continue;
+   out.add(Map.of("id",String.valueOf(id),"name",sprint.path("name").asText(""),"state",sprint.path("state").asText("")));
+  }
+  // Jira returns the oldest first; the sprint someone is looking for is almost always the newest.
+  Collections.reverse(out);
+  return out;
+ }
+
  /**
   * Binds an existing Jira sprint instead of opening a new one. The sprint is read back from
   * Jira first, because a typo in the id would otherwise push the whole sprint into a stranger's
@@ -157,7 +175,7 @@ public class JiraSprintService {
     JOIN jira_issue_link l ON l.local_kind='backlog' AND l.local_id=t.backlog_id AND l.state='SENT'
     WHERE t.sprint_id=? AND l.jira_issue_key IS NOT NULL AND l.jira_issue_key<>''
       AND NOT EXISTS (SELECT 1 FROM jira_sprint_issue p WHERE p.sprint_id=t.sprint_id AND p.backlog_id=t.backlog_id)
-    ORDER BY t.id LIMIT """+BATCH,sprintId);
+    ORDER BY t.id LIMIT """+" "+BATCH,sprintId);
   if(keys.isEmpty()){
    // Nothing is waiting right now, so stop polling this sprint until a PBI shows up.
    db.update("UPDATE sprint SET jira_sprint_retry_at=? WHERE id=?",clock.instant().plusSeconds(60).toString(),sprintId);
