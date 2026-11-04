@@ -51,7 +51,9 @@ public class SlackInboxService {
   if(action.equals("APPROVE")){
    if(!Boolean.TRUE.equals(p.get("valid")))throw new IllegalArgumentException("Format hatalı; önce Mesajı düzelt ile alanları düzenleyip kaydedin.");
    String target=Objects.toString(input.get("target"),p.get("target").toString());if(!Set.of("BACKLOG","SPRINT").contains(target))throw new IllegalArgumentException("Hedef BACKLOG veya SPRINT olmalı.");
-   var draft=new LinkedHashMap<String,Object>();draft.put("title",p.get("title"));draft.put("taskCategory","DEFECT");draft.put("taskSubtype",p.get("taskSubtype"));draft.put("size",input.get("size"));draft.put("storyPoints",input.get("storyPoints"));draft.put("estimatedHours",0);draft.put("criteria",report(p));draft.put("defect",Map.of("severity",p.get("severity"),"environment",p.get("environment"),"verification","NOT_CHECKED"));
+   Object raw=input.getOrDefault("estimatedHours",0);
+   if(!(raw instanceof Number hours)||!Double.isFinite(hours.doubleValue())||hours.doubleValue()<0||hours.doubleValue()>10000)throw new IllegalArgumentException("Efor 0–10.000 saat olmalı.");
+   var draft=new LinkedHashMap<String,Object>();draft.put("title",p.get("title"));draft.put("taskCategory","DEFECT");draft.put("taskSubtype",p.get("taskSubtype"));draft.put("size",input.get("size"));draft.put("storyPoints",input.get("storyPoints"));draft.put("estimatedHours",hours.doubleValue());draft.put("roadmapId",Objects.toString(input.get("roadmapId"),""));draft.put("criteria",report(p));draft.put("defect",Map.of("severity",p.get("severity"),"environment",p.get("environment"),"verification","NOT_CHECKED"));
    if(target.equals("SPRINT")){
     sprint=Objects.toString(input.get("sprintId"),"");var states=db.queryForList("SELECT status FROM sprint WHERE id=? FOR UPDATE",String.class,sprint);
     if(states.size()!=1||!states.getFirst().equals("active"))throw new IllegalArgumentException("Seçilen sprint artık aktif değil; güncel sprinti seçin veya backlog'a alın.");
