@@ -29,7 +29,7 @@ import { SprintBoardComponent } from './sprint-board.component';
 import { TaskRemoveDialogComponent } from './task-remove-dialog.component';
 
 /** What the Jira sprint endpoint reports: whether it exists yet and how much of the sprint reached it. */
-interface JiraSprintStatus { enabled:boolean; jiraSprintId:string; name:string; state:string; error:string; placed:number; pending:number }
+interface JiraSprintStatus { enabled:boolean; jiraSprintId:string; name:string; state:string; error:string; placed:number; pending:number; boardUrl:string }
 
 @Component({
   standalone: true,
@@ -158,7 +158,7 @@ export class SprintsComponent implements OnInit, OnDestroy {
       @if (jiraError) { <p class="notice warn" role="alert">{{ jiraError }}</p> }
       @if (jira && (jira.state==='FAILED'||jira.state==='BLOCKED')) { <p class="notice warn" role="alert">Jira sprinti açılamadı — {{ jira.error || 'bilinmeyen hata' }}</p> }
       @else if (jira?.error) { <p class="notice" role="status">{{ jira?.error }}</p> }
-      @else if (jiraSprintNote) { <p class="data-note" role="status">{{ jiraSprintNote }}</p> }
+      @else if (jiraSprintNote) { <p class="data-note" role="status">@if (jira?.boardUrl) { <a [href]="jira?.boardUrl" target="_blank" rel="noopener noreferrer">{{ jiraSprintNote }}</a> } @else { {{ jiraSprintNote }} }</p> }
       @if(current.closureFrozen){<p class="notice" data-testid="closure-frozen">Kapanış kaydı sabitlendi · {{ current.closedAt }}. Görevler, atamalar, kapasite ve tahmin yöntemi kapanış anını gösterir.</p>}
       <nav class="subtabs" aria-label="Sprint alanları"><a [routerLink]="['/sprints', current.id, 'summary']" [class.active]="tab==='summary'">Özet</a><a [routerLink]="['/sprints', current.id, 'planning']" [class.active]="tab==='planning'">Planlama</a><a [routerLink]="['/sprints', current.id, 'capacity']" [class.active]="tab==='capacity'">Kapasite</a><a [routerLink]="['/sprints', current.id, 'effort']" [class.active]="tab==='effort'">Efor matrisi</a><a [routerLink]="['/sprints', current.id, 'board']" [class.active]="tab==='board'">Pano</a><a [routerLink]="['/sprints', current.id, 'journal']" [class.active]="tab==='journal'">Sprint günlüğü</a><a [routerLink]="['/sprints', current.id, 'review']" [class.active]="tab==='review'">Review</a><a [routerLink]="['/sprints', current.id, 'retro']" [class.active]="tab==='retro'">Retro</a></nav>
       @if(tab==='planning'||tab==='capacity'){@defer(on immediate){<app-planning-insights [items]="current.items" [rows]="capacityRows" [loaded]="capacityLoaded" [mode]="settings.estimationMode" [historical]="current.status==='completed'" [editable]="auth.isAdmin()&&current.status!=='completed'" (allocate)="openAllocation($event)" (assign)="openAssignments($event)" />}}

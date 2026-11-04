@@ -95,7 +95,17 @@ public class JiraSprintService {
   out.put("error",Objects.toString(row.get("JIRA_SPRINT_ERROR"),""));
   out.put("placed",db.queryForObject("SELECT COUNT(*) FROM jira_sprint_issue WHERE sprint_id=?",Integer.class,sprintId));
   out.put("pending",db.queryForObject(waitingSql()+" AND t.sprint_id=?",Integer.class,sprintId));
+  out.put("boardUrl",boardUrl(String.valueOf(out.get("jiraSprintId"))));
   return out;
+ }
+
+ /** The board, opened on this sprint, so the status line can be checked against Jira in one click. */
+ private String boardUrl(String jiraSprintId){
+  var config=configs.load();
+  String board=config.boardId().trim(),base=config.baseUrl().trim();
+  if(jiraSprintId.isBlank()||!board.matches("[0-9]{1,18}")||base.isBlank())return "";
+  while(base.endsWith("/"))base=base.substring(0,base.length()-1);
+  return base+"/secure/RapidBoard.jspa?rapidView="+board+"&sprint="+jiraSprintId;
  }
 
  private static String waitingSql(){
