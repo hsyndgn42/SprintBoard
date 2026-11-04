@@ -16,9 +16,12 @@ import { SprintTarget, addTargetLabel, addTargets, defaultAddTarget } from './sp
 @if(loading){<p role="status">Yükleniyor…</p>}
 @if(mode==='existing'){
  @if(!backlogId){<label class="field">Backlog işi<select name="backlogChoice" [ngModel]="selectedId" (ngModelChange)="select($event)" [disabled]="saving"><option value="">İş seçin</option>@for(option of options;track option.id){<option [value]="option.id">{{option.title}}</option>}</select></label>}
- @if(item;as current){<h3>{{current.title}}</h3><p class="data-note">{{current.estimatedHours}} saat tahmin · {{current.roadmapTitle||'Roadmap hedefine bağlı değil'}}</p>
+ @if(item;as current){<h3>{{current.title}}</h3>
  @if(!current.readiness.eligible){<p class="notice warn">Bu iş artık havuzda değil.</p>}
- @else if(!current.readiness.ready){<section class="notice warn"><strong>Hazırlık kontrolü</strong><ul>@for(warning of current.readiness.warnings;track $index){<li>{{warning}}</li>}</ul></section><label class="check"><input type="checkbox" name="ack" [(ngModel)]="acknowledged" (ngModelChange)="changed()"><span>Uyarıları değerlendirdim; bu işi sprinte almak istiyorum.</span></label>}}
+ @else{<div class="form-grid two"><label class="field">Roadmap<select name="existingRoadmap" [(ngModel)]="existingRoadmapId" (ngModelChange)="changed()" [disabled]="saving"><option value="">Roadmap hedefine bağlı değil</option>@for(r of roadmaps;track r.id){<option [value]="r.id">{{r.title}}</option>}</select></label>
+ <label class="field">İşin tahmini eforu (saat)<input name="existingHours" type="number" [(ngModel)]="existingHours" (ngModelChange)="changed()" min="0" max="10000" step="0.5" required [disabled]="saving"></label></div>
+ <p class="data-note">Buradaki efor ve roadmap backlog işine de işlenir.</p>
+ @if(!current.readiness.ready){<section class="notice warn"><strong>Hazırlık kontrolü</strong><ul>@for(warning of current.readiness.warnings;track $index){<li>{{warning}}</li>}</ul></section><label class="check"><input type="checkbox" name="ack" [(ngModel)]="acknowledged" (ngModelChange)="changed()"><span>Uyarıları değerlendirdim; bu işi sprinte almak istiyorum.</span></label>}}}
  <p class="data-note">Mevcut backlog işinin kişi atamalarını Planlama’dan yapabilirsiniz.</p>
 }@else{
  <label class="field">İş adı<input name="newTitle" [(ngModel)]="draft.title" required maxlength="300"></label>
@@ -48,6 +51,8 @@ export class SprintAddDialogComponent implements OnChanges,OnDestroy {
  @Output() cancel=new EventEmitter<void>();@Output() added=new EventEmitter<string>();
  private api=inject(ApiService);private cdr=inject(ChangeDetectorRef);private revision=0;private destroyed=false;
  options:BacklogItem[]=[];item:BacklogItem|null=null;selectedId='';acknowledged=false;loading=false;saving=false;error='';
+ /** Slack-born work usually arrives without these two, so the operator may fill them while adding. */
+ existingHours=0;existingRoadmapId='';
  reserveTaskId='';reserves:Sprint['items']=[];
  mode:'new'|'existing'='existing';active=false;emergency=false;scopeReason='';
  targets:SprintTarget[]=[];chosenId='';targetLabel=addTargetLabel;
@@ -63,7 +68,7 @@ export class SprintAddDialogComponent implements OnChanges,OnDestroy {
  capacityLoad:SprintLoad|null=null;
  /** New work can already have owners, so only the part nobody took yet counts as unassigned. */
  private get addedAssigned(){return this.mode==='new'?this.assignedHours:0;}
- private get addedUnassigned(){const total=this.mode==='new'?Number(this.draft.estimatedHours)||0:Number(this.item?.estimatedHours)||0;return Math.max(0,total-this.addedAssigned);}
+ private get addedUnassigned(){const total=this.mode==='new'?Number(this.draft.estimatedHours)||0:Number(this.existingHours)||0;return Math.max(0,total-this.addedAssigned);}
  get loadNote(){return this.capacityLoad?loadMessage(this.capacityLoad,this.addedUnassigned,this.addedAssigned):'';}
  get loadWarn(){return !!this.capacityLoad&&loadOverruns(this.capacityLoad,this.addedUnassigned,this.addedAssigned);}
  get canSubmit(){return !!this.targetSprintId&&(this.mode==='new'?this.acknowledged&&!!this.draft.title.trim():!!this.item?.readiness.eligible&&(this.item.readiness.ready||this.acknowledged));}
@@ -85,11 +90,11 @@ export class SprintAddDialogComponent implements OnChanges,OnDestroy {
  async chooseTarget(id:string){this.chosenId=id;this.reserveTaskId='';this.emergency=false;this.error='';this.loading=true;this.changed();
  try{await this.loadSprint();}catch(e){this.error=String(e);}finally{this.loading=false;this.changed();}}
  ngOnDestroy(){this.destroyed=true;this.revision++;}
- async select(id:string){const revision=++this.revision;this.selectedId=id;this.item=null;this.acknowledged=false;this.error='';this.loading=!!id;this.changed();if(!id)return;try{const item=await this.api.get<BacklogItem>('/backlog/'+encodeURIComponent(id)+'/readiness');if(revision===this.revision)this.item=item;}catch(e){if(revision===this.revision)this.error=String(e);}finally{if(revision===this.revision){this.loading=false;this.changed();}}}
+ async select(id:string){const revision=++this.revision;this.selectedId=id;this.item=null;this.acknowledged=false;this.error='';this.existingHours=0;this.existingRoadmapId='';this.loading=!!id;this.changed();if(!id)return;try{const item=await this.api.get<BacklogItem>('/backlog/'+encodeURIComponent(id)+'/readiness');if(revision===this.revision){this.item=item;this.existingHours=item.estimatedHours;this.existingRoadmapId=item.roadmapId||'';}}catch(e){if(revision===this.revision)this.error=String(e);}finally{if(revision===this.revision){this.loading=false;this.changed();}}}
  async submit(){if(this.saving||!this.canSubmit||this.loading)return;if(this.active&&!this.scopeReason.trim()){this.error='Sprinte alma gerekçesi gerekli.';this.changed();return;}this.saving=true;this.error='';this.changed();
  try{const common={reserveTaskId:(this.mode==='new'?this.draft.taskCategory:this.item?.taskCategory)==='DEFECT'?this.reserveTaskId:'',reason:this.scopeReason,emergency:this.active&&this.emergency,readinessAcknowledged:this.acknowledged};
  if(this.mode==='new')await this.api.post('/sprints/'+encodeURIComponent(this.targetSprintId)+'/tasks/new',{...this.draft,...common,assignments:this.people.filter(p=>p.selected).map(p=>({memberId:p.id,estimatedHours:p.supportOnly?0:p.hours,supportOnly:p.supportOnly}))});
- else await this.api.post('/sprints/'+encodeURIComponent(this.targetSprintId)+'/tasks',{...common,backlogId:this.item!.id,readinessFingerprint:this.item!.readiness.fingerprint});
+ else await this.api.post('/sprints/'+encodeURIComponent(this.targetSprintId)+'/tasks',{...common,backlogId:this.item!.id,readinessFingerprint:this.item!.readiness.fingerprint,estimatedHours:Number(this.existingHours)||0,roadmapId:this.existingRoadmapId});
  if(!this.destroyed)this.added.emit(this.targets.find(s=>s.id===this.targetSprintId)?.name||'');
  }catch(e){this.error=String(e);}finally{this.saving=false;this.changed();}}
 }

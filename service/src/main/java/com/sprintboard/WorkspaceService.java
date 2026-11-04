@@ -1213,6 +1213,10 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
     if(!Boolean.TRUE.equals(check.get("eligible")))throw new IllegalArgumentException("Yalnız havuzdaki işler sprinte eklenebilir.");
     if(!Boolean.TRUE.equals(check.get("ready")) && (!Boolean.TRUE.equals(input.get("readinessAcknowledged")) || !check.get("fingerprint").equals(input.get("readinessFingerprint"))))
       throw new IllegalArgumentException("Hazırlık kontrolü uyarıları var veya bilgiler değişti. İşin hazırlık kontrolünü açıp yeniden onaylayın.");
+    // Readiness is judged on what the operator saw, then the corrections they
+    // typed in the same dialog are written, so the sprint task copies the
+    // numbers they actually intended.
+    if(applyAddOverrides(backlogId,input,row))row=jdbc.queryForList("SELECT * FROM backlog_item WHERE id=?",backlogId).getFirst();
     String newId = id("task");
     if("active".equals(sprint.get("status")))flow.begin(sprintId,(List<Map<String,Object>>)sprint.get("items"),false);
     jdbc.update("INSERT INTO sprint_task(id,sprint_id,backlog_id,title,criteria,type,work_kind,status,estimated_hours,remaining_hours,story_points,external_id,size_code,task_category,task_subtype) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", newId, sprintId, backlogId, row.get("TITLE"),
@@ -1230,6 +1234,32 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
     }
     audit("task", newId, "added-to-sprint", map("sprintId", sprintId, "backlogId", backlogId,"readinessWarnings",check.get("warnings"),"warningsAcknowledged",Boolean.TRUE.equals(input.get("readinessAcknowledged"))));
     return map("id", newId, "sprintId", sprintId, "backlogId", backlogId, "status", "todo");
+  }
+  /**
+   * Work that arrives from Slack usually has no estimate and no roadmap, and the
+   * operator fills both while adding it to a sprint. The values land on the
+   * backlog item first so the sprint task copied from it cannot disagree with it.
+   */
+  private boolean applyAddOverrides(String backlogId,Map<String,Object> input,Map<String,Object> row){
+    boolean changed=false;
+    if(input.containsKey("estimatedHours")){
+      double hours=number(input,"estimatedHours");
+      if(!Double.isFinite(hours)||hours<0||hours>10000)throw new IllegalArgumentException("Geçerli efor girin.");
+      if(hours!=(row.get("ESTIMATED_HOURS") instanceof Number n?n.doubleValue():0)){
+        jdbc.update("UPDATE backlog_item SET estimated_hours=? WHERE id=?",hours,backlogId);
+        audit("backlog",backlogId,"edited",map("estimatedHours",hours,"source","sprint-add"));changed=true;
+      }
+    }
+    if(input.containsKey("roadmapId")){
+      String roadmapId=text(input,"roadmapId");
+      if(!roadmapId.isBlank()&&jdbc.queryForObject("SELECT COUNT(*) FROM roadmap_item WHERE id=?",Integer.class,roadmapId)==0)
+        throw new IllegalArgumentException("Roadmap kaydı bulunamadı.");
+      if(!Objects.equals(roadmapId.isBlank()?null:roadmapId,row.get("ROADMAP_ID"))){
+        jdbc.update("UPDATE backlog_item SET roadmap_id=? WHERE id=?",roadmapId.isBlank()?null:roadmapId,backlogId);
+        audit("backlog",backlogId,"roadmap-linked",map("roadmapId",roadmapId,"source","sprint-add"));changed=true;
+      }
+    }
+    return changed;
   }
   @Transactional
   public Map<String,Object> renameTask(String id,Map<String,Object> input){
