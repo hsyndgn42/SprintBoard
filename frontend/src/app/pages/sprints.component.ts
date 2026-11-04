@@ -133,9 +133,18 @@ export class SprintsComponent implements OnInit, OnDestroy {
           @if (auth.isAdmin() && current.status === 'planned') { <button class="btn closing-action" (click)="start()">Sprinti başlat</button> }
           @if (auth.isAdmin() && wikiEnabled && current.status !== 'completed') { <button class="btn" [disabled]="wikiBusy" (click)="publishWiki()">{{ wikiBusy ? 'Wikiye gönderiliyor…' : (wikiUrl ? 'Wiki sayfasını güncelle' : 'Wikiye gönder') }}</button> }
           @if (wikiUrl) { <a class="btn subtle" [href]="wikiUrl" target="_blank" rel="noopener noreferrer">Wiki sayfası</a> }
-          @if (auth.isAdmin() && jira && !jira.jiraSprintId && current.status !== 'completed') { <button class="btn" [disabled]="jiraBusy" (click)="openJiraSprint()">{{ jiraBusy ? 'Jira sprinti açılıyor…' : (jira.state ? 'Jira sprintini tekrar dene' : 'Jira sprintini aç') }}</button> }
+          @if (auth.isAdmin() && jira && !jira.jiraSprintId && current.status !== 'completed') { <button class="btn" [disabled]="jiraBusy" (click)="openJiraSprint()">{{ jiraBusy ? 'Jira sprinti açılıyor…' : (jira.state ? 'Jira sprintini tekrar dene' : 'Jira sprintini aç') }}</button>
+            <button class="btn subtle" (click)="jiraLinkOpen=!jiraLinkOpen">Jira'da açık sprinti bağla</button> }
           @else if (auth.isAdmin() && jira?.pending && current.status !== 'completed') { <button class="btn subtle" [disabled]="jiraBusy" (click)="openJiraSprint()">Jira sprintine aktar</button> }
         </div></div>
+      @if (jiraLinkOpen && auth.isAdmin() && jira && !jira.jiraSprintId) {
+        <form class="jira-link" (ngSubmit)="linkJiraSprint()">
+          <label for="jira-sprint-id">Jira sprint kimliği</label>
+          <input id="jira-sprint-id" name="jiraSprintId" inputmode="numeric" placeholder="örn. 4821" [(ngModel)]="jiraSprintIdInput" />
+          <button class="btn primary" type="submit" [disabled]="jiraBusy || !jiraSprintIdInput.trim()">{{ jiraBusy ? 'Bağlanıyor…' : 'Bağla' }}</button>
+          <p class="data-note">Jira'da sprinti açın; adres satırındaki <code>sprint=</code> ya da <code>/sprint/</code> sonrasındaki sayı budur. Bağladıktan sonra bu sprintin bütün işleri oraya aktarılır.</p>
+        </form>
+      }
       @if (wikiError) { <p class="notice warn" role="alert">{{ wikiError }}</p> }
       @if (wikiMessage) { <p class="inline-success" role="status">{{ wikiMessage }}</p> }
       @if (jiraError) { <p class="notice warn" role="alert">{{ jiraError }}</p> }
@@ -230,7 +239,11 @@ export class SprintsComponent implements OnInit, OnDestroy {
       <div class="modal-body"><p class="data-note">Açıklama görevle birlikte kaydedilir. Vazgeçerseniz durum değişmez.</p><label class="field">Açıklama (zorunlu)<textarea [ngModel]="undoneNote" (ngModelChange)="updateUndoneNote($event)" name="undoneNote" required rows="4" maxlength="2000" placeholder="Tamamlanmama nedeni ve kalan işi kısaca açıklayın"></textarea></label>@if(error){<p class="notice warn" role="alert">{{ error }}</p>}</div>
       <footer><button data-modal-dismiss class="btn" [disabled]="saving" (click)="cancelUndone()">Vazgeç</button><button class="btn primary" [disabled]="!undoneNote.trim() || saving" (click)="confirmUndone()">Undone olarak kaydet</button></footer></div></div> }
   `,
-  styles:[`.capacity-actions{display:flex;flex-direction:column;align-items:stretch;gap:6px;min-width:145px}`],
+  styles:[`.capacity-actions{display:flex;flex-direction:column;align-items:stretch;gap:6px;min-width:145px}
+    .jira-link{display:grid;grid-template-columns:auto minmax(0,9rem) auto;align-items:center;gap:.6rem;margin:.5rem 0 0;padding:.75rem .9rem;border:1px solid var(--rule,#d9e0e6);border-radius:6px;background:var(--field,#f6f8f9)}
+    .jira-link label{font-weight:600}
+    .jira-link input{padding:.4rem .5rem;border:1px solid var(--rule,#d9e0e6);border-radius:4px;font:inherit;width:100%}
+    .jira-link .data-note{grid-column:1/-1;margin:0}`],
 })
 export class SprintDetailComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
@@ -400,7 +413,7 @@ export class SprintDetailComponent implements OnInit, OnDestroy {
   }
 
   wikiEnabled=false; wikiUrl=''; wikiBusy=false; wikiError=''; wikiMessage='';
-  jira:JiraSprintStatus|null=null; jiraBusy=false; jiraError='';
+  jira:JiraSprintStatus|null=null; jiraBusy=false; jiraError=''; jiraLinkOpen=false; jiraSprintIdInput='';
   /** Only admins can read the Jira endpoint, and a disabled integration simply shows nothing. */
   private async loadJiraSprint(id:string):Promise<void>{
     if(!this.auth.isAdmin()){this.jira=null;return;}
@@ -413,6 +426,15 @@ export class SprintDetailComponent implements OnInit, OnDestroy {
     const id=this.sprint?.id; if(!id||this.jiraBusy)return;
     this.jiraBusy=true;this.jiraError='';this.cdr.detectChanges();
     try{this.jira=await this.api.post(`/admin/jira/sprints/${encodeURIComponent(id)}`,{});}
+    catch(error){this.jiraError=String(error);}
+    finally{this.jiraBusy=false;this.cdr.detectChanges();}
+  }
+  /** Binds a sprint that someone already opened in Jira rather than creating a second one. */
+  async linkJiraSprint():Promise<void>{
+    const id=this.sprint?.id; const wanted=this.jiraSprintIdInput.trim();
+    if(!id||!wanted||this.jiraBusy)return;
+    this.jiraBusy=true;this.jiraError='';this.cdr.detectChanges();
+    try{this.jira=await this.api.post(`/admin/jira/sprints/${encodeURIComponent(id)}/link`,{jiraSprintId:wanted});this.jiraLinkOpen=false;this.jiraSprintIdInput='';}
     catch(error){this.jiraError=String(error);}
     finally{this.jiraBusy=false;this.cdr.detectChanges();}
   }

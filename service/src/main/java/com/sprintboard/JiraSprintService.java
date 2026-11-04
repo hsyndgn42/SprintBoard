@@ -39,6 +39,31 @@ public class JiraSprintService {
   db.update("UPDATE sprint SET jira_sprint_state=CASE WHEN jira_sprint_id IS NULL THEN 'PENDING' ELSE 'SENT' END,jira_sprint_error='',jira_sprint_attempts=0,jira_sprint_retry_at=NULL WHERE id=?",sprintId);
  }
 
+ /**
+  * Binds an existing Jira sprint instead of opening a new one. The sprint is read back from
+  * Jira first, because a typo in the id would otherwise push the whole sprint into a stranger's
+  * board and nothing would look wrong here.
+  */
+ public Map<String,Object> link(String sprintId,String jiraSprintId){
+  var config=configs.load();
+  if(!config.enabled())throw new IllegalArgumentException("Jira entegrasyonu kapalı.");
+  String wanted=jiraSprintId==null?"":jiraSprintId.trim();
+  if(!wanted.matches("[0-9]{1,18}"))throw new IllegalArgumentException("Jira sprint kimliği yalnız rakamlardan oluşur. Jira sprintini açıp adres satırındaki sayıyı girin.");
+  if(db.queryForObject("SELECT COUNT(*) FROM sprint WHERE id=?",Integer.class,sprintId)==0)return null;
+  long id=Long.parseLong(wanted);
+  var found=transport.get(config.baseUrl(),configs.token(),"/rest/agile/1.0/sprint/"+id,Map.of());
+  String name=found.path("name").asText("");
+  if(name.isBlank())throw new IllegalArgumentException("Jira'da "+id+" kimlikli bir sprint bulunamadı.");
+  String board=config.boardId().trim(),origin=found.path("originBoardId").asText("");
+  String warning=!board.isBlank()&&!origin.isBlank()&&!board.equals(origin)
+    ?"Bu sprint "+origin+" numaralı panoya ait, ayarlardaki pano ise "+board+". İşler yine de bu sprinte aktarılacak.":"";
+  // A different Jira sprint means the earlier placements no longer describe where the work sits.
+  db.update("DELETE FROM jira_sprint_issue WHERE sprint_id=? AND ?<>COALESCE((SELECT jira_sprint_id FROM sprint WHERE id=?),-1)",sprintId,id,sprintId);
+  db.update("UPDATE sprint SET jira_sprint_id=?,jira_sprint_name=?,jira_sprint_state='SENT',jira_sprint_error=?,jira_sprint_attempts=0,jira_sprint_retry_at=NULL WHERE id=?",id,name,warning,sprintId);
+  audit(sprintId,"jira-sprint-linked",Map.of("jiraSprintId",id,"name",name));
+  return status(sprintId);
+ }
+
  public Map<String,Object> status(String sprintId){
   var rows=db.queryForList("SELECT jira_sprint_id,jira_sprint_name,jira_sprint_state,jira_sprint_error FROM sprint WHERE id=?",sprintId);
   if(rows.isEmpty())return null;

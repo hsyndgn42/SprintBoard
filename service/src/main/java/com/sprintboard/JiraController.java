@@ -25,5 +25,6 @@ public class JiraController {
   @PostMapping("/backlog/{id}/pbi") public ResponseEntity<?> retryPbi(@PathVariable String id){outbox.retry(id);return response(Map.of("backlogId",id,"queued",true));}
   @GetMapping("/sprints/{id}") public ResponseEntity<?> sprintStatus(@PathVariable String id){var status=sprints.status(id);return status==null?ResponseEntity.notFound().build():response(status);}
   @PostMapping("/sprints/{id}") public ResponseEntity<?> openSprint(@PathVariable String id){sprints.request(id);var status=sprints.status(id);return status==null?ResponseEntity.notFound().build():response(status);}
+  @PostMapping("/sprints/{id}/link") public ResponseEntity<?> linkSprint(@PathVariable String id,@RequestBody Map<String,Object> input){var status=sprints.link(id,input.get("jiraSprintId")==null?"":String.valueOf(input.get("jiraSprintId")));return status==null?ResponseEntity.notFound().build():response(status);}
   @DeleteMapping("/credentials") public ResponseEntity<?> forget(){return response(settings.forget());}
 }
