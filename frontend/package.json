@@ -5,7 +5,8 @@
   "scripts": {
     "start": "ng serve --proxy-config proxy.conf.json --port 4182",
     "build": "ng build --configuration production",
-    "test": "ng test --watch=false"
+    "test": "ng test --watch=false",
+    "test:report": "tsc -p tools/tsconfig.json && node .angular/report-tests/tools/scope-report.test.js"
   },
   "dependencies": {
     "@angular/common": "20.3.31",
