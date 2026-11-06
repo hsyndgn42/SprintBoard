@@ -33,6 +33,7 @@ import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,UNAVAILABLE_NOTE
 @else if(error){<p class="notice warn" role="alert">{{error}} <button class="btn small" (click)="load()">Tekrar dene</button></p>}
 @else{
 <dl class="scope-head">
+ @if(team()){<div><dt>Ekip</dt><dd>{{team()}}</dd></div>}
  <div><dt>Sprint aralığı</dt><dd>{{report.sprintRange}}</dd></div>
  <div><dt>Efor türü</dt><dd>{{report.effortBasis}}</dd></div>
  <div><dt>Kapsam</dt><dd>{{filterLabel}}</dd></div>
@@ -49,13 +50,7 @@ import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,UNAVAILABLE_NOTE
 </div>
 
 <h3 class="rpt-sub">Veri Kapsamı</h3>
-<p class="rpt-verdict">{{coverage}}</p>
 <div class="rpt-figure"><sb-scope-figure [figure]="coverageChart" /></div>
-<div class="rpt-key">
- <span><i [style.background]="color.baseline"></i>Tam takip · {{report.fullCount}}</span>
- <span><i [style.background]="color.partial"></i>Kısmi tarihçe · {{report.partialCount}}</span>
- <span><i [style.background]="color.unavailable"></i>Tarihçe yok · {{report.unavailableCount}}</span>
-</div>
 <p class="scope-caution">{{unavailableNote}}</p>
 
 @if(!report.tracked.length){
@@ -111,7 +106,7 @@ import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,UNAVAILABLE_NOTE
    <td data-label="Takip"><span class="badge" [class.info]="s.tracking==='FULL'" [class.warn]="s.tracking==='PARTIAL'">{{trackOf(s)}}</span></td>
    <td data-label="Başlangıç">{{s.baselineItems}} iş · {{fmt(s.baselineHours)}} sa</td>
    <td data-label="Eklenen">+{{s.addedItems}} iş · {{fmt(s.addedHours)}} sa</td>
-   <td data-label="Çıkarılan">−{{s.removedItems}} iş · {{fmt(s.removedHours)}} sa</td>
+   <td data-label="Çıkarılan">{{s.removedItems?'−':''}}{{s.removedItems}} iş · {{fmt(s.removedHours)}} sa</td>
    <td data-label="Güncel">{{s.currentItems}} iş · {{fmt(s.currentHours)}} sa</td>
    <td data-label="Mutabakat farkı">@if(s.reconciliationHours===0){<span class="void">0 sa</span>}@else{<span class="flag">{{s.reconciliationHours>0?'+':'−'}}{{fmt(abs(s.reconciliationHours))}} sa</span>}</td>
    <td data-label="Acil iş">{{s.urgentCount}} iş</td>
@@ -135,7 +130,7 @@ import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,UNAVAILABLE_NOTE
  <dl class="rpt-kpis">
   <div><dt>{{baselineLabel(s)}}</dt><dd>{{s.baselineItems}}<small>iş · {{fmt(s.baselineHours)}} sa</small></dd></div>
   <div><dt>Sonradan eklenen</dt><dd [class.over]="s.addedItems>0">+{{s.addedItems}}<small>iş · {{fmt(s.addedHours)}} sa</small></dd></div>
-  <div><dt>Backlog’a dönen</dt><dd>−{{s.removedItems}}<small>iş · {{fmt(s.removedHours)}} sa</small></dd></div>
+  <div><dt>Backlog’a dönen</dt><dd>{{s.removedItems?'−':''}}{{s.removedItems}}<small>iş · {{fmt(s.removedHours)}} sa</small></dd></div>
   <div><dt>Güncel kapsam</dt><dd>{{s.currentItems}}<small>iş · {{fmt(s.currentHours)}} sa</small></dd></div>
  </dl>
  <div class="rpt-figure"><sb-scope-figure [figure]="waterfall(s)" /></div>
@@ -213,20 +208,20 @@ import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,UNAVAILABLE_NOTE
 .rpt-sub{margin:30px 0 6px;font-size:15px;color:var(--ink)}
 .rpt-sub:first-of-type{margin-top:22px}
 h4{margin:0 0 6px;font-size:14px;color:var(--ink)}
-.scope-head{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--rule);border-block:1px solid var(--rule);margin:16px 0 0}
+.scope-head{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:1px;background:var(--rule);border-block:1px solid var(--rule);margin:16px 0 0}
 .scope-head>div{background:#fff;padding:10px 13px;min-width:0}
 .scope-head dt{margin:0;font-size:11px;color:var(--slate)}
 .scope-head dd{margin:3px 0 0;font-size:13.5px;color:var(--ink);overflow-wrap:anywhere}
 .scope-caution{margin:14px 0 0;padding:10px 13px;background:var(--field);border-left:3px solid #8a98a4;font-size:12.5px;line-height:1.6;color:#48596a;max-width:78ch}
 .scope-flagged{margin:12px 0 0;padding:9px 12px;background:#f3f0f9;border-left:3px solid var(--support);font-size:12.5px;line-height:1.6;color:#413765;max-width:78ch}
-.scope-charts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+.scope-charts{display:grid;grid-template-columns:minmax(0,238px) minmax(0,1fr);gap:34px;align-items:start}
 .scope-findings{margin:12px 0 0;padding-left:18px;font-size:13.5px;line-height:1.8;color:var(--ink);max-width:80ch}
 .scope-sprint{padding:22px 0 6px;border-top:1px solid var(--rule)}
 .scope-sprint:first-of-type{border-top:0}
 .scope-meta{display:flex;flex-wrap:wrap;gap:7px 14px;align-items:center;margin:0 0 10px;font-size:12px;color:var(--slate)}
 .table-wrap{margin:16px 0 0;overflow-x:auto}
 .table-wrap:focus-visible{outline:2px solid var(--measure);outline-offset:2px}
-.scope-table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+.scope-table{width:100%;min-width:620px;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
 .scope-table th,.scope-table td{text-align:left;vertical-align:top;padding:9px 10px;border-bottom:1px solid #e4eaee;overflow-wrap:anywhere}
 .scope-table th{position:sticky;top:0;z-index:1;background:var(--field);font-size:11px;font-weight:650;color:#48596a;white-space:nowrap}
 .scope-table td small{display:block;font-size:11px;color:#8a98a4;margin-top:2px}
@@ -240,14 +235,15 @@ h4{margin:0 0 6px;font-size:14px;color:var(--ink)}
 .scope-terms{margin:0;font-size:12.5px;line-height:1.7}
 .scope-terms dt{font-weight:650;margin-top:9px;color:var(--ink)}
 .scope-terms dd{margin:1px 0 0;color:#48596a;max-width:84ch}
-@media(max-width:900px){.scope-charts{grid-template-columns:1fr;gap:22px}.scope-head{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){.scope-charts{grid-template-columns:minmax(0,1fr);gap:22px}}
+.scope-charts>*{min-width:0}
 @media print{
- .scope-charts{grid-template-columns:1fr 1fr;gap:18px}
+ .scope-charts{grid-template-columns:minmax(0,210px) minmax(0,1fr);gap:18px}
  .scope-sprint{break-inside:auto;break-before:page}
  .scope-sprint:first-of-type{break-before:auto}
  .scope-table th{position:static}
  .table-wrap{overflow:visible}
- .scope-table{font-size:9.5px}
+ .scope-table{font-size:9.5px;min-width:0}
  .scope-table th,.scope-table td{padding:5px 6px}
  .scope-table thead{display:table-header-group}
  .scope-table tr,.scope-head{break-inside:avoid}
@@ -258,6 +254,7 @@ export class ScopeReportComponent implements OnInit,OnDestroy{
  @Output() readyChange=new EventEmitter<boolean>();
  private api=inject(ApiService);private cdr=inject(ChangeDetectorRef);private destroyed=false;
  rows:Sprint[]=[];selected='';loading=true;error='';
+ readonly team=this.api.teamName;
  report:ScopeReport=buildScopeReport([]);
  readonly color=SCOPE_COLORS;
  readonly methodology=METHODOLOGY;
@@ -304,5 +301,5 @@ export class ScopeReportComponent implements OnInit,OnDestroy{
   finally{this.loading=false;if(!this.destroyed)this.readyChange.emit(!this.error);this.changed();}
  }
  print(){if(!this.loading&&!this.error)window.print();}
- download(){if(!this.loading&&!this.error)downloadText(scopeReportHtml(this.visible),'text/html;charset=utf-8','sprintboard-acil-kapsam.html');}
+ download(){if(!this.loading&&!this.error)downloadText(scopeReportHtml(this.visible,new Date(),this.team()),'text/html;charset=utf-8','sprintboard-acil-kapsam.html');}
 }

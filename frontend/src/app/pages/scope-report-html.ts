@@ -51,7 +51,7 @@ const badge=(label:string,tone:string)=>`<span class="badge ${attr(tone)}">${h(l
 const statusTone=(key:string)=>({done:'ok',doing:'info',todo:'warn',undone:'bad',removed:'mute',unknown:'mute'}[key]||'mute');
 const trackingTone=(state:string)=>state==='FULL'?'info':state==='PARTIAL'?'warn':'mute';
 
-const pair=(count:number,value:number,sign='')=>h(items(count))+' · '+h(sign+num(value))+' sa';
+const pair=(count:number,value:number,sign='')=>h(items(count))+' · '+h((count?sign:'')+num(value))+' sa';
 
 function comparisonRows(report:ScopeReport):string[][]{
  return report.tracked.map(s=>[
@@ -102,7 +102,7 @@ function sprintSection(sprint:SprintScope):string{
  <dl class="metrics four">
   ${metric(baselineLabel,String(sprint.baselineItems),'iş',num(sprint.baselineHours)+' sa')}
   ${metric('Sonradan eklenen','+'+sprint.addedItems,'iş',num(sprint.addedHours)+' sa')}
-  ${metric('Backlog’a dönen','−'+sprint.removedItems,'iş',num(sprint.removedHours)+' sa')}
+  ${metric('Backlog’a dönen',(sprint.removedItems?'−':'')+sprint.removedItems,'iş',num(sprint.removedHours)+' sa')}
   ${metric('Güncel kapsam',String(sprint.currentItems),'iş',num(sprint.currentHours)+' sa')}
  </dl>
  ${figureHtml(waterfallFigure(sprint))}
@@ -127,7 +127,7 @@ h2{font-size:19px;letter-spacing:-.01em;margin:0 0 6px}
 h3{font-size:16px;margin:0 0 6px}
 p{margin:0 0 10px}
 .report-head{padding:30px 34px 24px;border-bottom:2px solid #15202b}
-.report-head dl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin:20px 0 0;background:#d9e0e6;border-block:1px solid #d9e0e6}
+.report-head dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;margin:20px 0 0;background:#d9e0e6;border-block:1px solid #d9e0e6}
 .report-head dl>div{background:#fff;padding:11px 13px;min-width:0}
 .report-head dt{font-size:11px;color:#5a6b7b;margin:0}
 .report-head dd{margin:3px 0 0;font-size:14px;overflow-wrap:anywhere}
@@ -159,12 +159,12 @@ figcaption{margin-top:9px;font-size:12px;line-height:1.6;color:#5a6b7b;max-width
 .legend{list-style:none;display:flex;flex-wrap:wrap;gap:7px 18px;margin:11px 0 0;padding:0;font-size:12px;color:#5a6b7b}
 .legend li{display:flex;align-items:center;gap:7px}
 .legend i{width:11px;height:11px;border-radius:2px;flex:none;print-color-adjust:exact;-webkit-print-color-adjust:exact}
-.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+.grid2{display:grid;grid-template-columns:minmax(0,238px) minmax(0,1fr);gap:32px;align-items:start}
 .findings{margin:14px 0 0;padding-left:18px;font-size:13.5px;line-height:1.75;max-width:80ch}
 .findings li{margin-bottom:3px}
 .table-wrap{margin:18px 0 0;overflow-x:auto}
 .table-wrap:focus-visible{outline:2px solid #1b3f63;outline-offset:2px}
-table{border-collapse:collapse;width:100%;font-size:12.5px}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:12.5px}
 caption{text-align:left;font-size:12.5px;color:#5a6b7b;padding-bottom:8px}
 th,td{text-align:left;vertical-align:top;padding:9px 10px;border-bottom:1px solid #e4eaee;overflow-wrap:anywhere}
 th{background:#f6f8f9;font-size:11px;font-weight:650;color:#48596a;white-space:nowrap}
@@ -209,9 +209,9 @@ footer code{font-size:11px;overflow-wrap:anywhere}
  details{border-top:1px solid #d9e0e6}
  details>summary{list-style:none}
  .table-wrap{overflow:visible}
- table{font-size:9.5px}th,td{padding:5px 6px}
+ table{font-size:9.5px;min-width:0}th,td{padding:5px 6px}
  thead{display:table-header-group}
- tr,.metric,.metrics,.figure,.report-head dl{break-inside:avoid}
+ tr,.metric,.figure,.report-head dl{break-inside:avoid}
  h1,h2,h3,caption,summary{break-after:avoid}
  .sprint{break-before:page;padding-top:10px;border-top:0}
  .sprint:first-of-type{break-before:auto}
@@ -227,7 +227,7 @@ function methodologyHtml():string{
   +`</dl></details>`;
 }
 
-export function scopeReportHtml(sprints:Sprint[],generatedAt=new Date()):string{
+export function scopeReportHtml(sprints:Sprint[],generatedAt=new Date(),teamName=''):string{
  const report=buildScopeReport(sprints,generatedAt);
  const measured=report.fullCount+report.partialCount;
  return `<!doctype html><html lang="tr"><head><meta charset="utf-8">
@@ -239,6 +239,7 @@ export function scopeReportHtml(sprints:Sprint[],generatedAt=new Date()):string{
   <h1>Acil İşler ve Kapsam Değişimi</h1>
   <p class="note">${h('Sprint açılışından sonra kapsama giren ve kapsamdan çıkan işler. '+EFFORT_NOTE)}</p>
   <dl>
+   ${teamName?`<div><dt>Ekip</dt><dd>${h(teamName)}</dd></div>`:''}
    <div><dt>Sprint aralığı</dt><dd>${h(report.sprintRange)}</dd></div>
    <div><dt>Efor türü</dt><dd>${h(report.effortBasis)}</dd></div>
    <div><dt>Kapsam</dt><dd>${h(report.totalSprints+' sprint · takipli '+measured)}</dd></div>
@@ -248,9 +249,7 @@ export function scopeReportHtml(sprints:Sprint[],generatedAt=new Date()):string{
 
  <section class="layer" aria-labelledby="veri-kapsami">
   <h2 id="veri-kapsami">Veri Kapsamı</h2>
-  <p class="lead">${h(coverageSentence(report))}</p>
   ${figureHtml(coverageFigure(report))}
-  ${legend([['Tam takip',SCOPE_COLORS.baseline],['Kısmi tarihçe',SCOPE_COLORS.partial],['Tarihçe yok',SCOPE_COLORS.unavailable]])}
   <p class="caution">${h(UNAVAILABLE_NOTE)}</p>
  </section>
 

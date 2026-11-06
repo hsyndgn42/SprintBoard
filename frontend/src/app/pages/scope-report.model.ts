@@ -127,13 +127,13 @@ function range(sprints:Sprint[]):string{
 function findingsOf(report:Omit<ScopeReport,'findings'>):string[]{
  const out:string[]=[];
  for(const sprint of report.tracked){
-  if(sprint.addedItems>0)out.push(sprint.name+'’e sonradan '+items(sprint.addedItems)+' ve '+hours(sprint.addedHours)+' eklendi.');
-  if(sprint.removedItems>0)out.push(sprint.name+'’den '+items(sprint.removedItems)+' ve '+hours(sprint.removedHours)+' backlog’a döndü.');
+  if(sprint.addedItems>0)out.push(sprint.name+' kapsamına sonradan '+items(sprint.addedItems)+' ve '+hours(sprint.addedHours)+' eklendi.');
+  if(sprint.removedItems>0)out.push(sprint.name+' kapsamından '+items(sprint.removedItems)+' ve '+hours(sprint.removedHours)+' backlog’a döndü.');
   const open=sprint.urgent.filter(row=>row.status==='todo').length;
-  if(open>0)out.push(sprint.name+'’de '+open+' acil iş hâlâ yapılacak durumda.');
+  if(open>0)out.push(sprint.name+' içinde '+open+' acil iş hâlâ yapılacak durumda.');
   if(sprint.reconciliationHours!==0)out.push(sprint.name+' için başlangıç, eklenen ve çıkarılan saatler güncel planla '+hours(Math.abs(sprint.reconciliationHours))+' fark veriyor.');
  }
- if(report.urgentCount>0)out.push('Takipli sprintlerdeki '+report.urgentCount+' acil işin '+report.urgentDone+'’ü tamamlandı.');
+ if(report.urgentCount>0)out.push('Takipli sprintlerdeki '+report.urgentCount+' acil işin '+report.urgentDone+' tanesi tamamlandı.');
  if(report.unavailableCount>0)out.push(report.unavailableCount+' sprint için tarihsel kapsam karşılaştırması yapılamıyor.');
  return out;
 }
@@ -227,17 +227,18 @@ export function coverageFigure(report:ScopeReport):Figure{
   {label:'Kısmi tarihçe',count:report.partialCount,fill:SCOPE_COLORS.partial},
   {label:'Tarihçe yok',count:report.unavailableCount,fill:SCOPE_COLORS.unavailable},
  ].filter(band=>band.count>0);
- const marks:Mark[]=[];let x=0;
+ const marks:Mark[]=[];let x=0,y=70;
  for(const band of bands){
   const w=W*band.count/total,pct=Math.round(band.count*100/total);
   marks.push(rect(x,20,w,34,band.fill,2));
   if(w>74)marks.push(text(x+w/2,42,band.count+' sprint · %'+pct,'inverse','middle'));
-  // The band name sits under the bar so the chart reads without the legend, in print and in greyscale.
-  marks.push(text(Math.min(W-4,x+Math.max(2,w/2)),70,w>74?band.label:band.label+' · '+band.count,'label',w>74?'middle':'start'));
-  x+=w;
+  // Band names are stacked on their own lines: narrow bands would otherwise collide under the bar.
+  marks.push(rect(0,y-9,10,10,band.fill,2));
+  marks.push(text(16,y,band.label+' · '+band.count+' sprint (%'+pct+')','label','start'));
+  x+=w;y+=16;
  }
  marks.push(text(0,12,'Dönem kapsamı · '+report.totalSprints+' sprint','unit','start'));
- return {id:'kapsam-veri',width:W,height:80,title:'Veri kapsamı',
+ return {id:'kapsam-veri',width:W,height:62+bands.length*16,title:'Veri kapsamı',
   desc:coverageSentence(report)+' '+UNAVAILABLE_NOTE,marks,
   empty:report.totalSprints?undefined:'Raporlanacak sprint yok.'};
 }
