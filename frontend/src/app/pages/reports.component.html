@@ -11,35 +11,69 @@
 </dl>
 @if(loading){<sb-state variant="loading" title="Raporlar yükleniyor" message="Sprint, kişi ve iş tipi verileri hazırlanıyor." />}
 @if(error&&!loading){<sb-state variant="error" title="Raporlar yüklenemedi" message="Rapor verileri alınamadı; aşağıdaki bölümler eksik olabilir." [detail]="error" actionLabel="Tekrar dene" [actionDisabled]="loading" (action)="load()" />}
-<div class="report-tab-panel rpt" id="report-panel-delivery" role="tabpanel" aria-labelledby="report-tab-delivery" [hidden]="activeTab!=='delivery'" tabindex="0">
-    <div class="rpt-head"><h2>Sprint teslimatı</h2><div class="rpt-actions"><button class="btn" [disabled]="loading||!!error" (click)="exportCsv('sprints')">CSV indir</button><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'delivery',rows:rows,scope:'Tüm tamamlanan sprintler',settings:settings}" /></div></div>
-    <p class="rpt-verdict" [innerHTML]="deliveryVerdict"></p>
+<div class="report-tab-panel rpt delivery-report" id="report-panel-delivery" role="tabpanel" aria-labelledby="report-tab-delivery" [hidden]="activeTab!=='delivery'" tabindex="0">
+    <div class="rpt-head"><h2>Sprint teslimatı</h2><div class="rpt-actions"><button class="btn" [disabled]="loading||!!error" (click)="exportCsv('sprints')">CSV indir</button><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'delivery',rows:rows,scope:'Tüm tamamlanan sprintler',settings:settings,teamName:teamName()}" /><button class="btn" [disabled]="loading||!!error" (click)="print()">Yazdır</button></div></div>
     @if (rows.length) {
-    <dl class="rpt-kpis">
-      <div><dt>Tamamlanan sprint</dt><dd>{{ rows.length }}</dd></div>
-      <div><dt>Teslim edilen iş</dt><dd>{{ totalDone }}</dd></div>
-      <div><dt>Undone</dt><dd [class.over]="totalUndone>0">{{ totalUndone }}</dd></div>
-      <div><dt>Teslimat oranı</dt><dd [class.over]="averageDelivery!==null&&averageDelivery<80">{{ averageDelivery === null ? '—' : '%'+averageDelivery }}</dd></div>
+    <dl class="rpt-context delivery-head" aria-label="Rapor künyesi">
+      <div><dt>Ekip</dt><dd>{{ teamName() || 'SprintBoard ekibi' }}</dd></div>
+      <div><dt>Kapsam</dt><dd>Tüm tamamlanan sprintler</dd></div>
+      <div><dt>Dönem</dt><dd>{{ deliveryPeriod }}</dd></div>
+      <div><dt>Sprint</dt><dd>{{ delivery.sprintCount }} tamamlanan</dd></div>
+      <div><dt>Oluşturulma</dt><dd>{{ viewTime }}</dd></div>
     </dl>
-    <div class="rpt-figure"><sb-lines [series]="deliverySeries" [points]="deliveryPoints" unit="%" label="Sprint bazlı teslimat oranı" /></div>
-    <div class="rpt-key"><span><i style="background:#1f6f78"></i>Teslimat oranı (%)</span><span>BAU hariç Done / tüm teslimat işleri</span></div>
 
-    <h3 class="rpt-sub">Alınan iş ile teslim edilen iş arasındaki fark</h3>
-    <div class="rpt-figure"><sb-dumbbell [rows]="deliveryVolume" unit="iş" label="Sprint başına alınan ve teslim edilen iş sayısı" fromColor="#b9c4cb" toColor="#1f6f78" /></div>
-    <div class="rpt-key"><span><i style="background:#b9c4cb"></i>Sprinte alınan iş</span><span><i style="background:#1f6f78"></i>Teslim edilen</span><span>Sağdaki rakam: teslim / alınan</span></div>
+    <h3 class="rpt-sub">Yönetici Özeti</h3>
+    <dl class="rpt-kpis">
+      <div><dt>Tamamlanan sprint</dt><dd>{{ delivery.sprintCount }}<small>sprint</small></dd></div>
+      <div><dt>Teslim edilen iş</dt><dd>{{ delivery.totalDone }}<small>iş · BAU hariç</small></dd></div>
+      <div><dt>Undone</dt><dd [class.over]="delivery.totalUndone>0">{{ delivery.totalUndone }}<small>iş</small></dd></div>
+      <div><dt>Teslimat oranı</dt><dd>{{ pct(delivery.overallRate) }}<small>iş adedi ağırlıklı</small></dd></div>
+      <div><dt>Son sprint</dt><dd>{{ pct(delivery.latest?.rate ?? null) }}<small>{{ delivery.latest?.name }}</small></dd></div>
+      <div><dt>En düşük oran</dt><dd>{{ delivery.worst ? pct(delivery.worst.rate) : '—' }}<small>{{ delivery.worst?.name || 'karşılaştırma için tek sprint' }}</small></dd></div>
+    </dl>
+    <p class="rpt-aside delivery-strip"><span>Ortalama alınan iş: <b>{{ delivery.averageIntake ?? '—' }}</b></span><span>Ortalama teslim: <b>{{ delivery.averageDone ?? '—' }}</b></span><span>En yüksek oran: <b>{{ delivery.best ? delivery.best.name+' · '+pct(delivery.best.rate) : '—' }}</b></span></p>
 
-    <h3 class="rpt-sub">{{ settings.estimationMode === 'SIZE_AND_HOURS' ? 'İşlerin büyüklük dağılımı' : 'Story Point hacmi' }}</h3>
-    <p class="rpt-aside">Aynı iş sayısı farklı büyüklükte olabilir, bu yüzden teslimat oranıyla birlikte okunmalı.</p>
-    <div class="rpt-figure"><sb-donut [slices]="sizeSlices" [unit]="settings.estimationMode === 'SIZE_AND_HOURS' ? 'iş' : 'SP'" label="Tamamlanan sprintlerin büyüklük kompozisyonu" /></div>
+    <h3 class="rpt-sub">Öne Çıkan Bulgular</h3>
+    <ul class="rpt-findings">@for (f of delivery.findings; track f) { <li>{{ f }}</li> }</ul>
+
+    <h3 class="rpt-sub">Teslimat Trendi</h3>
+    <div class="rpt-figure"><sb-scope-figure [figure]="deliveryTrend" /></div>
+    <div class="rpt-key"><span><i style="background:#1b6b63"></i>Teslimat oranı</span><span><i style="background:#2e7d61"></i>En yüksek</span><span><i style="background:#c0362c"></i>En düşük</span><span>BAU hariç Done / tüm teslimat işleri</span></div>
+
+    <h3 class="rpt-sub">Alınan İş ile Teslim Edilen İş</h3>
+    <div class="rpt-figure scrolly"><sb-scope-figure [figure]="deliveryIntake" /></div>
+    <div class="rpt-key"><span><i style="background:#93a7b8"></i>Sprinte alınan iş</span><span><i style="background:#1f6f78"></i>Teslim edilen iş</span></div>
+
+    <h3 class="rpt-sub">{{ delivery.sizeMode ? 'İşlerin Büyüklük Dağılımı' : 'Story Point Hacmi' }}</h3>
+    @if (delivery.sizeMode) {
+      <div class="rpt-figure"><sb-scope-figure [figure]="deliverySize" /></div>
+      <p class="scope-caution">{{ sizeNote }}</p>
+    } @else {
+      <dl class="rpt-kpis"><div><dt>Story Point</dt><dd>{{ delivery.storyPoints }}<small>toplam</small></dd></div><div><dt>Kayıtlı iş</dt><dd>{{ delivery.pointedTasks }}<small>işte Story Point var</small></dd></div></dl>
+    }
+
+    <h3 class="rpt-sub">Sprint Karşılaştırması</h3>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Sprint karşılaştırması">
+      <table class="sprint-report-table"><caption class="sr-only">Sprint karşılaştırması: bitiş tarihi, alınan iş, BAU, Done ve Undone dağılımı, teslimat oranı ve büyüklük dağılımı.</caption>
+      <thead><tr><th scope="col">Sprint</th><th scope="col">Bitiş</th><th scope="col">Alınan</th><th scope="col">BAU</th><th scope="col">BAU dahil</th><th scope="col">Done</th><th scope="col">Undone</th><th scope="col">Teslimat</th><th scope="col">{{ delivery.sizeMode ? 'Size dağılımı' : 'Story Point' }}</th></tr></thead>
+      <tbody>
+        @for (row of delivery.sprints; track row.id) { <tr>
+          <td data-label="Sprint"><a [routerLink]="['/sprints', row.id, 'review']">{{ row.name }}</a></td>
+          <td data-label="Bitiş">{{ formatDate(row.end) }}</td>
+          <td data-label="Alınan" class="num">{{ row.intake }}</td>
+          <td data-label="BAU" class="num">{{ row.bau }}</td>
+          <td data-label="BAU dahil" class="num">{{ row.allTasks }}</td>
+          <td data-label="Done" class="num">{{ row.done }}</td>
+          <td data-label="Undone" class="num">{{ row.undone }}</td>
+          <td data-label="Teslimat" class="num">@if (row.rate === null) { <span class="void">—</span> } @else { <span class="rate"><i><b [style.width.%]="row.rate"></b></i>{{ pct(row.rate) }}</span> }</td>
+          <td [attr.data-label]="delivery.sizeMode ? 'Size dağılımı' : 'Story Point'">@if (delivery.sizeMode) { <span class="size-chips" [attr.aria-label]="sizeChipLabel(row)">@for (s of row.sizes; track s.label) { <span><i [style.background]="s.fill"></i>{{ s.label }} {{ s.count }}</span> }</span> } @else { {{ row.storyPoints }} SP }</td>
+        </tr> }
+      </tbody></table>
+    </div>
 
     <div class="rpt-folds">
-      <details><summary><span>Sprint sprint rakamlar</span><small>{{ rows.length }} sprint</small></summary><div class="fold-body"><div class="table-wrap"><table class="sprint-report-table"><caption class="sr-only">Sprint karşılaştırması: bitiş tarihi, iş sayısı, done ve undone dağılımı ile teslimat oranı.</caption><thead><tr><th scope="col">Sprint</th><th scope="col">Bitiş</th><th scope="col">İş</th><th scope="col">Done</th><th scope="col">Undone</th><th scope="col">Teslimat</th><th scope="col">{{ settings.estimationMode === 'SIZE_AND_HOURS' ? 'Size dağılımı' : 'Story Point' }}</th></tr></thead><tbody>
-        @for (row of rows; track row.number) { <tr><td><a [routerLink]="['/sprints', row.id, 'review']">{{ row.name }}</a></td><td>{{ formatDate(row.end) }}</td><td>{{ row.tasks }}<small>BAU dahil {{ row.allTasks }}</small></td><td>{{ row.done }}</td><td>{{ row.undone }}</td><td>{{ row.deliveryRate === null ? '—' : row.deliveryRate + '%' }}</td><td>@if (settings.estimationMode === 'SIZE_AND_HOURS') { <span class="size-distribution" [attr.aria-label]="sizeText(row)">S {{ row.sizeSmall }} · M {{ row.sizeMedium }} · L {{ row.sizeLarge }} · XL {{ row.sizeXLarge }}</span> } @else { {{ row.storyPointsTotal }} SP<small>{{ row.pointedTasks }} işte kayıtlı</small> }</td></tr> }
-      </tbody></table></div></div></details>
-      <details><summary><span>Nasıl hesaplanıyor?</span></summary><div class="fold-body">
-        <p>Teslimat oranı BAU hariç Done işin tüm teslimat işlerine bölümüdür. BAU dahil toplam kayıt tabloda ayrıca gösterilir.</p>
-        <p>Teslimat işi olmayan sprintte oran üretilmez; sıfır sayılmaz. Genel oran sprint ortalaması değil, iş adedi ağırlıklı orandır.</p>
-        <p>Size ve Story Point değerleri de BAU hariçtir. Bir sprintin daha az iş teslim etmesi daha az iş yaptığı anlamına gelmez; işlerin büyüklüğü değişir.</p>
+      <details><summary><span>Nasıl hesaplanıyor?</span><small>{{ deliveryMethodology.length }} tanım</small></summary><div class="fold-body">
+        <dl class="scope-terms">@for (m of deliveryMethodology; track m.term) { <dt>{{ m.term }}</dt><dd>{{ m.text }}</dd> }</dl>
       </div></details>
     </div>
     } @else { <sb-state variant="empty" title="Tamamlanan sprint yok" message="Bir sprint kapandığında teslimat karşılaştırması burada oluşur." /> }

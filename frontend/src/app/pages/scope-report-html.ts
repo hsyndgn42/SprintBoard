@@ -20,13 +20,14 @@ const dash=(value:string)=>value.trim()?h(value):'<span class="void">Kayıt yok<
 function markSvg(mark:Mark):string{
  switch(mark.kind){
   case 'rect':return `<rect x="${mark.x}" y="${mark.y}" width="${mark.w}" height="${mark.h}" rx="${mark.rx??1}" fill="${attr(mark.fill)}"/>`;
-  case 'path':return `<path d="${attr(mark.d)}" fill="${attr(mark.fill)}" stroke="#fff" stroke-width="2"/>`;
+  case 'path':return `<path d="${attr(mark.d)}" fill="${attr(mark.fill)}" stroke="${attr(mark.stroke??'#fff')}" stroke-width="${mark.strokeWidth??2}" stroke-linejoin="round" stroke-linecap="round"/>`;
   case 'line':return `<line x1="${mark.x1}" y1="${mark.y1}" x2="${mark.x2}" y2="${mark.y2}" class="${attr(mark.role)}"/>`;
   case 'text':return `<text x="${mark.x}" y="${mark.y}" text-anchor="${attr(mark.anchor)}" class="${attr(mark.role)}">${h(mark.text)}</text>`;
  }
 }
 
-function figureHtml(figure:Figure):string{
+/** Shared with the delivery export so both standalone files render marks identically. */
+export function figureHtml(figure:Figure):string{
  if(figure.empty)return `<p class="figure-empty">${h(figure.empty)}</p>`;
  return `<figure class="figure"><div class="figure-frame"><svg viewBox="0 0 ${figure.width} ${figure.height}" role="img" aria-labelledby="${attr(figure.id)}-t ${attr(figure.id)}-d">`
   +`<title id="${attr(figure.id)}-t">${h(figure.title)}</title><desc id="${attr(figure.id)}-d">${h(figure.desc)}</desc>`
@@ -116,7 +117,7 @@ function sprintSection(sprint:SprintScope):string{
 </section>`;
 }
 
-const css=`
+export const REPORT_HTML_CSS=`
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:#eef1f4;color:#15202b;font:14px/1.6 "Segoe UI",system-ui,-apple-system,Arial,sans-serif}
@@ -233,7 +234,7 @@ export function scopeReportHtml(sprints:Sprint[],generatedAt=new Date(),teamName
  return `<!doctype html><html lang="tr"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Acil İşler ve Kapsam Değişimi</title><style>${css}</style></head><body>
+<title>Acil İşler ve Kapsam Değişimi</title><style>${REPORT_HTML_CSS}</style></head><body>
 <main>
  <header class="report-head">
   <h1>Acil İşler ve Kapsam Değişimi</h1>

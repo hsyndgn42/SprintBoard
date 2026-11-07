@@ -4,6 +4,7 @@ import type {ReportExport} from './report-export.model';
 import {memberContexts,capacitySourceLabel} from './member-context.model';
 import {trendSource} from './capacity-trend.model';
 import {taskCategoryLabel,taskSubtypeLabel} from '../task-taxonomy';
+import {deliveryReportHtml} from './delivery-report-html';
 
 const h=(value:unknown)=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const n=(value:number|null|undefined)=>value==null?'—':new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(Number.isFinite(value)?value:0);
@@ -33,18 +34,11 @@ const css=`
 @page{size:A4 landscape;margin:12mm}@media print{body{background:white;font-size:11px}main{margin:0;border:0;max-width:none}header{padding:20px}.content{padding:15px 0}.chart-row,tr,.kpis{break-inside:avoid}h1,h2,h3{break-after:avoid}.chart{background:white}.section{margin-top:22px}.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.split{grid-template-columns:1fr 1fr}.chart-row{grid-template-columns:1fr 3fr}.table-wrap{overflow:visible}table{display:table;font-size:10px}thead{display:table-header-group}tbody{display:table-row-group}tr{display:table-row}th,td{display:table-cell;padding:7px}td:before{display:none}footer{padding:15px 0}*{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
 `;
 export function reportTabHtml(input:ReportExport,createdAt=new Date().toISOString()):string{
+ // The delivery tab owns its own standalone document; it shares nothing with the generic shell.
+ if(input.kind==='delivery')return deliveryReportHtml(input.rows,input.settings,new Date(createdAt),input.teamName??'',input.scope);
  let title='',body='',notice='Efor, planlanan saattir; gerçekleşen süre veya bireysel performans puanı değildir.';
  switch(input.kind){
   case 'overtime':{title='Mesai durumu ve trendi';notice='Gerçekleşen mesai ile planlanan mesai ayrıdır. Bekleyen talepler ve açılış bakiyesi kazanılan mesaiye eklenmez.';body=overtimeSectionHtml(input.rows)+section('Sprint bazlı mesai',table(['Sprint','Gerçekleşen saat','Planlanan saat','Plan kapsamında saat','Kalan saat','Aşan saat','Plansız saat','Sınıflandırılmamış saat','Mesaiden izin günü','Eşleştirilmemiş kullanım/düzeltme saati'],input.rows.map(r=>[r.name,r.earned,r.planned,r.matched||0,r.remaining||0,r.excess||0,r.unplanned||0,r.unclassified||0,r.usedDays,r.unmatchedUsedHours])));if(input.entries?.length)body+=section('Görev / Roadmap mesaileri',table(['Kişi / sprint','Görev','Roadmap (kayıt anı)','Mesai türü','Gerçekleşen saat','Planlanan saat'],input.entries.map(e=>[e.memberName+' · '+e.sprintName,e.taskTitle||'Genel / bağlantı yok',e.roadmapTitle||'Bağlantı yok',e.earnedHours>0?(e.planClassification==='PLANNED'?'Plana bağlı':e.planClassification==='UNPLANNED'?'Plansız':'Sınıflandırılmamış'):'Mesai planı',e.earnedHours,e.plannedHours])));break;}
-  case 'delivery':{
-   title='Sprint teslimatı';const rows=input.rows,size=input.settings.estimationMode==='SIZE_AND_HOURS';
-   const total=sum(rows,r=>r.tasks),done=sum(rows,r=>r.done),undone=sum(rows,r=>r.undone);
-   body=kpis([['Tamamlanan sprint',rows.length],['Done · BAU hariç',done],['Undone · BAU hariç',undone],['Ağırlıklı teslimat',rate(done,total)]]);
-   body+=section('Sprint teslimat oranı',stacks([...rows].sort((a,b)=>a.number-b.number).map(r=>({label:r.name,values:r.deliveryRate===null?[]:[r.deliveryRate],note:r.deliveryRate===null?'— · Teslimat işi yok; oran hesaplanmaz':r.done+' / '+r.tasks+' iş'})),['Done oranı'],'%',100),'BAU hariç. Oranı olmayan dönem — olarak belirtilir; sıfır teslimatla eş tutulmaz.');
-   body+=section(size?'Size kompozisyonu':'Story Point hacmi',size?stacks([...rows].sort((a,b)=>a.number-b.number).map(r=>({label:r.name,values:[r.sizeSmall,r.sizeMedium,r.sizeLarge,r.sizeXLarge]})),['S','M','L','XL'],'iş'):stacks(rows.map(r=>({label:r.name,values:[r.storyPointsTotal],note:r.pointedTasks+' işte kayıtlı'})),['Story Point'],'SP'));
-   body+=section('Sprint karşılaştırması',table(['Sprint','Bitiş','İş / Done / Undone','Teslimat',size?'Size dağılımı':'Story Point'],rows.map(r=>[r.name,r.end,r.tasks+' / '+r.done+' / '+r.undone,r.deliveryRate===null?'—':n(r.deliveryRate)+'%',estimates(r,size,r.tasks)])));
-   break;
-  }
   case 'members':{
    title='Kişi dağılımı';const rows=input.rows,total=sum(rows,r=>r.taskCount),done=sum(rows,r=>r.done),size=input.settings.estimationMode==='SIZE_AND_HOURS';
    notice+=' BAU dahil, Leave hariç kişi atamalarıdır. Çok kişili iş her kişi için bir kez sayılır.';

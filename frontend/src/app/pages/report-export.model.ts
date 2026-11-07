@@ -11,7 +11,7 @@ export interface DefectExportRow {title:string;subtype:string;sprint:string;stat
 export interface ExportChart {title:string;rows:{label:string;count:number}[]}
 export type ReportExport = {scope:string} & (
  {kind:'overtime';rows:OvertimeTrendRow[];entries?:OvertimeEntry[]} |
- {kind:'delivery';rows:ReportRow[];settings:ProductSettings} |
+ {kind:'delivery';rows:ReportRow[];settings:ProductSettings;teamName?:string} |
  {kind:'members';rows:MemberExportRow[];settings:ProductSettings} |
  {kind:'types';rows:WorkTypeReportRow[]} |
  {kind:'context';rows:MemberReportRow[]} |

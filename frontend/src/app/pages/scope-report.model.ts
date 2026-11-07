@@ -200,24 +200,9 @@ export const METHODOLOGY:{term:string;text:string}[]=[
 
 /* --------------------------------------------------------------------- figures */
 
-/**
- * A chart mark. One flat shape rather than a union, because the same list is walked by an
- * Angular template and by a string renderer, and both stay trivial when no narrowing is needed.
- */
-export interface Mark{
- kind:'rect'|'path'|'line'|'text';
- x?:number;y?:number;w?:number;h?:number;rx?:number;fill?:string;
- d?:string;x1?:number;y1?:number;x2?:number;y2?:number;
- text?:string;role?:'axis'|'zero'|'link'|'label'|'value'|'unit'|'inverse';anchor?:'start'|'middle'|'end';
-}
-
-/** A chart is geometry plus words. The screen and the export render the same marks. */
-export interface Figure{id:string;width:number;height:number;title:string;desc:string;marks:Mark[];empty?:string}
-
-const rect=(x:number,y:number,w:number,h:number,fill:string,rx=1):Mark=>({kind:'rect',x,y,w:Math.max(0,w),h:Math.max(0,h),fill,rx});
-const text=(x:number,y:number,value:string,role:'label'|'value'|'unit'|'inverse'='label',anchor:'start'|'middle'|'end'='start'):Mark=>({kind:'text',x,y,text:value,role,anchor});
-const line=(x1:number,y1:number,x2:number,y2:number,role:'axis'|'zero'|'link'='axis'):Mark=>({kind:'line',x1,y1,x2,y2,role});
-const clip=(value:string,max=26)=>value.length>max?value.slice(0,max-1)+'…':value;
+import type {Figure,Mark} from './report-figure';
+import {clip,line,rect,text} from './report-figure';
+export type {Mark,Figure} from './report-figure';
 
 /** 8.1 Coverage: how much of the period can be measured at all. */
 export function coverageFigure(report:ScopeReport):Figure{

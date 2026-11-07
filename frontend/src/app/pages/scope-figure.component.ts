@@ -17,7 +17,7 @@ import type {Figure} from './scope-report.model';
    @for(m of figure.marks;track $index){
     @switch(m.kind){
      @case('rect'){<rect [attr.x]="m.x" [attr.y]="m.y" [attr.width]="m.w" [attr.height]="m.h" [attr.rx]="m.rx" [attr.fill]="m.fill"/>}
-     @case('path'){<path [attr.d]="m.d" [attr.fill]="m.fill" stroke="#fff" stroke-width="2"/>}
+     @case('path'){<path [attr.d]="m.d" [attr.fill]="m.fill" [attr.stroke]="m.stroke||'#fff'" [attr.stroke-width]="m.strokeWidth||2" stroke-linejoin="round" stroke-linecap="round"/>}
      @case('line'){<line [attr.x1]="m.x1" [attr.y1]="m.y1" [attr.x2]="m.x2" [attr.y2]="m.y2" [attr.class]="m.role"/>}
      @case('text'){<text [attr.x]="m.x" [attr.y]="m.y" [attr.text-anchor]="m.anchor" [attr.class]="m.role">{{m.text}}</text>}
     }

@@ -28,3 +28,45 @@
 .rpt-cell h4 small{font-weight:400;font-size:11px;color:#8a98a4}
 @media(max-width:760px){.rpt-grid{grid-template-columns:1fr}.report-tab-panel.rpt{padding:16px 14px 20px}}
 @media print{.rpt-grid{grid-template-columns:1fr 1fr}.rpt-cell{break-inside:avoid}.report-tab-panel.rpt{border:0;padding:0}}
+
+/* Sprint teslimatı: the report owns a few shapes the shared contract does not carry. */
+.rpt-context{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:#e3e8ec;border-block:1px solid #e3e8ec;margin:18px 0 0}
+.rpt-context>div{background:#fff;padding:10px 13px;min-width:0}
+.rpt-context dt{margin:0;font-size:11px;color:#5a6b7b}
+.rpt-context dd{margin:3px 0 0;font-size:13.5px;color:#15202b;overflow-wrap:anywhere}
+.delivery-report .rpt-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+.delivery-strip{display:flex;flex-wrap:wrap;gap:6px 24px;max-width:none;padding:10px 13px;background:#f6f8f9;font-size:12.5px}
+.delivery-strip b{color:#15202b;font-weight:650}
+.rpt-findings{margin:8px 0 0;padding-left:18px;font-size:13.5px;line-height:1.75;max-width:80ch;color:#2b3a49}
+.rpt-findings li{margin-bottom:3px}
+.rpt-figure.scrolly{max-height:620px;overflow-y:auto}
+.scope-caution{margin:12px 0 0;padding:11px 14px;background:#f6f8f9;border-left:3px solid #8a98a4;font-size:12.5px;color:#48596a;max-width:80ch}
+.scope-terms{margin:4px 0 12px;font-size:12.5px;line-height:1.7}
+.scope-terms dt{font-weight:650;margin-top:9px;color:#15202b}
+.scope-terms dd{margin:1px 0 0;color:#48596a;max-width:84ch}
+.delivery-report .table-wrap{overflow-x:auto;max-height:560px;overflow-y:auto}
+.delivery-report .sprint-report-table{min-width:900px}
+.delivery-report .sprint-report-table thead th{position:sticky;top:0;z-index:1;background:#f1f5fa}
+.delivery-report td.num,.delivery-report th:nth-child(n+3):nth-child(-n+8){text-align:right;font-variant-numeric:tabular-nums}
+.delivery-report .rate{display:inline-flex;align-items:center;justify-content:flex-end;gap:8px;white-space:nowrap}
+.delivery-report .rate i{display:block;width:56px;height:7px;border-radius:4px;background:#e4eaee;overflow:hidden;flex:none}
+.delivery-report .rate b{display:block;height:100%;background:#1b6b63}
+.delivery-report .void{color:#8a98a4}
+.size-chips{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11.5px;color:#48596a}
+.size-chips>span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.size-chips i{width:9px;height:9px;border-radius:2px;flex:none}
+@media(max-width:1100px){.delivery-report .rpt-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.delivery-report .rate{justify-content:flex-start}.delivery-report td.num{text-align:left}}
+@media(prefers-reduced-motion:reduce){.delivery-report *{animation:none!important;transition:none!important}}
+@media print{
+ .delivery-report .table-wrap{overflow:visible;max-height:none}
+ .delivery-report .sprint-report-table{min-width:0;font-size:9.5px}
+ .delivery-report .sprint-report-table thead{display:table-header-group;position:static}
+ .delivery-report .sprint-report-table thead th{position:static}
+ .delivery-report .rpt-figure.scrolly{max-height:none;overflow:visible}
+ .delivery-report .rate i{width:32px}
+ .delivery-report details{display:block}
+ .delivery-report details>summary{list-style:none}
+ .delivery-report details>.fold-body{display:block!important}
+ .rpt-context>div,.rpt-findings li,.delivery-report tr{break-inside:avoid}
+}

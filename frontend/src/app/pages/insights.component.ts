@@ -4,6 +4,9 @@ import {SlackSettingsComponent} from './slack-settings.component';
 import {JiraSettingsComponent} from './jira-settings.component';
 import {ConfluenceSettingsComponent} from './confluence-settings.component';
 import {ScopeReportComponent} from './scope-report.component';
+import {ScopeFigureComponent} from './scope-figure.component';
+import type {DeliveryReport, DeliverySprint} from './delivery-report.model';
+import {DELIVERY_METHODOLOGY, SIZE_NOTE, buildDeliveryReport, intakeFigure, percent, sizeFigure, trendFigure} from './delivery-report.model';
 import { ReportHtmlExportComponent } from './report-html-export.component';
 import { CapacityTrendComponent } from './capacity-trend.component';
 import { WorkSettingsComponent } from './work-settings.component';
@@ -44,7 +47,7 @@ interface WorkSubtypeSummary {
 
 @Component({
   standalone: true,
-  imports: [OvertimeTrendComponent, ScopeReportComponent,ReportHtmlExportComponent, RouterLink, FormsModule, DefectReportComponent, MemberContextComponent, RoadmapReportComponent, CapacityTrendComponent, SbStateComponent, SbLinesComponent, SbDonutComponent, SbDumbbellComponent, SbStackComponent],
+  imports: [OvertimeTrendComponent, ScopeReportComponent, ScopeFigureComponent,ReportHtmlExportComponent, RouterLink, FormsModule, DefectReportComponent, MemberContextComponent, RoadmapReportComponent, CapacityTrendComponent, SbStateComponent, SbLinesComponent, SbDonutComponent, SbDumbbellComponent, SbStackComponent],
   host: {'class':'reports-page'},
   templateUrl: './reports.component.html',
   styleUrls: ['./reports.component.css','./report-design.css'],
@@ -110,29 +113,25 @@ export class ReportsComponent implements OnInit {
   private esc(value:string){return value.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));}
   private nf(n:number){return new Intl.NumberFormat('tr-TR',{maximumFractionDigits:1}).format(n);}
 
-  get deliverySeries(): Series[] { return [{label:'Teslimat oranı',color:'#1f6f78',kind:'area'}]; }
-  get deliveryPoints(): Point[] { return [...this.rows].sort((a,b)=>a.number-b.number).map(r=>({label:'S'+r.number,
-    caption:r.name+': '+r.done+' Done, '+r.undone+' Undone'+(r.deliveryRate===null?'':', teslimat %'+r.deliveryRate),
-    values:[r.deliveryRate]})); }
-  get deliveryVolume(): Dumbbell[] { return [...this.rows].sort((a,b)=>a.number-b.number).slice(-12).map(r=>({key:r.id,label:r.name,
-    note:r.undone?r.undone+' iş Undone kapandı':'tamamı teslim edildi',
-    from:r.tasks,to:r.done,caption:r.name+': '+r.tasks+' iş alındı, '+r.done+' teslim edildi, '+r.undone+' Undone'})); }
-  get sizeSlices(): Slice[] { const rows=this.rows;
-    if(this.settings.estimationMode!=='SIZE_AND_HOURS')return [{label:'Story Point',value:rows.reduce((n,r)=>n+r.storyPointsTotal,0),fill:'#1f6f78'}];
-    return [{label:'Small',value:rows.reduce((n,r)=>n+r.sizeSmall,0),fill:'#4a7fb5'},{label:'Medium',value:rows.reduce((n,r)=>n+r.sizeMedium,0),fill:'#1f6f78'},
-      {label:'Large',value:rows.reduce((n,r)=>n+r.sizeLarge,0),fill:'#d98c2b'},{label:'X-Large',value:rows.reduce((n,r)=>n+r.sizeXLarge,0),fill:'#c0362c'}]; }
-  get deliveryVerdict(): string {
-    const n=this.rows.length,rate=this.averageDelivery;
-    if(!n)return 'Henüz tamamlanan sprint yok.';
-    const worst=[...this.rows].filter(r=>r.deliveryRate!==null).sort((a,b)=>(a.deliveryRate??0)-(b.deliveryRate??0))[0];
-    let text=n+' tamamlanan sprintte '+this.totalDone+' iş teslim edildi';
-    text+=rate===null?'.':'; genel teslimat oranı <b'+(rate<80?' class="over"':'')+'>%'+rate+'</b>.';
-    if(this.totalUndone>0)text+=' <b class="over">'+this.totalUndone+' iş</b> Undone kapandı';
-    if(this.totalUndone>0&&worst&&n>1)text+=', en düşük oran '+this.esc(worst.name)+' (%'+worst.deliveryRate+').';
-    else if(this.totalUndone>0)text+='.';
-    else text+=' Hiçbir sprint Undone iş bırakmadı.';
-    return text;
+  // The delivery report is rebuilt from rows on demand; nothing is cached so a
+  // filter change can never leave one section reading a different sprint set.
+  readonly teamName=this.api.teamName;
+  readonly sizeNote=SIZE_NOTE;
+  readonly deliveryMethodology=DELIVERY_METHODOLOGY;
+  private deliveryCache:{rows:ReportRow[];mode:string;report:DeliveryReport}|null=null;
+  get delivery(): DeliveryReport {
+    if(!this.deliveryCache||this.deliveryCache.rows!==this.rows||this.deliveryCache.mode!==this.settings.estimationMode)
+      this.deliveryCache={rows:this.rows,mode:this.settings.estimationMode,report:buildDeliveryReport(this.rows,this.settings)};
+    return this.deliveryCache.report;
   }
+  get deliveryTrend(){return trendFigure(this.delivery);}
+  get deliveryIntake(){return intakeFigure(this.delivery);}
+  get deliverySize(){return sizeFigure(this.delivery);}
+  get deliveryPeriod(){const s=this.delivery.sprints;return s.length?formatDate(s[s.length-1].end)+' – '+formatDate(s[0].end):'—';}
+  pct(value:number|null){return percent(value);}
+  sizeChipLabel(row:DeliverySprint){return row.sizes.map(s=>s.label+' '+s.count).join(', ');}
+
+
 
   get memberMoves(): Dumbbell[] { return this.chartMembers.map(m=>({key:m.memberId,label:m.memberName,
     from:m.taskCount,to:m.done,
