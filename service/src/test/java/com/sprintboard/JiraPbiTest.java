@@ -67,7 +67,7 @@ class JiraPbiTest {
   var fields=body.getValue().path("fields");
   assertEquals("11500",fields.path("issuetype").path("id").asText());
   assertEquals("VBCRF-4",fields.path("customfield_12873").asText());
-  assertEquals(3,fields.path("customfield_10663").asInt());
+  assertEquals(5,fields.path("customfield_10663").asInt());
   assertEquals("30023",fields.path("customfield_17670").path("id").asText());
   assertEquals("10000",fields.path("priority").path("id").asText());
   assertEquals("RRCA-11438",fields.path("customfield_32981").get(0).path("key").asText());
@@ -118,6 +118,21 @@ class JiraPbiTest {
   assertEquals(List.of(),JiraPbiService.defectKeys("TDEF-5-2 sürüm notu","TDEF"));
   assertEquals(List.of(),JiraPbiService.defectKeys("TDEF-66195","VBCRF"));
   assertEquals(List.of(),JiraPbiService.defectKeys("TDEF-5",""));
+ }
+
+ /** The agreed scale starts at X-Small 1, so the smallest size must not fall back to a guess. */
+ @Test void anXSmallItemCarriesOnePointAndASizeDrivenBusinessValue()throws Exception{
+  enableIntegration();
+  roadmapWithEpic("roadmap-1","VBCRF-4");
+  backlogItem("backlog-1","roadmap-1","DEV","X-SMALL",null);
+  outbox.enqueueBacklog("backlog-1");
+  pbi.sendNext();
+
+  var body=ArgumentCaptor.forClass(JsonNode.class);
+  verify(transport).post(anyString(),anyString(),anyString(),body.capture());
+  var fields=body.getValue().path("fields");
+  assertEquals(1,fields.path("customfield_10663").asInt());
+  assertEquals("30013",fields.path("customfield_27228").path("id").asText());
  }
 
  @Test void anExplicitStoryPointEstimateWinsOverTheSizeMapping()throws Exception{

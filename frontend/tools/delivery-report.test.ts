@@ -38,14 +38,14 @@ const POINT_SETTINGS:ProductSettings={estimationMode:'POINTS_AND_HOURS',hoursPer
 
 function row(over:Partial<ReportRow>&{id:string;number:number;name:string}):ReportRow{
  return {end:'2026-01-16',tasks:0,allTasks:0,done:0,undone:0,deliveryRate:null,
-  sizedTasks:0,sizeSmall:0,sizeMedium:0,sizeLarge:0,sizeXLarge:0,
+  sizedTasks:0,sizeXSmall:0,sizeSmall:0,sizeMedium:0,sizeLarge:0,sizeXLarge:0,
   pointedTasks:0,storyPointsTotal:0,storyPointsAvailable:false,...over} as ReportRow;
 }
 
 /** Three sprints with a clear best, a clear worst and a latest that is neither. */
 const rows:ReportRow[]=[
  row({id:'s1',number:1,name:'Sprint Bir',end:'2026-01-16',tasks:10,allTasks:13,done:9,undone:1,deliveryRate:90,
-  sizeSmall:2,sizeMedium:6,sizeLarge:2,sizeXLarge:0,pointedTasks:10,storyPointsTotal:30}),
+  sizeXSmall:1,sizeSmall:1,sizeMedium:6,sizeLarge:2,sizeXLarge:0,pointedTasks:10,storyPointsTotal:30}),
  row({id:'s2',number:2,name:'Sprint İki',end:'2026-01-30',tasks:20,allTasks:20,done:10,undone:10,deliveryRate:50,
   sizeSmall:4,sizeMedium:10,sizeLarge:6,sizeXLarge:0,pointedTasks:18,storyPointsTotal:70}),
  row({id:'s3',number:3,name:LONG,end:'2026-02-13',tasks:10,allTasks:16,done:7,undone:3,deliveryRate:70,
@@ -133,19 +133,20 @@ test('locative suffix follows Turkish vowel harmony and digit endings',()=>{
 test('size totals add up and shares are reported as rounded',()=>{
  eq(report.sizedTotal,40,'boyutlu iş');
  const map=new Map(report.sizeTotals.map(s=>[s.label,s]));
- eq(map.get('Small')!.count,7,'Small');
+ eq(map.get('X-Small')!.count,1,'X-Small');
+ eq(map.get('Small')!.count,6,'Small');
  eq(map.get('Medium')!.count,21,'Medium');
  eq(map.get('Large')!.count,11,'Large');
- eq(map.get('XL')!.count,1,'XL');
+ eq(map.get('X-Large')!.count,1,'X-Large');
  eq(report.sizeTotals.reduce((n,s)=>n+s.count,0),report.sizedTotal,'toplam');
  for(const slice of report.sizeTotals)eq(slice.share,Math.round(slice.count*100/40),'pay '+slice.label);
 });
 
 test('an empty size category keeps its legend entry but no bar width',()=>{
  const noXl=buildDeliveryReport([rows[0]],SIZE_SETTINGS);
- const xl=noXl.sizeTotals.find(s=>s.label==='XL')!;
- eq(xl.count,0,'XL sayısı');eq(xl.share,0,'XL payı');
- eq(noXl.sizeTotals.length,4,'kategori korunur');
+ const xl=noXl.sizeTotals.find(s=>s.label==='X-Large')!;
+ eq(xl.count,0,'X-Large sayısı');eq(xl.share,0,'X-Large payı');
+ eq(noXl.sizeTotals.length,5,'kategori korunur');
 });
 
 test('story point teams are not shown a size distribution',()=>{
@@ -255,8 +256,8 @@ test('chart values are never repeated as a visible caption under the figure',()=
 });
 
 test('the comparison table drops empty size chips but keeps them in the legend',()=>{
- eq(html.split('XL 0').length-1,0,'tabloda boş kategori');
- has(html,'XL ·','legend satırı');
+ eq(html.split('X-Large 0').length-1,0,'tabloda boş kategori');
+ has(html,'X-Large ·','legend satırı');
 });
 
 test('the table declares a caption, column scopes and separate intake columns',()=>{

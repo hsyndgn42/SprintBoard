@@ -188,7 +188,8 @@ class WorkspaceServiceTest {
     List<Map<String, Object>> sprintReports = workspace.reports();
     assertFalse(sprintReports.isEmpty());
     for (Map<String, Object> sprint : sprintReports) {
-      int sizeTotal = ((Number) sprint.get("sizeSmall")).intValue()
+      int sizeTotal = ((Number) sprint.get("sizeXSmall")).intValue()
+          + ((Number) sprint.get("sizeSmall")).intValue()
           + ((Number) sprint.get("sizeMedium")).intValue()
           + ((Number) sprint.get("sizeLarge")).intValue()
           + ((Number) sprint.get("sizeXLarge")).intValue();
@@ -248,6 +249,19 @@ class WorkspaceServiceTest {
     assertThrows(IllegalArgumentException.class, () -> addCheckedTask(sprintId, Map.of("backlogId", firstId)));
     addCheckedTask(sprintId, Map.of("backlogId", secondId));
     assertEquals(7, ((List<?>) workspace.sprint(sprintId).get("items")).size());
+  }
+
+  /** X-Small was added after the scale proved too coarse, so both spellings must reach the database. */
+  @Test
+  @Transactional
+  void xSmallIsAcceptedAndNormalised() {
+    String dashed = (String) workspace.createBacklog(Map.of("title", "Konfig işi", "size", "X-SMALL", "estimatedHours", 2)).get("id");
+    String plain = (String) workspace.createBacklog(Map.of("title", "Metin işi", "size", "xsmall", "estimatedHours", 1)).get("id");
+    var backlog = workspace.backlog();
+    for (String id : java.util.List.of(dashed, plain))
+      assertEquals("X-SMALL", backlog.stream().filter(row -> id.equals(row.get("id"))).findFirst().orElseThrow().get("size"));
+    assertThrows(IllegalArgumentException.class,
+        () -> workspace.createBacklog(Map.of("title", "Geçersiz", "size", "TINY", "estimatedHours", 1)));
   }
 
   @Test
