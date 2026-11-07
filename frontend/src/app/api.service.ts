@@ -23,7 +23,7 @@ export interface Task {
   defect?:DefectDetails;
   id: string; sprintId: string; backlogId: string; name: string; criteria: string; type: string;
   workKind: string; status: string; statusNote: string; estimatedHours: number; remainingHours: number;
-  storyPoints: number | null; size: 'SMALL' | 'MEDIUM' | 'LARGE' | 'X-LARGE' | null; externalId: string;
+  storyPoints: number | null; size: 'X-SMALL' | 'SMALL' | 'MEDIUM' | 'LARGE' | 'X-LARGE' | null; externalId: string;
   taskCategory: TaskCategory; taskSubtype: TaskSubtype;
   assignments: { memberId: string; memberName: string; estimatedHours: number; planningHours?:number; supportOnly: boolean; leaveDays?: number; hoursPerDay?:number }[];
 }
@@ -65,7 +65,7 @@ export interface BacklogItem {
   readiness: { eligible:boolean; ready:boolean; warnings:string[]; fingerprint:string };
   id: string; roadmapId: string | null; title: string; criteria: string; workKind: string; type: string;
   state: string; estimatedHours: number; storyPoints: number | null; externalId: string;
-  size: 'SMALL' | 'MEDIUM' | 'LARGE' | 'X-LARGE' | null;
+  size: 'X-SMALL' | 'SMALL' | 'MEDIUM' | 'LARGE' | 'X-LARGE' | null;
   taskCategory: TaskCategory; taskSubtype: TaskSubtype;
   repeatOfId: string | null; taskId: string | null; sprintId: string | null;
   taskStatus: string | null; roadmapTitle: string | null;
@@ -84,14 +84,14 @@ export interface BauTemplate { id: string; title: string; workKind: string; mode
 export interface OvertimeEntry { planId?:string|null;planClassification?:string;planActualHours?:number; taskId?:string|null;taskTitle?:string|null;roadmapId?:string|null;roadmapTitle?:string|null; id: string; memberId: string; memberName: string; sprintId: string; sprintName: string; earnedHours: number; usedHours: number; plannedHours: number; includeInCapacity: boolean; note: string }
 export interface ReportRow {
   id: string; number: number; name: string; end: string; tasks: number; allTasks: number; done: number; undone: number; deliveryRate: number | null;
-  sizedTasks: number; sizeSmall: number; sizeMedium: number; sizeLarge: number; sizeXLarge: number;
+  sizedTasks: number; sizeXSmall: number; sizeSmall: number; sizeMedium: number; sizeLarge: number; sizeXLarge: number;
   pointedTasks: number; storyPointsTotal: number; storyPointsAvailable: boolean;
 }
 export interface MemberReportRow {
   supportTaskCount:number;unestimatedTaskCount:number;capacitySource:'FROZEN'|'RECALCULATED'|'UNSPECIFIED_SUPPORT'|'UNAVAILABLE';allocationExplicit:boolean;allocatedDays:number|null;leaveDays:number;nonWorkingDays:number|null;overtimeHours:number|null;availableHours:number|null;
   memberId: string; memberName: string; title: string; teamRole: string; engagement: string;
   sprintId: string; sprintNumber: number; sprintName: string; taskCount: number; effortHours: number;
-  done: number; undone: number; other: number; sizeSmall: number; sizeMedium: number; sizeLarge: number; sizeXLarge: number;
+  done: number; undone: number; other: number; sizeXSmall: number; sizeSmall: number; sizeMedium: number; sizeLarge: number; sizeXLarge: number;
   pointedTasks: number; storyPointsTotal: number;
 }
 export interface WorkTypeReportRow {

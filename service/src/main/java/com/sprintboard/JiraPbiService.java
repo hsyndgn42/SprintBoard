@@ -119,7 +119,8 @@ public class JiraPbiService {
   // Jira reports the epic link as optional but rejects a PBI without it.
   fields.put(defaults.text("epicLinkFieldId","customfield_12873"),epicKey);
   fields.set(defaults.text("pbiTypeFieldId","customfield_17670"),mapper.createObjectNode().put("id",defaults.option("pbiTypeByCategory",text(item,"task_category"),"30023")));
-  fields.set(defaults.text("businessValueFieldId","customfield_27228"),mapper.createObjectNode().put("id",defaults.option("businessValueByPriority",text(item,"priority"),"30013")));
+  // Business value follows the size, because the size is what the team actually debates in refinement.
+  fields.set(defaults.text("businessValueFieldId","customfield_27228"),mapper.createObjectNode().put("id",defaults.option("businessValueBySize",text(item,"size_code"),"30013")));
   String kpi=defaults.text("kpiIssueKey","");
   if(!kpi.isBlank())fields.putArray(defaults.text("kpiFieldId","customfield_32981")).addObject().put("key",kpi);
   String checklist=defaults.text("checklistOptionId","");

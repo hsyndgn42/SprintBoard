@@ -78,7 +78,7 @@ export class SprintBoardComponent implements OnChanges,OnDestroy {
   }catch(e){if(this.sprint.id===task.sprintId)this.actionError=String(e);}finally{this.actionBusy=false;this.changed();}}
   selectStatus(task:Task,event:Event){const select=event.target as HTMLSelectElement;const status=select.value;select.value=task.status;if(status!==task.status)this.changeStatus(task,status);}
   changeStatus(task:Task,status:string){if(this.canTask(task)&&!this.busy)this.statusChange.emit({task,status});}
-  estimate(item:Task){return this.settings.estimationMode==='SIZE_AND_HOURS'?(item.size?'Size '+({SMALL:'Small',MEDIUM:'Medium',LARGE:'Large','X-LARGE':'X-Large'}[item.size]):'Size belirtilmedi'):(item.storyPoints!=null?item.storyPoints+' SP':'SP belirtilmedi');}
+  estimate(item:Task){return this.settings.estimationMode==='SIZE_AND_HOURS'?(item.size?'Size '+({'X-SMALL':'X-Small',SMALL:'Small',MEDIUM:'Medium',LARGE:'Large','X-LARGE':'X-Large'}[item.size]):'Size belirtilmedi'):(item.storyPoints!=null?item.storyPoints+' SP':'SP belirtilmedi');}
   isLeave(item:Task){return item.workKind==='LEAVE'||item.taskSubtype==='LEAVE';}
   initials(name:string){return (name||'?').trim().split(/\s+/).slice(0,2).map(part=>part.charAt(0).toLocaleUpperCase('tr')).join('')||'?';}
   leaveHours(item:Task){return item.assignments.reduce((n,a)=>n+(a.leaveDays||0)*(a.hoursPerDay??this.settings.hoursPerDay),0);}

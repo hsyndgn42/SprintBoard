@@ -34,7 +34,7 @@ interface MemberReportSummary {
   supportTaskCount:number;
   memberId: string; memberName: string; title: string; teamRole: string; engagement: string;
   taskCount: number; effortHours: number; done: number; undone: number; other: number;
-  sizeSmall: number; sizeMedium: number; sizeLarge: number; sizeXLarge: number; pointedTasks: number; storyPointsTotal: number;
+  sizeXSmall: number; sizeSmall: number; sizeMedium: number; sizeLarge: number; sizeXLarge: number; pointedTasks: number; storyPointsTotal: number;
 }
 
 interface WorkTypeSummary {
@@ -178,8 +178,8 @@ export class ReportsComponent implements OnInit {
     const summaries = new Map<string, MemberReportSummary>();
     for (const row of this.memberRows) {
       if (this.selectedSprint && row.sprintId !== this.selectedSprint) continue;
-      const current = summaries.get(row.memberId) || { memberId: row.memberId, memberName: row.memberName, title: row.title, teamRole: row.teamRole, engagement: row.engagement, supportTaskCount:0, taskCount: 0, effortHours: 0, done: 0, undone: 0, other: 0, sizeSmall: 0, sizeMedium: 0, sizeLarge: 0, sizeXLarge: 0, pointedTasks: 0, storyPointsTotal: 0 };
-      for (const key of ['supportTaskCount','taskCount', 'effortHours', 'done', 'undone', 'other', 'sizeSmall', 'sizeMedium', 'sizeLarge', 'sizeXLarge', 'pointedTasks', 'storyPointsTotal'] as const) current[key] += row[key];
+      const current = summaries.get(row.memberId) || { memberId: row.memberId, memberName: row.memberName, title: row.title, teamRole: row.teamRole, engagement: row.engagement, supportTaskCount:0, taskCount: 0, effortHours: 0, done: 0, undone: 0, other: 0, sizeXSmall: 0, sizeSmall: 0, sizeMedium: 0, sizeLarge: 0, sizeXLarge: 0, pointedTasks: 0, storyPointsTotal: 0 };
+      for (const key of ['supportTaskCount','taskCount', 'effortHours', 'done', 'undone', 'other', 'sizeXSmall', 'sizeSmall', 'sizeMedium', 'sizeLarge', 'sizeXLarge', 'pointedTasks', 'storyPointsTotal'] as const) current[key] += row[key];
       summaries.set(row.memberId, current);
     }
     const query = this.memberQuery.trim().toLocaleLowerCase('tr-TR');
@@ -265,12 +265,12 @@ export class ReportsComponent implements OnInit {
   }
   chartX(index: number): number { return this.chartRows.length <= 1 ? 370 : 50 + index * 640 / (this.chartRows.length - 1); }
   chartY(rate: number | null): number { return 196 - Math.max(0, Math.min(100, rate ?? 0)) * 1.6; }
-  sizeSegment(row: ReportRow, value: number): number { const total = row.sizeSmall + row.sizeMedium + row.sizeLarge + row.sizeXLarge; return total ? value * 100 / total : 0; }
+  sizeSegment(row: ReportRow, value: number): number { const total = row.sizeXSmall + row.sizeSmall + row.sizeMedium + row.sizeLarge + row.sizeXLarge; return total ? value * 100 / total : 0; }
   pointVolume(row: ReportRow): number { const max = Math.max(...this.recentChartRows.map(item => item.storyPointsTotal), 1); return row.storyPointsTotal * 100 / max; }
   memberVolume(member: MemberReportSummary): number { const max = Math.max(...this.chartMembers.map(item => item.taskCount), 1); return Math.max(2, member.taskCount * 100 / max); }
   memberResult(member: MemberReportSummary, value: number): number { return member.taskCount ? value * 100 / member.taskCount : 0; }
   deliveryRate(row: { done: number; taskCount: number }): number { return row.taskCount ? Math.round(row.done * 100 / row.taskCount) : 0; }
-  sizeText(row: { sizeSmall: number; sizeMedium: number; sizeLarge: number; sizeXLarge: number }): string { return `Small ${row.sizeSmall}, Medium ${row.sizeMedium}, Large ${row.sizeLarge}, X-Large ${row.sizeXLarge}`; }
+  sizeText(row: { sizeXSmall: number; sizeSmall: number; sizeMedium: number; sizeLarge: number; sizeXLarge: number }): string { return `X-Small ${row.sizeXSmall}, Small ${row.sizeSmall}, Medium ${row.sizeMedium}, Large ${row.sizeLarge}, X-Large ${row.sizeXLarge}`; }
   initials(name: string): string { return name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toLocaleUpperCase('tr-TR'); }
   roleLabel(value: string): string { return ({ DEVELOPER: 'Developer', TESTER: 'Tester', DESIGNER: 'Designer', ARCHITECT: 'Architect', ANALYST: 'Analyst' } as Record<string, string>)[value] || value; }
   engagementLabel(value: string): string { return value === 'SUPPORT' ? 'Support' : value === 'FORMER' ? 'Eski ekip' : 'Çekirdek ekip'; }

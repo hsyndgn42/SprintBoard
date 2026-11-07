@@ -17,7 +17,7 @@ final class MemberReportBuilder {
      r.put("title",frozen?"":m.getOrDefault("title",""));r.put("teamRole",frozen?c.getOrDefault("role",m.getOrDefault("teamRole","")):m.getOrDefault("teamRole",""));
      r.put("engagement",frozen?(Boolean.TRUE.equals(c.get("supportMember"))?"SUPPORT":"CORE"):m.getOrDefault("engagement","CORE"));
      r.put("sprintId",sprint.get("id"));r.put("sprintNumber",sprint.get("number"));r.put("sprintName",sprint.get("name"));
-     for(String field:List.of("taskCount","effortHours","done","undone","other","sizeSmall","sizeMedium","sizeLarge","sizeXLarge","pointedTasks","storyPointsTotal","supportTaskCount","unestimatedTaskCount"))r.put(field,0d);
+     for(String field:List.of("taskCount","effortHours","done","undone","other","sizeXSmall","sizeSmall","sizeMedium","sizeLarge","sizeXLarge","pointedTasks","storyPointsTotal","supportTaskCount","unestimatedTaskCount"))r.put(field,0d);
      boolean unspecifiedSupport=!frozen&&!Boolean.TRUE.equals(c.get("allocationExplicit"))&&(Boolean.TRUE.equals(c.get("supportMember"))||"ARCHITECT".equals(r.get("teamRole")));
      boolean known=!c.isEmpty()&&!unspecifiedSupport;
      r.put("capacitySource",c.isEmpty()?"UNAVAILABLE":unspecifiedSupport?"UNSPECIFIED_SUPPORT":frozen?"FROZEN":"RECALCULATED");
@@ -38,7 +38,7 @@ final class MemberReportBuilder {
        boolean support=assignments.stream().allMatch(a->Boolean.TRUE.equals(a.get("supportOnly")));
        double hours=assignments.stream().filter(a->!Boolean.TRUE.equals(a.get("supportOnly"))).mapToDouble(DefectReserve::planned).sum();
        add(r,"effortHours",hours);if(support)add(r,"supportTaskCount",1);else if(assignments.stream().mapToDouble(a->number(a,"estimatedHours")).sum()==0)add(r,"unestimatedTaskCount",1);
-       String size=Objects.toString(task.get("size"),"");String sizeField=switch(size){case "SMALL"->"sizeSmall";case "MEDIUM"->"sizeMedium";case "LARGE"->"sizeLarge";case "X-LARGE"->"sizeXLarge";default->"";};
+       String size=Objects.toString(task.get("size"),"");String sizeField=switch(size){case "X-SMALL"->"sizeXSmall";case "SMALL"->"sizeSmall";case "MEDIUM"->"sizeMedium";case "LARGE"->"sizeLarge";case "X-LARGE"->"sizeXLarge";default->"";};
        if(!sizeField.isEmpty())add(r,sizeField,1);
        if(task.get("storyPoints") instanceof Number n){add(r,"pointedTasks",1);add(r,"storyPointsTotal",n.doubleValue());}
      }

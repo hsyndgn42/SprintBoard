@@ -387,7 +387,7 @@ export class SprintDetailComponent implements OnInit, OnDestroy {
   private groupKey(item: Task): string { return item.taskCategory && this.kindMeta[item.taskCategory] ? item.taskCategory : this.legacyCategory(item); }
   private legacyCategory(item: Task): string { if (item.type === 'BAU' || item.externalId?.startsWith('BAU-AUTO:')) return 'BAU'; return ({ DEVELOPMENT: 'DEV', DESIGN: 'DESIGN', ANALYSIS: 'ANALYZE', TEST: 'TEST' } as Record<string, string>)[(item.workKind || '').toUpperCase()] || 'OTHER'; }
   taxonomyLabel(item: Task): string { const category = taskCategoryLabel(item.taskCategory || this.legacyCategory(item)); return item.taskSubtype ? `${category} · ${taskSubtypeLabel(item.taskSubtype)}` : category; }
-  sizeLabel(size: string): string { return ({ SMALL: 'Small', MEDIUM: 'Medium', LARGE: 'Large', 'X-LARGE': 'X-Large' } as Record<string, string>)[size] || size; }
+  sizeLabel(size: string): string { return ({ 'X-SMALL': 'X-Small', SMALL: 'Small', MEDIUM: 'Medium', LARGE: 'Large', 'X-LARGE': 'X-Large' } as Record<string, string>)[size] || size; }
   relativeEstimate(item: Task): string { return this.settings.estimationMode === 'SIZE_AND_HOURS' ? (item.size ? `Size ${this.sizeLabel(item.size)}` : 'Size belirlenmedi') : (item.storyPoints != null ? `${item.storyPoints} SP` : 'SP belirlenmedi'); }
   leaveDays(item: Task): number { return item.assignments.reduce((total, assignment) => total + (assignment.leaveDays || 0), 0); }
   leaveHours(item: Task): number { return item.assignments.reduce((sum,a)=>sum+(a.leaveDays||0)*(a.hoursPerDay??this.settings.hoursPerDay),0); }

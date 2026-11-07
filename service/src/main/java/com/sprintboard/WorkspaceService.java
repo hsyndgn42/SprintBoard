@@ -729,6 +729,7 @@ public class WorkspaceService {
       String sprintId = (String) row.get("id");
       Map<String, Object> estimate = jdbc.queryForMap("""
           SELECT COUNT(size_code) sized_tasks,
+                 COALESCE(SUM(CASE WHEN size_code='X-SMALL' THEN 1 ELSE 0 END),0) size_xsmall,
                  COALESCE(SUM(CASE WHEN size_code='SMALL' THEN 1 ELSE 0 END),0) size_small,
                  COALESCE(SUM(CASE WHEN size_code='MEDIUM' THEN 1 ELSE 0 END),0) size_medium,
                  COALESCE(SUM(CASE WHEN size_code='LARGE' THEN 1 ELSE 0 END),0) size_large,
@@ -743,6 +744,7 @@ public class WorkspaceService {
           "allTasks", row.get("taskCount"),
           "deliveryRate", integer(row, "deliveryTaskCount") == 0 ? null : Math.round(100.0 * integer(row, "deliveryDoneCount") / integer(row, "deliveryTaskCount")),
           "sizedTasks", ((Number) estimate.get("SIZED_TASKS")).intValue(),
+          "sizeXSmall", ((Number) estimate.get("SIZE_XSMALL")).intValue(),
           "sizeSmall", ((Number) estimate.get("SIZE_SMALL")).intValue(),
           "sizeMedium", ((Number) estimate.get("SIZE_MEDIUM")).intValue(),
           "sizeLarge", ((Number) estimate.get("SIZE_LARGE")).intValue(),
@@ -1495,10 +1497,11 @@ return map("exportedAt", Instant.now().toString(), "schemaVersion", 19,
   }
   private static String nullableSize(Map<String, Object> input) {
     if (input.get("size") == null) return null;
-    String value = String.valueOf(input.getOrDefault("size", "")).trim().toUpperCase(java.util.Locale.ROOT).replace("XLARGE", "X-LARGE");
+    String value = String.valueOf(input.getOrDefault("size", "")).trim().toUpperCase(java.util.Locale.ROOT)
+        .replace("XLARGE", "X-LARGE").replace("XSMALL", "X-SMALL");
     if (value.isBlank()) return null;
-    if (!List.of("SMALL", "MEDIUM", "LARGE", "X-LARGE").contains(value))
-      throw new IllegalArgumentException("Size Small, Medium, Large veya X-Large olmalı.");
+    if (!List.of("X-SMALL", "SMALL", "MEDIUM", "LARGE", "X-LARGE").contains(value))
+      throw new IllegalArgumentException("Size X-Small, Small, Medium, Large veya X-Large olmalı.");
     return value;
   }
 }

@@ -42,7 +42,7 @@ export function buildReview(sprint: Sprint, settings: ProductSettings) {
     rows: [...(TASK_SUBTYPES[category] || []).map(subtype => reviewGroup(subtype.value, subtype.label, TASK_CATEGORY_COLORS[category], items.filter(task => task.taskCategory === category && task.taskSubtype === subtype.value))),
       reviewGroup('UNSPECIFIED', 'Belirtilmemiş', '#64748b', items.filter(task => task.taskCategory === category && !TASK_SUBTYPES[category]?.some(subtype => subtype.value === task.taskSubtype)))],
   }));
-  const sizeKeys = ['SMALL', 'MEDIUM', 'LARGE', 'X-LARGE'];
+  const sizeKeys = ['X-SMALL', 'SMALL', 'MEDIUM', 'LARGE', 'X-LARGE'];
   const sizeLabels = ['S', 'M', 'L', 'XL'];
   const sizeColors = ['#0d9488', '#2563eb', '#c47718', '#7c3aed'];
   const sizes = sizeKeys.map((key, index) => reviewGroup(key, sizeLabels[index], sizeColors[index], delivery.filter(task => task.size === key)));

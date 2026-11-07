@@ -14,7 +14,7 @@ import {clip, line, polyline, rect, text} from './report-figure';
 export const DELIVERY_COLORS={
  rate:'#1b6b63',rateLatest:'#0f4c47',best:'#2e7d61',worst:'#c0362c',
  intake:'#93a7b8',delivered:'#1f6f78',
- small:'#8fb8dd',medium:'#2f6a9e',large:'#6b5ca5',xlarge:'#3f3a63',unsized:'#c3ccd3',
+ xsmall:'#cadff3',small:'#8fb8dd',medium:'#2f6a9e',large:'#6b5ca5',xlarge:'#3f3a63',unsized:'#c3ccd3',
 } as const;
 
 const tr=new Intl.NumberFormat('tr-TR',{maximumFractionDigits:1});
@@ -64,10 +64,11 @@ export interface DeliveryReport{
 }
 
 const SIZE_BANDS=[
+ {label:'X-Small',fill:DELIVERY_COLORS.xsmall},
  {label:'Small',fill:DELIVERY_COLORS.small},
  {label:'Medium',fill:DELIVERY_COLORS.medium},
  {label:'Large',fill:DELIVERY_COLORS.large},
- {label:'XL',fill:DELIVERY_COLORS.xlarge},
+ {label:'X-Large',fill:DELIVERY_COLORS.xlarge},
 ];
 
 const rounded=(part:number,total:number)=>total?Math.round(part*100/total):null;
@@ -78,7 +79,7 @@ export function buildDeliveryReport(rows:ReportRow[],settings:ProductSettings):D
   id:r.id,number:r.number,name:r.name,end:r.end,
   intake:r.tasks,bau:Math.max(0,r.allTasks-r.tasks),allTasks:r.allTasks,done:r.done,undone:r.undone,rate:r.deliveryRate,
   storyPoints:r.storyPointsTotal,pointed:r.pointedTasks,
-  sizes:[r.sizeSmall,r.sizeMedium,r.sizeLarge,r.sizeXLarge].map((count,i)=>({label:SIZE_BANDS[i].label,count,fill:SIZE_BANDS[i].fill})),
+  sizes:[r.sizeXSmall,r.sizeSmall,r.sizeMedium,r.sizeLarge,r.sizeXLarge].map((count,i)=>({label:SIZE_BANDS[i].label,count,fill:SIZE_BANDS[i].fill})),
  }));
  const totalIntake=sprints.reduce((n,s)=>n+s.intake,0);
  const totalDone=sprints.reduce((n,s)=>n+s.done,0);

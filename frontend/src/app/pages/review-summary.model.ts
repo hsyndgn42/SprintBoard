@@ -142,7 +142,7 @@ export function reviewExceptions(
   add('unestimated', 'Tahminsiz teslimat işi',
     sized ? 'Size belirtilmemiş.' : 'Story Point belirtilmemiş.',
     delivery.filter(task => sized
-      ? !['SMALL', 'MEDIUM', 'LARGE', 'X-LARGE'].includes(task.size || '')
+      ? !['X-SMALL', 'SMALL', 'MEDIUM', 'LARGE', 'X-LARGE'].includes(task.size || '')
       : task.storyPoints == null));
   add('undoneWithoutNote', 'Gerekçesiz Undone',
     'Undone işaretli ancak sonuç/gerekçe notu girilmemiş.',

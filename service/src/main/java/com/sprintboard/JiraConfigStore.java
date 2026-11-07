@@ -9,12 +9,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class JiraConfigStore {
  /** Verified live against TDEF; kept editable because other squads may use another component. */
  public static final String DEFAULT_DEFECT_JQL="project = TDEF AND component = \"Vibe-Fix\" ORDER BY created DESC";
- /** Field ids and option ids confirmed by creating VBCRF-776 on the live server. */
+ /**
+  * Field ids and option ids confirmed by creating VBCRF-776 on the live server.
+  * sizePoints follows the team's agreed scale: X-Small 1, Small 3, Medium 5, Large 8, X-Large 13.
+  * businessValueBySize carries the same option id for every size until the real Jira option ids
+  * for 20/40/60/80/100 are entered from the Jira settings screen.
+  */
  public static final String DEFAULT_FIELDS="""
- {"sizePoints":{"SMALL":1,"MEDIUM":3,"LARGE":5,"X-LARGE":8},
+ {"sizePoints":{"X-SMALL":1,"SMALL":3,"MEDIUM":5,"LARGE":8,"X-LARGE":13},
   "bauPoints":{"bau-meeting":8,"bau-support":8,"bau-training":8,"bau-leave":1},
   "pbiTypeByCategory":{"DEV":"30023","DESIGN":"30023","ANALYZE":"30023","TEST":"30023","DEFECT":"30025","BAU":"30024","OTHER":"30023"},
-  "businessValueByPriority":{"CRITICAL":"30013","HIGH":"30013","NORMAL":"30013","LOW":"30013","UNSET":"30013"},
+  "businessValueBySize":{"X-SMALL":"30013","SMALL":"30013","MEDIUM":"30013","LARGE":"30013","X-LARGE":"30013","UNSET":"30013"},
   "priorityByRoadmapPriority":{"CRITICAL":"2","HIGH":"10000","NORMAL":"3","LOW":"4","UNSET":"3"},
   "epicIssueTypeId":"238","epicNameFieldId":"customfield_12874",
   "epicExtraFields":{"customfield_30186":{"id":"33344"}},
