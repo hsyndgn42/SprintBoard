@@ -4,9 +4,9 @@ import {ApiService,Sprint} from '../api.service';
 import {ScopeFigureComponent} from './scope-figure.component';
 import {scopeReportHtml} from './scope-report-html';
 import {downloadText} from './share-export';
-import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,UNAVAILABLE_NOTE,SCOPE_COLORS,
- buildScopeReport,coverageFigure,coverageSentence,hours,items,movementFigure,num,shortDate,
- sprintStatusLabel,stamp,trackingLabel,unavailableSentence,urgentFigure,waterfallFigure,
+import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,SCOPE_COLORS,
+ buildScopeReport,hours,items,movementFigure,num,shortDate,
+ sprintStatusLabel,stamp,trackingLabel,urgentFigure,waterfallFigure,
  type ScopeReport,type SprintScope} from './scope-report.model';
 
 /**
@@ -48,10 +48,6 @@ import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,UNAVAILABLE_NOTE
   </select>
  </label>
 </div>
-
-<h3 class="rpt-sub">Veri Kapsamı</h3>
-<div class="rpt-figure"><sb-scope-figure [figure]="coverageChart" /></div>
-<p class="scope-caution">{{unavailableNote}}</p>
 
 @if(!report.tracked.length){
  <p class="rpt-empty">Bu kapsamda kapsam değişimi takibi yapılan sprint yok; karşılaştırma ve dönem toplamı üretilemiyor.</p>
@@ -184,17 +180,6 @@ import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,UNAVAILABLE_NOTE
 }
 }
 
-@if(report.unavailableCount){
-<h3 class="rpt-sub">Tarihsel Kapsam Verisi Bulunmayan Sprintler</h3>
-<p class="rpt-verdict">{{unavailableSummary}}</p>
-<div class="rpt-folds">
- <details>
-  <summary><span>Etkilenen sprintler</span><small>{{report.unavailableCount}} sprint</small></summary>
-  <div class="fold-body"><p>{{report.unavailableNames.join(', ')}}</p></div>
- </details>
-</div>
-}
-
 <div class="rpt-folds">
  <details>
   <summary><span>Hesaplama Yöntemi</span><small>{{methodology.length}} tanım</small></summary>
@@ -260,7 +245,6 @@ export class ScopeReportComponent implements OnInit,OnDestroy{
  readonly methodology=METHODOLOGY;
  readonly effortNote=EFFORT_NOTE;
  readonly totalsNote=TOTALS_NOTE;
- readonly unavailableNote=UNAVAILABLE_NOTE;
  readonly reconciliationNote=RECONCILIATION_NOTE;
 
  ngOnInit(){void this.load();}
@@ -268,11 +252,8 @@ export class ScopeReportComponent implements OnInit,OnDestroy{
 
  get visible(){return this.rows.filter(s=>!this.selected||s.id===this.selected);}
  get measured(){return this.report.fullCount+this.report.partialCount;}
- get coverage(){return coverageSentence(this.report);}
- get unavailableSummary(){return unavailableSentence(this.report);}
  get generated(){return stamp(this.report.generatedAt);}
  get filterLabel(){return this.selected?'Tek sprint':this.report.totalSprints+' sprint · takipli '+this.measured;}
- get coverageChart(){return coverageFigure(this.report);}
  get urgentChart(){return urgentFigure(this.report);}
  get movementChart(){return movementFigure(this.report);}
  waterfall(sprint:SprintScope){return waterfallFigure(sprint);}

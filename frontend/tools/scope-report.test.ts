@@ -229,11 +229,10 @@ test('the standalone report keeps one title and one methodology',()=>{
  for(const term of METHODOLOGY)has(html,term.term,'yöntem tanımı: '+term.term);
 });
 
-test('untracked sprints appear once as a summary, never as repeated cards',()=>{
+test('untracked sprints never produce their own sections',()=>{
  eq(html.split('Bu sprint için kapsam değişimi takibi yok').length-1,0,'eski tekrarlı kart metni');
- has(html,UNAVAILABLE_NOTE,'tarihçesiz uyarısı');
- has(html,unavailableSentence(report),'tarihçesiz özeti');
- eq(html.split(UNAVAILABLE_NOTE).length-1>=1?1:0,1,'uyarı en az bir kez yazılmalı');
+ eq(html.split('Tarihsel Kapsam Verisi Bulunmayan Sprintler').length-1,0,'tarihçesiz bölümü kaldırıldı');
+ eq(html.split('Veri Kapsamı').length-1,0,'veri kapsamı bölümü kaldırıldı');
  for(const name of report.unavailableNames)eq(html.split('>'+name+'<').length-1,0,name+' için ayrı detay bölümü açılmamalı');
 });
 

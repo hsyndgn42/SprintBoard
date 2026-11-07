@@ -1,7 +1,7 @@
 import type {Figure,ScopeReport,SprintScope,Mark} from './scope-report.model';
-import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,UNAVAILABLE_NOTE,SCOPE_COLORS,
- buildScopeReport,coverageFigure,coverageSentence,hours,items,movementFigure,num,shortDate,
- sprintStatusLabel,stamp,trackingLabel,unavailableSentence,urgentFigure,waterfallFigure} from './scope-report.model';
+import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,SCOPE_COLORS,
+ buildScopeReport,hours,items,movementFigure,num,shortDate,
+ sprintStatusLabel,stamp,trackingLabel,urgentFigure,waterfallFigure} from './scope-report.model';
 import type {Sprint} from '../api.service';
 
 /**
@@ -247,12 +247,6 @@ export function scopeReportHtml(sprints:Sprint[],generatedAt=new Date(),teamName
   </dl>
  </header>
 
- <section class="layer" aria-labelledby="veri-kapsami">
-  <h2 id="veri-kapsami">Veri Kapsamı</h2>
-  ${figureHtml(coverageFigure(report))}
-  <p class="caution">${h(UNAVAILABLE_NOTE)}</p>
- </section>
-
  <section class="layer" aria-labelledby="donem-ozeti">
   <h2 id="donem-ozeti">Dönem Özeti</h2>
   <dl class="metrics">
@@ -297,12 +291,6 @@ export function scopeReportHtml(sprints:Sprint[],generatedAt=new Date(),teamName
  ${report.tracked.length?`<section class="layer" aria-labelledby="detaylar">
   <h2 id="detaylar">Takipli Sprint Detayları</h2>
   ${report.tracked.map(sprintSection).join('')}
- </section>`:''}
-
- ${report.unavailableCount?`<section class="layer" aria-labelledby="tarihcesiz">
-  <h2 id="tarihcesiz">Tarihsel Kapsam Verisi Bulunmayan Sprintler</h2>
-  <p class="lead">${h(unavailableSentence(report))}</p>
-  <p class="note">${h('Etkilenen sprintler: '+report.unavailableNames.join(', '))}</p>
  </section>`:''}
 
  <section class="layer" aria-labelledby="yontem">
