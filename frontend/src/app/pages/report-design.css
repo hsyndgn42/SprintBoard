@@ -21,6 +21,11 @@
 .rpt-kpis dd small{font-size:13px;color:var(--slate);margin-left:3px}
 .rpt-kpis dd.over{color:var(--over)}
 .rpt-kpis .muted dd{color:var(--slate)}
+/* Six metrics read better as two rows of three than as one cramped row of six. */
+.rpt-kpis.six{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+.rpt-findings{margin:8px 0 0;padding-left:18px;max-width:78ch;display:grid;gap:5px}
+.rpt-findings li{font-size:14px;line-height:1.6;color:var(--ink)}
 
 .rpt-filters{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0}
 .rpt-filters .field{flex:1 1 190px;margin:0;font-size:12px;color:var(--slate)}
@@ -61,7 +66,7 @@
 
 .rpt-empty{padding:34px 0;color:var(--slate);font-size:14px}
 
-@media(max-width:720px){.rpt-kpis{grid-template-columns:1fr 1fr}.rpt-verdict{font-size:15px}}
+@media(max-width:720px){.rpt-kpis,.rpt-kpis.six{grid-template-columns:1fr 1fr}.rpt-verdict{font-size:15px}}
 @media print{
  .rpt-filters,.rpt-actions{display:none}
  .rpt-figure{overflow:visible;break-inside:avoid}

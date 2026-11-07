@@ -1,5 +1,5 @@
 import { ReportHtmlExportComponent } from './report-html-export.component';
-import { SbDonutComponent,SbDumbbellComponent,Dumbbell,Slice } from './report-charts';
+import { SbDonutComponent,SbPairComponent,Dumbbell,Slice } from './report-charts';
 import {Component,ChangeDetectorRef,EventEmitter,Output,OnInit,inject} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {RouterLink} from '@angular/router';
@@ -16,12 +16,11 @@ interface RoadmapEffort extends RoadmapItem {
  * both at once, and the dashed line marks the roadmap item of ordinary size so an outlier
  * is visible without reading a single number.
  */
-@Component({standalone:true,selector:'app-roadmap-report',imports:[ReportHtmlExportComponent,SbDonutComponent,SbDumbbellComponent,FormsModule,RouterLink],template:`
+@Component({standalone:true,selector:'app-roadmap-report',imports:[ReportHtmlExportComponent,SbDonutComponent,SbPairComponent,FormsModule,RouterLink],template:`
 <section class="card card-pad roadmap-effort-report">
 
 <div class="rpt-head"><h2>Roadmap eforu</h2><div class="rpt-actions"><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'roadmap',rows:visible,scope:'Tüm dönemler · '+kindLabel(kind)+' · '+(query||'Tüm referanslar')}" /><button class="btn" [disabled]="loading||!!error||!visible.length" (click)="exportCsv()">CSV indir</button></div></div>
-<p class="rpt-verdict" [innerHTML]="verdict"></p>
-
+<p class="rpt-aside">Atanan efor planlanan saattir; gerçek harcanan süre değildir. Mesai ayrı tutulur ve plana eklenmez.</p>
 <div class="rpt-filters">
 <label class="field">Roadmap ara<input [(ngModel)]="query" placeholder="Başlık veya TC / referans ID"></label>
 <label class="field">Tür<select [(ngModel)]="kind"><option value="">Tüm türler</option><option value="PROJECT">Proje</option><option value="FEATURE_SET">Feature set</option><option value="GENERAL">Genel</option><option value="UNSPECIFIED">Tür belirtilmemiş</option></select></label>
@@ -32,19 +31,25 @@ interface RoadmapEffort extends RoadmapItem {
 @else if(!visible.length){<p class="rpt-empty">Bu kapsamda Roadmap öğesi yok. Roadmap oluşturup backlog işlerini bağladığınızda efor burada görünür.</p>}
 @else{
 
-<dl class="rpt-kpis">
-<div><dt>Roadmap öğesi</dt><dd>{{visible.length}}</dd></div>
-<div><dt>Atanan efor</dt><dd>{{fmt(total('assignedHours'))}}<small>sa</small></dd></div>
-<div><dt>Tamamlanan</dt><dd>{{doneShare===null?'—':'%'+fmt(doneShare)}}</dd></div>
-<div><dt>Gerçekleşen mesai</dt><dd>{{fmt(total('overtimeHours'))}}<small>sa</small></dd></div>
+<dl class="rpt-kpis six">
+<div><dt>Roadmap öğesi</dt><dd>{{visible.length}}<small>öğe</small></dd></div>
+<div><dt>Atanan efor</dt><dd>{{fmt(total('assignedHours'))}}<small>sa · planlanan</small></dd></div>
+<div><dt>Done efor</dt><dd>{{fmt(total('doneHours'))}}<small>sa</small></dd></div>
+<div><dt>Tamamlanan</dt><dd>{{doneShare===null?'—':'%'+fmt(doneShare)}}<small>atanan eforun payı</small></dd></div>
+<div><dt>Undone efor</dt><dd [class.over]="total('undoneHours')>0">{{fmt(total('undoneHours'))}}<small>sa</small></dd></div>
+<div><dt>Gerçekleşen mesai</dt><dd>{{fmt(total('overtimeHours'))}}<small>sa · plana ek</small></dd></div>
 </dl>
+
+<h3 class="rpt-sub">Öne Çıkan Bulgular</h3>
+<ul class="rpt-findings">@for(f of findings;track f){<li>{{f}}</li>}</ul>
 
 <h3 class="rpt-sub">Efor hangi Roadmap öğelerine dağıldı</h3>
 <div class="rpt-figure"><sb-donut [slices]="effortSlices" unit="sa" label="Roadmap öğelerinin planlanan efor payı" /></div>
 
 <h3 class="rpt-sub">Planın ne kadarı Done oldu</h3>
-<div class="rpt-figure"><sb-dumbbell [rows]="landed" unit="sa" label="Roadmap başına atanan efor ve Done olan efor" fromColor="#b9c4cb" toColor="#1f6f78" fromLabel="Atanan" toLabel="Done" /></div>
-<div class="rpt-key"><span><i style="background:#b9c4cb"></i>Atanan efor</span><span><i style="background:#1f6f78"></i>Done olan</span></div>
+<p class="rpt-aside">Her satırda üstteki çubuk atanan planlanan eforu, alttaki Done olan eforu gösterir. En çok efor atanan {{landed.length}} öğe listelenir.</p>
+<div class="rpt-figure"><sb-pair [rows]="landed" unit="sa" label="Roadmap başına atanan efor ve Done olan efor" fromLabel="Atanan" toLabel="Done" /></div>
+<div class="rpt-key"><span><i style="background:#93a7b8"></i>Atanan efor (sa)</span><span><i style="background:#1f6f78"></i>Done olan efor (sa)</span></div>
 
 @if(total('overtimeHours')>0){
 <h3 class="rpt-sub">Bu eforun üstüne yazılan mesai</h3>
@@ -89,22 +94,28 @@ export class RoadmapReportComponent implements OnInit {
     return rest>0?[...head,{label:'Diğer '+(rows.length-7)+' öğe',value:rest,fill:'#c3ccd3'}]:head;}
   get landed():Dumbbell[]{return this.visible.filter(r=>r.assignedHours>0).slice(0,10).map(r=>({key:r.id,label:r.title,
     from:r.assignedHours,to:r.doneHours,
-    caption:r.title+': '+this.fmt(r.assignedHours)+' sa atanan, '+this.fmt(r.doneHours)+' sa Done, '+this.fmt(r.undoneHours)+' sa Undone, '+this.fmt(r.openHours)+' sa açık'}));}
+    caption:r.title+': '+this.fmt(r.assignedHours)+' sa atanan, '+this.fmt(r.doneHours)+' sa Done (%'+this.fmt(Math.round(r.doneHours/r.assignedHours*1000)/10)+'), '+this.fmt(r.undoneHours)+' sa Undone, '+this.fmt(r.openHours)+' sa açık'}));}
   get overtimeSlices():Slice[]{return this.visible.filter(r=>r.overtimeHours>0).sort((a,b)=>b.overtimeHours-a.overtimeHours).slice(0,8)
     .map((r,i)=>({label:r.title,value:r.overtimeHours,fill:this.wheel[i],note:this.kindLabel(r.kind)}));}
   get doneShare(){const t=this.total('assignedHours');return t>0?Math.round(this.total('doneHours')/t*1000)/10:null;}
 
-  get verdict(){
-   const n=this.visible.length,top=this.visible[0],effort=this.total('assignedHours'),share=this.doneShare;
-   if(!n||effort<=0)return 'Bu kapsamdaki Roadmap öğelerine henüz saatli atama yapılmamış.';
-   let text=n+' Roadmap öğesine toplam <b>'+this.fmt(effort)+' saat</b> plan atandı.';
-   if(top&&n>1)text+=' Eforun en büyük payı '+this.esc(top.title)+' (%'+this.fmt(Math.round(top.assignedHours/effort*1000)/10)+').';
-   if(share!==null)text+=' Bu planın <b>%'+this.fmt(share)+'</b>\u2019i Done oldu';
-   const undone=this.total('undoneHours');
-   text+=undone>0?', <b class="over">'+this.fmt(undone)+' saat</b> Undone kaldı.':'.';
-   return text;
+  /** Findings are plain sentences built from the same totals the cards show, so the report
+   *  never states anything the reader cannot verify in the table below. */
+  get findings(){
+   const n=this.visible.length,effort=this.total('assignedHours'),done=this.total('doneHours'),undone=this.total('undoneHours');
+   if(!n||effort<=0)return ['Bu kapsamdaki Roadmap öğelerine henüz saatli atama yapılmamış.'];
+   const out=[n+' Roadmap öğesine toplam '+this.fmt(effort)+' saat plan atandı.'];
+   const share=this.doneShare;
+   if(share!==null)out.push('Atanan planın %'+this.fmt(share)+'\u2019i Done oldu ('+this.fmt(done)+' saat).');
+   if(undone>0)out.push('Undone kalan efor '+this.fmt(undone)+' saat.');
+   const top=this.visible[0];
+   if(top&&n>1)out.push('En büyük efor payı '+top.title+': '+this.fmt(top.assignedHours)+' saat (%'+this.fmt(Math.round(top.assignedHours/effort*1000)/10)+').');
+   const lagging=this.visible.filter(r=>r.assignedHours>0).map(r=>({t:r.title,s:r.doneHours/r.assignedHours})).sort((a,b)=>a.s-b.s)[0];
+   if(lagging&&n>1)out.push('En düşük tamamlanma oranı '+lagging.t+': %'+this.fmt(Math.round(lagging.s*1000)/10)+'.');
+   const ot=this.total('overtimeHours');
+   if(ot>0)out.push('Bu planın üstüne '+this.fmt(ot)+' saat mesai yazıldı.');
+   return out;
   }
-  private esc(value:string){return value.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));}
 
   async ngOnInit(){this.readyChange.emit(false);try{this.rows=await this.api.get<RoadmapEffort[]>('/reports/roadmap');}catch(e){this.error=String(e);}finally{this.loading=false;this.cdr.detectChanges();this.readyChange.emit(!this.error);}}
   exportCsv(){if(this.loading||this.error)return;downloadText(csv([['Kapsam','Tür','Referans ID','Roadmap','Sprint işleri','Done','Undone','Açık','Atanan planlanan saat','Gerçekleşen mesai saat (ayrı)','Done atanan saat','Undone atanan saat','Açık atanan saat','Havuz iş','Havuz tahmini saat','X atama','Atamasız iş'],...this.visible.map(r=>['Tüm dönemler; gerçek harcanan süre değildir',this.kindLabel(r.kind),r.referenceId,r.title,r.taskCount,r.done,r.undone,r.open,r.assignedHours,r.overtimeHours,r.doneHours,r.undoneHours,r.openHours,r.poolCount,r.poolEstimatedHours,r.supportAssignmentCount,r.unassignedTaskCount])]),'text/csv;charset=utf-8','sprintboard-roadmap-efor.csv');}

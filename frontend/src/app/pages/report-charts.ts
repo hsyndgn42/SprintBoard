@@ -20,7 +20,7 @@ export type Diverge={key:string;label:string;up:number;down:number;caption?:stri
 const tr=new Intl.NumberFormat('tr-TR',{maximumFractionDigits:1});
 export const num=(n:number)=>tr.format(n);
 const sum=(s:{value:number}[])=>s.reduce((n,x)=>n+Math.max(0,x.value),0);
-const nice=(peak:number)=>{const p=Math.max(1,peak);const mag=Math.pow(10,Math.floor(Math.log10(p)));const s=p/mag;return (s<=1?1:s<=2?2:s<=2.5?2.5:s<=5?5:10)*mag;};
+const nice=(peak:number)=>{const p=Math.max(1,peak);const mag=Math.pow(10,Math.floor(Math.log10(p)));const s=p/mag;return (s<=1?1:s<=2?2:s<=2.5?2.5:s<=4?4:s<=5?5:s<=8?8:10)*mag;};
 
 const BASE=`:host{display:block;min-width:0}
 svg{display:block;width:100%;height:auto}
@@ -193,34 +193,33 @@ export class SbBulletComponent{
  clip(v:string){return v.length>30?v.slice(0,29)+'…':v;}
 }
 
-/* --------------------------------------------------------------- dumbbell */
-/** Two related numbers per row: the gap between the dots is the message. */
-@Component({selector:'sb-dumbbell',standalone:true,template:`
+/* ------------------------------------------------------------------ pair */
+/** Two amounts per row, drawn as two stacked bars. A reader compares bar lengths far more
+ *  reliably than the gap between two dots, and both numbers are named on the right. */
+@Component({selector:'sb-pair',standalone:true,template:`
 <div class="frame"><svg [attr.viewBox]="'0 0 720 '+height" role="img" [attr.aria-label]="label">
+ @for(t of ticks;track t){<line class="axis" [attr.x1]="left+w(t)" [attr.x2]="left+w(t)" y1="0" [attr.y2]="height-20"/><text [attr.x]="left+w(t)" [attr.y]="height-6" text-anchor="middle" class="unit">{{fmt(t)}}</text>}
  @for(r of rows;track r.key;let i=$index){<g><title>{{r.caption||r.label}}</title>
-  <text x="0" [attr.y]="y(i)+2">{{clip(r.label)}}</text>
-  <line x1="210" x2="580" [attr.y1]="y(i)" [attr.y2]="y(i)" stroke="#eef2f4" stroke-width="2"/>
-  <line [attr.x1]="x(min(r.from,r.to))" [attr.x2]="x(max(r.from,r.to))" [attr.y1]="y(i)" [attr.y2]="y(i)" [attr.stroke]="r.to<r.from?'#c0362c':'#9bb4b8'" stroke-width="4"/>
-  <circle [attr.cx]="x(r.from)" [attr.cy]="y(i)" r="6" [attr.fill]="fromColor"/>
-  <circle [attr.cx]="x(r.to)" [attr.cy]="y(i)" r="6" [attr.fill]="toColor"/>
-  <text class="value" x="716" [attr.y]="y(i)-3" text-anchor="end">{{toLabel}} {{fmt(r.to)}}</text>
-  <text class="unit" x="716" [attr.y]="y(i)+11" text-anchor="end">{{fromLabel}} {{fmt(r.from)}} · fark {{fmt(max(r.from,r.to)-min(r.from,r.to))}}</text>
+  <text x="0" [attr.y]="y(i)+16">{{clip(r.label)}}</text>
+  <rect [attr.x]="left" [attr.y]="y(i)+4" [attr.width]="w(r.from)" height="11" [attr.fill]="fromColor" rx="2"/>
+  <rect [attr.x]="left" [attr.y]="y(i)+19" [attr.width]="w(r.to)" height="11" [attr.fill]="toColor" rx="2"/>
+  <text class="value" x="716" [attr.y]="y(i)+13" text-anchor="end">{{toLabel}} {{fmt(r.to)}}</text>
+  <text class="unit" x="716" [attr.y]="y(i)+27" text-anchor="end">{{fromLabel}} {{fmt(r.from)}} · fark {{fmt(gap(r))}}</text>
  </g>}
- <line class="zero" x1="210" x2="580" [attr.y1]="height-16" [attr.y2]="height-16"/>
- @for(t of ticks;track t){<text [attr.x]="x(t)" [attr.y]="height-4" text-anchor="middle" class="unit">{{fmt(t)}}</text>}
+ <line class="zero" [attr.x1]="left" [attr.x2]="left+plotw" [attr.y1]="height-20" [attr.y2]="height-20"/>
 </svg></div>`,styles:[BASE]})
-export class SbDumbbellComponent{
+export class SbPairComponent{
  @Input() rows:Dumbbell[]=[];@Input() unit='';@Input() label='Karşılaştırma';
- @Input() fromColor='#b9c4cb';@Input() toColor='#1f6f78';
- /** Both numbers are named, because a bare "29 / 32" forces the reader to guess the order. */
- @Input() fromLabel='';@Input() toLabel='';
- fmt=num;min=Math.min;max=Math.max;
- get height(){return Math.max(74,this.rows.length*40+34);}
+ @Input() fromColor='#93a7b8';@Input() toColor='#1f6f78';
+ @Input() fromLabel='Alınan';@Input() toLabel='Teslim';
+ fmt=num;left=206;plotw=354;
+ get height(){return Math.max(70,this.rows.length*42+26);}
  get peak(){return nice(Math.max(1,...this.rows.flatMap(r=>[r.from,r.to])));}
  get ticks(){return [0,0.5,1].map(t=>this.peak*t);}
- y(i:number){return 20+i*40;}
- x(v:number){return 210+370*Math.max(0,Math.min(v,this.peak))/this.peak;}
- clip(v:string){return v.length>30?v.slice(0,29)+'…':v;}
+ gap(r:Dumbbell){return Math.abs(r.from-r.to);}
+ y(i:number){return i*42;}
+ w(v:number){return this.plotw*Math.max(0,Math.min(v,this.peak))/this.peak;}
+ clip(v:string){return v.length>28?v.slice(0,27)+'…':v;}
 }
 
 /* -------------------------------------------------------------- diverging */

@@ -27,7 +27,7 @@ import { SbToastService } from '../shared/sb-toast';
 /** Keeps the bar chart readable by default; the operator can open it up to the full filtered list. */
 const CHART_MEMBER_LIMIT = 8;
 import { SbStateComponent } from '../shared/sb-state.component';
-import { SbLinesComponent, SbDonutComponent, SbDumbbellComponent, SbStackComponent, Series, Point, Slice, Dumbbell, Segment } from './report-charts';
+import { SbDonutComponent, SbPairComponent, SbStackComponent, Series, Point, Slice, Dumbbell, Segment } from './report-charts';
 import { TASK_CATEGORIES, TASK_CATEGORY_COLORS, taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
 
 interface MemberReportSummary {
@@ -47,7 +47,7 @@ interface WorkSubtypeSummary {
 
 @Component({
   standalone: true,
-  imports: [OvertimeTrendComponent, ScopeReportComponent, ScopeFigureComponent,ReportHtmlExportComponent, RouterLink, FormsModule, DefectReportComponent, MemberContextComponent, RoadmapReportComponent, CapacityTrendComponent, SbStateComponent, SbLinesComponent, SbDonutComponent, SbDumbbellComponent, SbStackComponent],
+  imports: [OvertimeTrendComponent, ScopeReportComponent, ScopeFigureComponent,ReportHtmlExportComponent, RouterLink, FormsModule, DefectReportComponent, MemberContextComponent, RoadmapReportComponent, CapacityTrendComponent, SbStateComponent, SbDonutComponent, SbPairComponent, SbStackComponent],
   host: {'class':'reports-page'},
   templateUrl: './reports.component.html',
   styleUrls: ['./reports.component.css','./report-design.css'],

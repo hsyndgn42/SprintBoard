@@ -97,8 +97,8 @@
       <div><dt>Done oranı</dt><dd [class.over]="memberTaskTotal>0&&memberDoneRate<80">{{ memberTaskTotal ? '%'+memberDoneRate : '—' }}</dd></div>
     </dl>
     <h3 class="rpt-sub">Kişi başına alınan ve teslim edilen iş</h3>
-    <div class="rpt-figure"><sb-dumbbell [rows]="memberMoves" unit="iş" label="Kişi başına alınan iş ve teslim edilen iş" fromColor="#b9c4cb" toColor="#1f6f78" fromLabel="Alınan" toLabel="Teslim" /></div>
-    <div class="rpt-key"><span><i style="background:#b9c4cb"></i>Alınan iş</span><span><i style="background:#1f6f78"></i>Teslim edilen</span><span><i style="background:#c0362c"></i>Teslim, alınandan az</span></div>
+    <div class="rpt-figure"><sb-pair [rows]="memberMoves" unit="iş" label="Kişi başına alınan iş ve teslim edilen iş" fromLabel="Alınan" toLabel="Teslim" /></div>
+    <div class="rpt-key"><span><i style="background:#93a7b8"></i>Alınan iş</span><span><i style="background:#1f6f78"></i>Teslim edilen iş</span></div>
     @if (hiddenChartMembers || showAllChartMembers) { <p class="rpt-aside"><button type="button" class="btn small" (click)="toggleChartMembers()">{{ showAllChartMembers ? 'İlk '+chartMemberLimit+' kişiyi göster' : 'Tümünü göster ('+memberSummary.length+')' }}</button> @if(hiddenChartMembers){<span>{{ hiddenChartMembers }} kişi grafikte gizli; tabloda hepsi var.</span>}</p> }
 
     <div class="rpt-folds">
