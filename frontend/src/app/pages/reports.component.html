@@ -47,6 +47,7 @@
     <h3 class="rpt-sub">{{ delivery.sizeMode ? 'İşlerin Büyüklük Dağılımı' : 'Story Point Hacmi' }}</h3>
     @if (delivery.sizeMode) {
       <div class="rpt-figure"><sb-scope-figure [figure]="deliverySize" /></div>
+      <ul class="rpt-legend">@for (s of delivery.sizeTotals; track s.label) { <li><i [style.background]="s.count?s.fill:'#c3ccd3'"></i>{{ s.label }} · {{ s.count }} iş · {{ pct(s.share) }}</li> }</ul>
       <p class="scope-caution">{{ sizeNote }}</p>
     } @else {
       <dl class="rpt-kpis"><div><dt>Story Point</dt><dd>{{ delivery.storyPoints }}<small>toplam</small></dd></div><div><dt>Kayıtlı iş</dt><dd>{{ delivery.pointedTasks }}<small>işte Story Point var</small></dd></div></dl>

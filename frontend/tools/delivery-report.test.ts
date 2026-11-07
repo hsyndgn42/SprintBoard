@@ -206,7 +206,7 @@ test('the size figure describes each band with count and share',()=>{
  const figure=sizeFigure(report);
  has(figure.desc,'Medium','band adı');
  has(figure.desc,'%','pay');
- has(figure.desc,SIZE_NOTE,'ölçüm notu');
+ hasNot(figure.desc,SIZE_NOTE,'ölçüm notu grafikte tekrar etmemeli');
 });
 
 // ---------------------------------------------------------------- methodology
@@ -235,6 +235,10 @@ test('the export carries the nine sections in order',()=>{
 
 test('the export has exactly one h1',()=>{
  eq((html.match(/<h1[ >]/g)||[]).length,1,'h1 sayısı');
+});
+
+test('the measurement note is stated exactly once',()=>{
+ eq(html.split(SIZE_NOTE).length-1,1,'ölçüm notu tekrarı');
 });
 
 test('the table declares a caption, column scopes and separate intake columns',()=>{

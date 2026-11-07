@@ -69,4 +69,6 @@
  .delivery-report details>summary{list-style:none}
  .delivery-report details>.fold-body{display:block!important}
  .rpt-context>div,.rpt-findings li,.delivery-report tr{break-inside:avoid}
-}
+}.rpt-legend{list-style:none;display:flex;flex-wrap:wrap;gap:7px 20px;margin:10px 0 0;padding:0;font-size:12.5px;color:#48596a}
+.rpt-legend li{display:flex;align-items:center;gap:7px}
+.rpt-legend i{width:11px;height:11px;border-radius:2px;flex:none}

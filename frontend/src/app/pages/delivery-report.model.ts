@@ -136,7 +136,7 @@ export const DELIVERY_METHODOLOGY=[
  {term:'Teslimat işi olmayan sprint',text:'Oran üretilmez ve — olarak gösterilir; sıfır teslimat sayılmaz.'},
  {term:'Aktif sprint',text:'Rapor tamamlanan sprintleri kapsar. Aktif sprint seçime dahil edilirse sonuçları kesin değildir.'},
  {term:'Size',text:'Göreli büyüklük tahminidir. Saate çevrilmez ve iyi/kötü anlamı taşımaz.'},
- {term:'Size ve saat',text:SIZE_NOTE},
+ {term:'Size ve saat',text:'Göreli tahmin Size ile, kapasite ve atamalar saat ile yapılır; iki ölçü birbirine çevrilmez.'},
  {term:'Tarih',text:'Bitiş tarihi sprintin kapanış tarihidir; rapor zamanı tarayıcının yerel saatidir.'},
  {term:'Yuvarlama',text:'Yüzdeler tam sayıya yuvarlanır. Dağılım yüzdeleri yuvarlama nedeniyle 99 veya 101 toplayabilir; veri düzeltilmez.'},
 ];
@@ -197,23 +197,20 @@ export function intakeFigure(report:DeliveryReport):Figure{
   marks,empty:rows.length?undefined:'Tamamlanan sprint yok.'};
 }
 
-/** 9. Size composition as one stacked bar; zero categories keep their legend row but no width. */
+/** 9. Size composition as one stacked bar. The structured legend lives outside the figure so it
+ *  is never repeated: zero categories keep their legend row there but get no bar width here. */
 export function sizeFigure(report:DeliveryReport):Figure{
  const W=720,total=Math.max(1,report.sizedTotal);
- const marks:Mark[]=[];let x=0,y=70;
+ const marks:Mark[]=[];let x=0;
  marks.push(text(0,12,'Boyut kaydı bulunan '+items(report.sizedTotal),'unit','start'));
  for(const slice of report.sizeTotals){
+  if(!slice.count)continue;
   const w=W*slice.count/total;
-  if(slice.count){
-   marks.push(rect(x,20,w,34,slice.fill,2));
-   if(w>72)marks.push(text(x+w/2,42,slice.label+' · '+percent(slice.share),'inverse','middle'));
-   x+=w;
-  }
-  marks.push(rect(0,y-9,10,10,slice.count?slice.fill:DELIVERY_COLORS.unsized,2));
-  marks.push(text(16,y,slice.label+' · '+items(slice.count)+' · '+percent(slice.share),'label','start'));
-  y+=16;
+  marks.push(rect(x,20,w,34,slice.fill,2));
+  if(w>72)marks.push(text(x+w/2,42,slice.label+' · '+percent(slice.share),'inverse','middle'));
+  x+=w;
  }
- return {id:'boyut-dagilimi',width:W,height:62+report.sizeTotals.length*16,title:'İşlerin büyüklük dağılımı',
-  desc:report.sizeTotals.map(s=>s.label+': '+items(s.count)+', '+percent(s.share)).join('. ')+'. '+SIZE_NOTE,
+ return {id:'boyut-dagilimi',width:W,height:62,title:'İşlerin büyüklük dağılımı',
+  desc:report.sizeTotals.map(s=>s.label+': '+items(s.count)+', '+percent(s.share)).join('. ')+'.',
   marks,empty:report.sizedTotal?undefined:'Boyut kaydı bulunan iş yok.'};
 }
