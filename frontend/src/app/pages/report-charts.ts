@@ -35,7 +35,7 @@ text.unit{fill:#8a98a4}
 /* ---------------------------------------------------------------- columns */
 /** Sprint-by-sprint amounts. Stacked, each column topped with its own total. */
 @Component({selector:'sb-columns',standalone:true,template:`
-<div class="frame"><svg [attr.viewBox]="'0 0 '+width+' 250'" role="img" [attr.aria-label]="label">
+<div class="frame"><svg [attr.viewBox]="'0 0 '+width+' 224'" role="img" [attr.aria-label]="label">
  @for(t of ticks;track t){<line class="axis" x1="54" [attr.x2]="width-10" [attr.y1]="y(t)" [attr.y2]="y(t)"/><text x="46" [attr.y]="y(t)+4" text-anchor="end">{{fmt(t)}}</text>}
  <text x="46" y="12" text-anchor="end" class="unit">{{unit}}</text>
  @for(c of columns;track c.key;let i=$index){<g><title>{{c.caption||c.label}}</title>
@@ -46,7 +46,6 @@ text.unit{fill:#8a98a4}
  </g>}
  <line class="zero" x1="54" [attr.x2]="width-10" y1="192" y2="192"/>
  @for(c of columns;track c.key;let i=$index){@if(i%step===0||i===columns.length-1){<text [attr.x]="x(i)" y="210" text-anchor="middle">{{c.label}}</text>}}
- @for(c of columns;track c.key;let i=$index){@if(c.caption&&columns.length<=10){<text [attr.x]="x(i)" y="226" text-anchor="middle" class="unit">{{short(c)}}</text>}}
 </svg></div>`,styles:[BASE]})
 export class SbColumnsComponent{
  @Input() columns:Column[]=[];@Input() unit='sa';@Input() label='Karşılaştırma';@Input() markerLabel='sınır';
@@ -57,7 +56,6 @@ export class SbColumnsComponent{
  get bar(){return Math.max(10,Math.min(46,(this.width-64)/Math.max(1,this.columns.length)-16));}
  get step(){return Math.max(1,Math.ceil(this.columns.length/14));}
  total(c:Column){return sum(c.segments);}
- short(c:Column){const s=c.segments.filter(x=>x.value>0);return s.length>1?s.map(x=>num(x.value)).join(' / '):'';}
  top(c:Column,j:number){return c.segments.slice(0,j+1).reduce((n,s)=>n+Math.max(0,s.value),0);}
  x(i:number){return 54+(i+0.5)*(this.width-64)/Math.max(1,this.columns.length);}
  y(v:number){return 192-168*Math.min(v,this.peak)/this.peak;}
@@ -176,18 +174,21 @@ export class SbStackComponent{
    @if(r.value>r.target){<rect [attr.x]="210+w(r.target)" [attr.y]="y(i)-10" [attr.width]="w(r.value-r.target)" height="20" fill="#c0362c"/>}
    <line class="marker" [attr.x1]="210+w(r.target)" [attr.x2]="210+w(r.target)" [attr.y1]="y(i)-15" [attr.y2]="y(i)+15"/>}
   @else{<rect x="210" [attr.y]="y(i)-10" [attr.width]="w(r.value)" height="20" fill="#9bb4b8" rx="2"/>}
-  <text class="value" x="716" [attr.y]="y(i)+2" text-anchor="end">{{fmt(r.value)}}@if(r.target!==null){ / {{fmt(r.target)}}} {{unit}}</text>
+  <text class="value" x="716" [attr.y]="y(i)-3" text-anchor="end">{{valueLabel}} {{fmt(r.value)}} {{unit}}</text>
+  @if(r.target!==null){<text class="unit" x="716" [attr.y]="y(i)+11" text-anchor="end">{{targetLabel}} {{fmt(r.target)}} {{unit}}</text>}
  </g>}
- <line class="zero" x1="210" x2="650" [attr.y1]="height-16" [attr.y2]="height-16"/>
+ <line class="zero" x1="210" x2="580" [attr.y1]="height-16" [attr.y2]="height-16"/>
  @for(t of ticks;track t){<text [attr.x]="210+w(t)" [attr.y]="height-4" text-anchor="middle" class="unit">{{fmt(t)}}</text>}
 </svg></div>`,styles:[BASE]})
 export class SbBulletComponent{
  @Input() rows:Bullet[]=[];@Input() unit='sa';@Input() label='Plan ve sınır';
- fmt=num;plotw=440;min=Math.min;
- get height(){return Math.max(70,this.rows.length*36+34);}
+ /** The bar and the limit are named so the pair never reads as an unexplained ratio. */
+ @Input() valueLabel='Plan';@Input() targetLabel='Sınır';
+ fmt=num;plotw=370;min=Math.min;
+ get height(){return Math.max(74,this.rows.length*40+34);}
  get peak(){return nice(Math.max(1,...this.rows.flatMap(r=>[r.value,r.target??0])));}
  get ticks(){return [0,0.5,1].map(t=>this.peak*t);}
- y(i:number){return 18+i*36;}
+ y(i:number){return 20+i*40;}
  w(v:number){return this.plotw*Math.max(0,Math.min(v,this.peak))/this.peak;}
  clip(v:string){return v.length>30?v.slice(0,29)+'…':v;}
 }
@@ -198,24 +199,27 @@ export class SbBulletComponent{
 <div class="frame"><svg [attr.viewBox]="'0 0 720 '+height" role="img" [attr.aria-label]="label">
  @for(r of rows;track r.key;let i=$index){<g><title>{{r.caption||r.label}}</title>
   <text x="0" [attr.y]="y(i)+2">{{clip(r.label)}}</text>
-  <line x1="210" x2="650" [attr.y1]="y(i)" [attr.y2]="y(i)" stroke="#eef2f4" stroke-width="2"/>
+  <line x1="210" x2="580" [attr.y1]="y(i)" [attr.y2]="y(i)" stroke="#eef2f4" stroke-width="2"/>
   <line [attr.x1]="x(min(r.from,r.to))" [attr.x2]="x(max(r.from,r.to))" [attr.y1]="y(i)" [attr.y2]="y(i)" [attr.stroke]="r.to<r.from?'#c0362c':'#9bb4b8'" stroke-width="4"/>
   <circle [attr.cx]="x(r.from)" [attr.cy]="y(i)" r="6" [attr.fill]="fromColor"/>
   <circle [attr.cx]="x(r.to)" [attr.cy]="y(i)" r="6" [attr.fill]="toColor"/>
-  <text class="value" x="716" [attr.y]="y(i)+2" text-anchor="end">{{fmt(r.to)}} / {{fmt(r.from)}}</text>
+  <text class="value" x="716" [attr.y]="y(i)-3" text-anchor="end">{{toLabel}} {{fmt(r.to)}}</text>
+  <text class="unit" x="716" [attr.y]="y(i)+11" text-anchor="end">{{fromLabel}} {{fmt(r.from)}} · fark {{fmt(max(r.from,r.to)-min(r.from,r.to))}}</text>
  </g>}
- <line class="zero" x1="210" x2="650" [attr.y1]="height-16" [attr.y2]="height-16"/>
+ <line class="zero" x1="210" x2="580" [attr.y1]="height-16" [attr.y2]="height-16"/>
  @for(t of ticks;track t){<text [attr.x]="x(t)" [attr.y]="height-4" text-anchor="middle" class="unit">{{fmt(t)}}</text>}
 </svg></div>`,styles:[BASE]})
 export class SbDumbbellComponent{
  @Input() rows:Dumbbell[]=[];@Input() unit='';@Input() label='Karşılaştırma';
  @Input() fromColor='#b9c4cb';@Input() toColor='#1f6f78';
+ /** Both numbers are named, because a bare "29 / 32" forces the reader to guess the order. */
+ @Input() fromLabel='';@Input() toLabel='';
  fmt=num;min=Math.min;max=Math.max;
- get height(){return Math.max(70,this.rows.length*36+34);}
+ get height(){return Math.max(74,this.rows.length*40+34);}
  get peak(){return nice(Math.max(1,...this.rows.flatMap(r=>[r.from,r.to])));}
  get ticks(){return [0,0.5,1].map(t=>this.peak*t);}
- y(i:number){return 18+i*36;}
- x(v:number){return 210+440*Math.max(0,Math.min(v,this.peak))/this.peak;}
+ y(i:number){return 20+i*40;}
+ x(v:number){return 210+370*Math.max(0,Math.min(v,this.peak))/this.peak;}
  clip(v:string){return v.length>30?v.slice(0,29)+'…':v;}
 }
 

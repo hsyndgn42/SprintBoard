@@ -41,6 +41,7 @@ import { emptyDefect,defectLabel,severityOptions,environmentOptions } from '../d
 
 @if(scope==='pool'){<p class="rpt-aside">Backlog havuzundaki işler henüz bir sprinte bağlı değil, bu yüzden sprint trendi gösterilmiyor.</p>}
 @else{
+<h3 class="rpt-sub">Sprint bazlı açılan defect</h3>
 <div class="rpt-figure"><sb-lines [series]="trendSeries" [points]="trendPoints" unit="defect" label="Sprint bazlı açılan defect sayısı; Test ve Prod kırılımıyla" /></div>
 <div class="rpt-key"><span><i style="background:#15202b"></i>Toplam açılan</span><span><i style="background:#1f6f78"></i>Test defect</span><span><i style="background:#c0362c"></i>Prod defect</span></div>
 }

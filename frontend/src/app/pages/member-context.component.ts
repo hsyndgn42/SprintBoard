@@ -14,7 +14,8 @@ import {SbBulletComponent,Bullet} from './report-charts';
 <div><dt>Planlanan efor</dt><dd>{{n(totalEffort)}}<small>sa</small></dd></div>
 <div><dt>Kişi bazında aşım</dt><dd [class.over]="totalOver>0">{{n(totalOver)}}<small>sa</small></dd></div>
 </dl>
-<div class="rpt-figure"><sb-bullet [rows]="bullets" unit="sa" label="Kişi başına planlanan efor ve net kapasite sınırı" /></div>
+<h3 class="rpt-sub">Kişi başına plan ve kapasite sınırı</h3>
+<div class="rpt-figure"><sb-bullet [rows]="bullets" unit="sa" label="Kişi başına planlanan efor ve net kapasite sınırı" valueLabel="Plan" targetLabel="Kapasite" /></div>
 <div class="rpt-key"><span><i style="background:#1f6f78"></i>Kapasite içinde kalan plan</span><span><i style="background:#c0362c"></i>Kapasite aşımı</span><span><i class="rule"></i>O kişinin net kapasitesi</span><span><i style="background:#9bb4b8"></i>Kapasitesi bilinmeyen</span></div>
 
 <div class="rpt-folds">

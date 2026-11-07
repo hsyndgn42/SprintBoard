@@ -39,11 +39,12 @@ interface RoadmapEffort extends RoadmapItem {
 <div><dt>Gerçekleşen mesai</dt><dd>{{fmt(total('overtimeHours'))}}<small>sa</small></dd></div>
 </dl>
 
+<h3 class="rpt-sub">Efor hangi Roadmap öğelerine dağıldı</h3>
 <div class="rpt-figure"><sb-donut [slices]="effortSlices" unit="sa" label="Roadmap öğelerinin planlanan efor payı" /></div>
 
 <h3 class="rpt-sub">Planın ne kadarı Done oldu</h3>
-<div class="rpt-figure"><sb-dumbbell [rows]="landed" unit="sa" label="Roadmap başına atanan efor ve Done olan efor" fromColor="#b9c4cb" toColor="#1f6f78" /></div>
-<div class="rpt-key"><span><i style="background:#b9c4cb"></i>Atanan efor</span><span><i style="background:#1f6f78"></i>Done olan</span><span>Sağdaki rakam: Done / Atanan (sa)</span></div>
+<div class="rpt-figure"><sb-dumbbell [rows]="landed" unit="sa" label="Roadmap başına atanan efor ve Done olan efor" fromColor="#b9c4cb" toColor="#1f6f78" fromLabel="Atanan" toLabel="Done" /></div>
+<div class="rpt-key"><span><i style="background:#b9c4cb"></i>Atanan efor</span><span><i style="background:#1f6f78"></i>Done olan</span></div>
 
 @if(total('overtimeHours')>0){
 <h3 class="rpt-sub">Bu eforun üstüne yazılan mesai</h3>

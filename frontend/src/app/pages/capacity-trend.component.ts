@@ -34,15 +34,16 @@ import { csv,downloadText } from './share-export';
 <div><dt>Support planı</dt><dd>{{fmt(total('supportPlanned'))}}<small>sa</small></dd></div>
 </dl>
 
+<h3 class="rpt-sub">Sprint planı ve kapasite</h3>
 <div class="rpt-figure">
 <sb-columns [columns]="columns" unit="sa" markerLabel="kapasite" [label]="chartLabel" />
 </div>
 <div class="rpt-key"><span><i class="f-measure"></i>Çekirdek planı</span><span><i class="f-support"></i>Support planı</span><span><i class="rule"></i>O sprintin kapasitesi</span></div>
 
+<h3 class="rpt-sub">Kapasite aşımı ve boşta kalan kapasite</h3>
 <div class="rpt-figure gaps">
 <sb-diverge [rows]="gaps" label="Sıfır çizgisinin üstünde kişisel kapasite aşımı, altında atanmamış kapasite" upLabel="aşım (sa)" downLabel="boşta (sa)" />
 </div>
-<div class="rpt-key"><span><i class="f-over"></i>Kişisel aşım</span><span><i class="f-spare"></i>Atanmamış kapasite</span></div>
 
 <div class="rpt-folds">
 <details><summary><span>Nasıl hesaplanıyor?</span></summary><div class="fold-body">

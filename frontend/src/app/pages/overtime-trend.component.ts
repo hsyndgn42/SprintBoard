@@ -35,13 +35,13 @@ import {OvertimeTrendRow,overtimeTrend,round} from './operational-trends.model';
 <div><dt>Mesaiden izin</dt><dd>{{sum('usedDays')}}<small>gün</small></dd></div>
 </dl>
 
+<h3 class="rpt-sub">Gerçekleşen mesai ve plan</h3>
 <div class="rpt-figure"><sb-columns [columns]="columns" unit="sa" markerLabel="planlanan" label="Sprint bazlı gerçekleşen mesainin plana göre kırılımı ve planlanan mesai çizgisi" /></div>
 <div class="rpt-key"><span><i style="background:#1f6f78"></i>Plana bağlı</span><span><i style="background:#c0362c"></i>Plan aşımı</span><span><i style="background:#6b5ca5"></i>Plansız</span><span><i style="background:#b9c4cb"></i>Sınıflandırılmamış</span><span><i class="rule"></i>Planlanan mesai</span></div>
 
 @if(usedAny){
 <h3 class="rpt-sub">Mesainin karşılığı izne dönüyor mu</h3>
 <div class="rpt-figure"><sb-lines [series]="leaveSeries" [points]="leavePoints" unit="gün" label="Sprint bazlı mesaiden izin kullanımı" /></div>
-<div class="rpt-key"><span><i style="background:#1f6f78"></i>Kullanılan izin günü</span></div>
 @if(unmatched){<p class="rpt-aside">İzin günleriyle eşleştirilmemiş {{unmatched}} saatlik tarihsel kullanım/düzeltme var; gün toplamına çevrilmedi.</p>}}
 
 <div class="rpt-folds">
