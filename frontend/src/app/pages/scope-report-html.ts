@@ -26,13 +26,17 @@ function markSvg(mark:Mark):string{
  }
 }
 
-/** Shared with the delivery export so both standalone files render marks identically. */
+/**
+ * Shared with the delivery export so both standalone files render marks identically.
+ * The description lives in the SVG itself; repeating it as a visible caption only made the
+ * reader read the same numbers twice, so there is no figcaption.
+ */
 export function figureHtml(figure:Figure):string{
  if(figure.empty)return `<p class="figure-empty">${h(figure.empty)}</p>`;
  return `<figure class="figure"><div class="figure-frame"><svg viewBox="0 0 ${figure.width} ${figure.height}" role="img" aria-labelledby="${attr(figure.id)}-t ${attr(figure.id)}-d">`
   +`<title id="${attr(figure.id)}-t">${h(figure.title)}</title><desc id="${attr(figure.id)}-d">${h(figure.desc)}</desc>`
   +figure.marks.map(markSvg).join('')
-  +`</svg></div><figcaption>${h(figure.desc)}</figcaption></figure>`;
+  +`</svg></div></figure>`;
 }
 
 const legend=(entries:[string,string][])=>`<ul class="legend">${entries.map(([label,fill])=>`<li><i style="background:${attr(fill)}"></i>${h(label)}</li>`).join('')}</ul>`;
@@ -155,7 +159,6 @@ p{margin:0 0 10px}
 .figure .axis{stroke:#e4eaee}
 .figure .zero{stroke:#aab6bf;stroke-width:1.5}
 .figure .link{stroke:#c3ccd3;stroke-dasharray:3 3}
-figcaption{margin-top:9px;font-size:12px;line-height:1.6;color:#5a6b7b;max-width:78ch}
 .figure-empty{margin:16px 0;padding:18px;border:1px dashed #d9e0e6;font-size:13px;color:#5a6b7b;background:#f6f8f9}
 .legend{list-style:none;display:flex;flex-wrap:wrap;gap:7px 18px;margin:11px 0 0;padding:0;font-size:12px;color:#5a6b7b}
 .legend li{display:flex;align-items:center;gap:7px}

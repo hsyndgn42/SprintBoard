@@ -23,8 +23,7 @@ import type {Figure} from './scope-report.model';
     }
    }
   </svg>
- </div>
- <p class="figure-desc">{{figure.desc}}</p>
+  </div>
 }`,styles:[`
 :host{display:block;min-width:0}
 .figure-frame{overflow-x:auto}
@@ -36,7 +35,6 @@ text.inverse{fill:#fff;font-weight:600;font-size:11.5px}
 .axis{stroke:#e4eaee}
 .zero{stroke:#aab6bf;stroke-width:1.5}
 .link{stroke:#c3ccd3;stroke-dasharray:3 3}
-.figure-desc{margin:10px 0 0;font-size:12px;line-height:1.6;color:#5a6b7b;max-width:76ch}
 .figure-empty{margin:16px 0;padding:18px;border:1px dashed #d9e0e6;border-radius:6px;font-size:13px;color:#5a6b7b;background:#f6f8f9}
 @media print{.figure-frame{overflow:visible}svg{min-width:0!important}rect,path{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
 `]})

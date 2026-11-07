@@ -21,9 +21,10 @@ const metric=(label:string,value:string,unit:string,note='')=>
 
 const legend=(entries:[string,string][])=>`<ul class="legend">${entries.map(([label,fill])=>`<li><i style="background:${attr(fill)}"></i>${h(label)}</li>`).join('')}</ul>`;
 
-/** Size chips read as label plus count so greyscale print and screen readers lose nothing. */
-const sizeCell=(row:DeliverySprint)=>`<span class="chips">${row.sizes.map(s=>
- `<span class="chip"><i style="background:${attr(s.fill)}"></i>${h(s.label)} ${h(num(s.count))}</span>`).join('')}</span>`;
+/** Size chips read as label plus count so greyscale print and screen readers lose nothing.
+ *  Empty categories are left to the legend; repeating "XL 0" on every row was pure noise. */
+const sizeCell=(row:DeliverySprint)=>`<span class="chips">${row.sizes.filter(s=>s.count).map(s=>
+ `<span class="chip"><i style="background:${attr(s.fill)}"></i>${h(s.label)} ${h(num(s.count))}</span>`).join('')||'<span class="void">Kayıt yok</span>'}</span>`;
 
 const rateCell=(rate:number|null)=>rate===null
  ? '<span class="void">—</span>'
@@ -79,8 +80,8 @@ export function deliveryReportHtml(rows:ReportRow[],settings:ProductSettings,gen
   </dl>
  </header>
 
- <section class="layer" aria-labelledby="yonetici-ozeti">
-  <h2 id="yonetici-ozeti">Yönetici Özeti</h2>
+ <section class="layer" aria-labelledby="teslimat-ozeti">
+  <h2 id="teslimat-ozeti">Teslimat Özeti</h2>
   <dl class="metrics six">
    ${metric('Tamamlanan sprint',num(report.sprintCount),'sprint')}
    ${metric('Teslim edilen iş',num(report.totalDone),'iş','BAU hariç Done')}
@@ -103,7 +104,6 @@ export function deliveryReportHtml(rows:ReportRow[],settings:ProductSettings,gen
   <h2 id="trend">Teslimat Trendi</h2>
   <p class="note">${h(RATE_NOTE+' Ölçek her zaman %0–100 arasıdır.')}</p>
   ${figureHtml(trendFigure(report))}
-  ${legend([['Teslimat oranı',DELIVERY_COLORS.rate],['En yüksek',DELIVERY_COLORS.best],['En düşük',DELIVERY_COLORS.worst],['Son tamamlanan',DELIVERY_COLORS.rateLatest]])}
  </section>
 
  <section class="layer" aria-labelledby="alinan-teslim">

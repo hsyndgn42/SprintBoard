@@ -202,6 +202,14 @@ test('the intake chart never reduces a sprint to an unexplained number pair',()=
  hasNot(text,'10/10','açıklamasız sayı çifti');
 });
 
+test('a narrow size band keeps its share instead of losing the label',()=>{
+ const lopsided=buildDeliveryReport([row({id:'n',number:1,name:'Sprint Bir',tasks:100,allTasks:100,done:100,undone:0,deliveryRate:100,
+  sizeSmall:3,sizeMedium:90,sizeLarge:7,sizeXLarge:0})],SIZE_SETTINGS);
+ const labels=sizeFigure(lopsided).marks.filter(m=>m.kind==='text').map(m=>m.text??'');
+ for(const slice of lopsided.sizeTotals.filter(s=>s.count))
+  ok(labels.some(l=>l.includes(percent(slice.share))),'dar bantta pay etiketi: '+slice.label);
+});
+
 test('the size figure describes each band with count and share',()=>{
  const figure=sizeFigure(report);
  has(figure.desc,'Medium','band adı');
@@ -223,7 +231,7 @@ test('methodology covers every rule the report depends on',()=>{
 const html=deliveryReportHtml(rows,SIZE_SETTINGS,new Date('2026-03-01T08:35:00Z'),'Ödeme Ekibi');
 
 test('the export carries the nine sections in order',()=>{
- const order=['Sprint Teslimatı','Yönetici Özeti','Öne Çıkan Bulgular','Teslimat Trendi',
+ const order=['Sprint Teslimatı','Teslimat Özeti','Öne Çıkan Bulgular','Teslimat Trendi',
   'Alınan İş ile Teslim Edilen İş','İşlerin Büyüklük Dağılımı','Sprint Karşılaştırması','Nasıl hesaplanıyor?'];
  let at=-1;
  for(const heading of order){
@@ -239,6 +247,16 @@ test('the export has exactly one h1',()=>{
 
 test('the measurement note is stated exactly once',()=>{
  eq(html.split(SIZE_NOTE).length-1,1,'ölçüm notu tekrarı');
+});
+
+test('chart values are never repeated as a visible caption under the figure',()=>{
+ hasNot(html,'<figcaption','grafik altı tekrar');
+ has(html,'<desc','ekran okuyucu metni');
+});
+
+test('the comparison table drops empty size chips but keeps them in the legend',()=>{
+ eq(html.split('XL 0').length-1,0,'tabloda boş kategori');
+ has(html,'XL ·','legend satırı');
 });
 
 test('the table declares a caption, column scopes and separate intake columns',()=>{

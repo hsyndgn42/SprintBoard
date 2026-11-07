@@ -6,7 +6,7 @@ import {ConfluenceSettingsComponent} from './confluence-settings.component';
 import {ScopeReportComponent} from './scope-report.component';
 import {ScopeFigureComponent} from './scope-figure.component';
 import type {DeliveryReport, DeliverySprint} from './delivery-report.model';
-import {DELIVERY_METHODOLOGY, SIZE_NOTE, buildDeliveryReport, intakeFigure, percent, sizeFigure, trendFigure} from './delivery-report.model';
+import {DELIVERY_METHODOLOGY, RATE_NOTE, SIZE_NOTE, buildDeliveryReport, intakeFigure, percent, sizeFigure, trendFigure} from './delivery-report.model';
 import { ReportHtmlExportComponent } from './report-html-export.component';
 import { CapacityTrendComponent } from './capacity-trend.component';
 import { WorkSettingsComponent } from './work-settings.component';
@@ -117,6 +117,7 @@ export class ReportsComponent implements OnInit {
   // filter change can never leave one section reading a different sprint set.
   readonly teamName=this.api.teamName;
   readonly sizeNote=SIZE_NOTE;
+  readonly rateNote=RATE_NOTE;
   readonly deliveryMethodology=DELIVERY_METHODOLOGY;
   private deliveryCache:{rows:ReportRow[];mode:string;report:DeliveryReport}|null=null;
   get delivery(): DeliveryReport {

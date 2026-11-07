@@ -22,7 +22,7 @@
       <div><dt>Oluşturulma</dt><dd>{{ viewTime }}</dd></div>
     </dl>
 
-    <h3 class="rpt-sub">Yönetici Özeti</h3>
+    <h3 class="rpt-sub">Teslimat Özeti</h3>
     <dl class="rpt-kpis">
       <div><dt>Tamamlanan sprint</dt><dd>{{ delivery.sprintCount }}<small>sprint</small></dd></div>
       <div><dt>Teslim edilen iş</dt><dd>{{ delivery.totalDone }}<small>iş · BAU hariç</small></dd></div>
@@ -37,8 +37,8 @@
     <ul class="rpt-findings">@for (f of delivery.findings; track f) { <li>{{ f }}</li> }</ul>
 
     <h3 class="rpt-sub">Teslimat Trendi</h3>
+    <p class="rpt-aside">{{ rateNote }} Ölçek her zaman %0–100 arasıdır.</p>
     <div class="rpt-figure"><sb-scope-figure [figure]="deliveryTrend" /></div>
-    <div class="rpt-key"><span><i style="background:#1b6b63"></i>Teslimat oranı</span><span><i style="background:#2e7d61"></i>En yüksek</span><span><i style="background:#c0362c"></i>En düşük</span><span>BAU hariç Done / tüm teslimat işleri</span></div>
 
     <h3 class="rpt-sub">Alınan İş ile Teslim Edilen İş</h3>
     <div class="rpt-figure scrolly"><sb-scope-figure [figure]="deliveryIntake" /></div>
@@ -67,7 +67,7 @@
           <td data-label="Done" class="num">{{ row.done }}</td>
           <td data-label="Undone" class="num">{{ row.undone }}</td>
           <td data-label="Teslimat" class="num">@if (row.rate === null) { <span class="void">—</span> } @else { <span class="rate"><i><b [style.width.%]="row.rate"></b></i>{{ pct(row.rate) }}</span> }</td>
-          <td [attr.data-label]="delivery.sizeMode ? 'Size dağılımı' : 'Story Point'">@if (delivery.sizeMode) { <span class="size-chips" [attr.aria-label]="sizeChipLabel(row)">@for (s of row.sizes; track s.label) { <span><i [style.background]="s.fill"></i>{{ s.label }} {{ s.count }}</span> }</span> } @else { {{ row.storyPoints }} SP }</td>
+          <td [attr.data-label]="delivery.sizeMode ? 'Size dağılımı' : 'Story Point'">@if (delivery.sizeMode) { <span class="size-chips" [attr.aria-label]="sizeChipLabel(row)">@for (s of row.sizes; track s.label) { @if (s.count) { <span><i [style.background]="s.fill"></i>{{ s.label }} {{ s.count }}</span> } }</span> } @else { {{ row.storyPoints }} SP }</td>
         </tr> }
       </tbody></table>
     </div>

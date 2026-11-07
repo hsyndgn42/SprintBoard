@@ -164,7 +164,9 @@ export function trendFigure(report:DeliveryReport):Figure{
   marks.push(text(px,top+plot+22,clip(row.name.replace(/^Sprint\s*/i,'S'),9),'label','middle'));
   if(row.rate===null){marks.push(text(px,top+plot-8,'—','unit','middle'));return;}
   const py=y(row.rate),best=report.best?.id===row.id,worst=report.worst?.id===row.id;
-  const fill=best?DELIVERY_COLORS.best:worst?DELIVERY_COLORS.worst:last?DELIVERY_COLORS.rateLatest:DELIVERY_COLORS.rate;
+  // Only two colours carry meaning: the lowest sprint and the latest one. The best sprint is
+  // called out by its annotation, because a third shade of the same green read as noise.
+  const fill=worst?DELIVERY_COLORS.worst:last?DELIVERY_COLORS.rateLatest:DELIVERY_COLORS.rate;
   const size=last||best||worst?5:3.5;
   marks.push(rect(px-size,py-size,size*2,size*2,fill,size));
   if(!everyOther||i%2===0||last||best||worst)marks.push(text(px,py-12,'%'+row.rate,'value','middle'));
@@ -207,7 +209,11 @@ export function sizeFigure(report:DeliveryReport):Figure{
   if(!slice.count)continue;
   const w=W*slice.count/total;
   marks.push(rect(x,20,w,34,slice.fill,2));
-  if(w>72)marks.push(text(x+w/2,42,slice.label+' · '+percent(slice.share),'inverse','middle'));
+  // A narrow band cannot hold its name, but it must never lose its share: the label steps out
+  // above the bar instead of disappearing, and only a hairline band falls back to the legend.
+  if(w>=104)marks.push(text(x+w/2,42,slice.label+' · '+percent(slice.share),'inverse','middle'));
+  else if(w>=34)marks.push(text(x+w/2,42,percent(slice.share),'inverse','middle'));
+  else if(w>=12)marks.push(text(x+w/2,14,percent(slice.share),'unit','middle'));
   x+=w;
  }
  return {id:'boyut-dagilimi',width:W,height:62,title:'İşlerin büyüklük dağılımı',
