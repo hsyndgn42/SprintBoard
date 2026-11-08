@@ -1,0 +1,66 @@
+SPRINTBOARD - WINDOWS KURULUMU
+============================
+
+Bu paket Windows 10/11 x64 içindir. Java 21 dahildir.
+Java, Node.js, Maven veya Git kurmanız gerekmez.
+Paket ekip verisi, kullanıcı hesabı, fotoğraf, yedek veya erişim tokenı içermez.
+
+1. SprintBoard-...-Windows-x64-Setup.exe dosyasını çalıştırıp kurulumu tamamlayın.
+2. Masaüstündeki veya Başlat menüsündeki SprintBoard kısayolunu açın.
+3. Tarayıcıda http://127.0.0.1:4181/ açılır. İlk admin hesabınızı oluşturun.
+4. Ayarlar'dan ekip adı, çalışma takvimi ve BAU varsayılanlarını düzenleyin.
+5. Takımı ve kullanıcıları ekleyin. Slack, Jira ve Confluence isteğe bağlıdır;
+   kullanacaksanız kendi bağlantı ve tokenlarınızı uygulama ayarlarına girin.
+
+ÇALIŞMA VE DURDURMA
+------------------
+Tarayıcıyı kapatmak servisi durdurmaz. Windows bildirim alanındaki mavi S
+simgesine sağ tıklayıp "Servisi durdur ve çık" seçin. Bildirim alanı yoksa
+küçük SprintBoard kontrol penceresini kullanın. Yeniden açmak için kısayola
+tıklayın. İkinci tıklama aynı uygulamayı açar; ikinci bir servis oluşturmaz.
+Bu paket Windows servisi veya otomatik başlangıç görevi kurmaz. Bilgisayar ve
+kullanıcı oturumu açıkken, SprintBoard çalıştığı sürece zamanlanmış işler çalışır.
+
+EKİP İLE ORTAK KULLANIM
+----------------------
+Her ekip için tek bilgisayarda tek kurulum kullanın; ekip üyeleri tarayıcıdan
+aynı bilgisayara bağlansın. İlk admin hesabını yerel bilgisayarda oluşturun.
+Sonra servisi durdurup app\docs\WINDOWS_SECURITY.md içindeki HTTPS kurulumunu
+tamamlayın. Kurumunuzun sunucu sertifikası ve ağ erişimi sağlandığında ekip
+https://SUNUCU-ADI:4181/ adresini kullanabilir. Ağ erişiminde HTTPS zorunludur;
+yalnız server.address=0.0.0.0 yapmak servisi başlatmaz.
+Varsayılan yalnız yerel erişimdir. Kurulum Windows güvenlik duvarını değiştirmez.
+
+VERİLERİNİZ
+-----------
+Veri klasörü: %LOCALAPPDATA%\SprintBoardData
+Veritabanı: service\data\sprintboard.mv.db
+Şifreleme anahtarları: service\data\ içindeki .key dosyaları
+Otomatik ve manuel tam yedekler: backups\scheduled
+Servis günlüğü: logs\service.log
+Ağ/port ayarı: settings.properties
+Bu klasör uygulama kurulumundan ayrıdır. Güncelleme ve uygulamayı kaldırma
+veri klasörünü silmez. Başka Windows kullanıcısı ayrı veri klasörü kullanır.
+
+GÜNCELLEME
+----------
+Ayarlar'dan tam yedek alın. Bildirim alanından servisi durdurun. Yeni kurulum
+EXE'sini aynı Windows hesabıyla çalıştırın. Sonra kısayoldan açın.
+Kayıtlar mevcut veri klasöründen yüklenir; JSON'u yeniden içe aktarmayın.
+Sürüm düşürme yapmayın. Bilgisayar değiştirirken DB ile tüm .key dosyalarını
+birlikte koruyun; açık veritabanını dosya kopyalama yoluyla taşımayın.
+
+4181 PORTU DOLUYSA
+-----------------
+Başka çalışan SprintBoard kopyasını kontrol edin veya settings.properties
+içinde server.port=4182 gibi boş bir port seçip yeniden açın.
+
+YARDIM
+------
+Kurulum klasöründeki app\docs\USER_GUIDE.html ayrıntılı kullanım kılavuzudur.
+Admin kurtarma için app\docs\account-recovery.md dosyasını okuyun.
+Paket kod imzalama sertifikasıyla imzalanmamıştır. Windows yayıncı doğrulaması
+gösterirse kurumunuzun yazılım kurulum kurallarını izleyin; güvenlik korumalarını
+kapatmayın. İmza ertelenmiştir; bu paket kontrollü pilot dağıtım içindir.
+SHA256SUMS.txt dosyasını güvenilir kanaldan aldığınız hash ile karşılaştırın.
+DEPENDENCIES.cdx.json bağımlılık listesi, SECURITY-CHECKS.json tarama sonucudur.

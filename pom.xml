@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.0</version>
+    <version>4.1.2</version>
     <relativePath/>
   </parent>
   <groupId>com.sprintboard</groupId>
@@ -14,17 +14,24 @@
   <name>SprintBoard</name>
   <properties>
     <java.version>21</java.version>
+    <!-- 2.4.240 retains closed sessions in CHECK constraints (H2 #4302). -->
+    <h2.version>2.5.252</h2.version>
     <npm.executable>npm</npm.executable>
     <test.excludedGroups>historical</test.excludedGroups>
   </properties>
   <dependencies>
-    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc</artifactId>
+      <exclusions><exclusion><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-jackson</artifactId></exclusion></exclusions>
+    </dependency>
+    <!-- Preserve the existing backup/API JSON contract with the security-patched Jackson 2 bridge. -->
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-jackson2</artifactId></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security</artifactId></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-jdbc</artifactId></dependency>
-    <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-core</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-flyway</artifactId></dependency>
     <dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId><scope>runtime</scope></dependency>
-    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
-    <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-test</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc-test</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security-test</artifactId><scope>test</scope></dependency>
   </dependencies>
   <build>
     <sourceDirectory>service/src/main/java</sourceDirectory>
@@ -54,6 +61,10 @@
     </plugins>
   </build>
   <profiles>
+    <profile>
+      <id>windows-installer</id>
+      <build><directory>${project.basedir}/target/windows-installer</directory></build>
+    </profile>
     <profile>
       <id>historical-tests</id>
       <properties><test.excludedGroups>none</test.excludedGroups></properties>

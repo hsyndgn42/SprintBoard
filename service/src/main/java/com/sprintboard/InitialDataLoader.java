@@ -29,6 +29,7 @@ public class InitialDataLoader implements ApplicationRunner {
     // Only reset the migration's old default channel for a genuinely unused installation.
     if (jdbc.queryForObject("SELECT (SELECT COUNT(*) FROM app_user) + (SELECT COUNT(*) FROM member) + (SELECT COUNT(*) FROM slack_config)", Integer.class) == 0) {
       jdbc.update("UPDATE slack_digest_config SET channel_id='' WHERE id=1 AND enabled=FALSE AND version=1");
+      jdbc.update("INSERT INTO product_setting(setting_key,setting_value) SELECT 'team_name','SprintBoard' WHERE NOT EXISTS (SELECT 1 FROM product_setting WHERE setting_key='team_name')");
     }
     jdbc.update("INSERT INTO product_setting(setting_key,setting_value) VALUES ('workspace_initialized','true')");
   }

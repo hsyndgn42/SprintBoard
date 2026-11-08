@@ -6,6 +6,35 @@ Spring Boot ve Angular tabanlı sprint yönetimi uygulaması. Tek servis instanc
 - [Ürün backlogu](BACKLOG.md)
 - [Admin hesap kurtarma](docs/USER_GUIDE.md#sifre-degistirme-ve-admin-kurtarma)
 
+## Diğer ekipler için Windows kurulumu
+
+Java 21 dahil boş Windows x64 EXE paketi için [kurulum ve kullanım notlarını](distribution/windows/START-HERE.txt) okuyun. Kurulumdan sonra SprintBoard kısayolu uygulamayı başlatır; ilk açılışta ekip kendi yönetici hesabını oluşturur. Java, Maven, Node veya Git kurulumu gerekmez. Paket ekip verisi, hesap, fotoğraf, yedek veya entegrasyon tokenı içermez.
+
+Uygulama dosyaları ile veriler ayrıdır. Kalıcı veriler `%LOCALAPPDATA%\SprintBoardData` altında tutulur; uygulamayı kaldırmak bu klasörü silmez. Bu paket Windows servisi değildir: zamanlanmış işler için oturum ve uygulama açık kalmalıdır. Durdurmak için sistem tepsisindeki SprintBoard simgesinden **Servisi durdur ve çık** seçilir.
+
+Paket üretimi (yalnız geliştirici bilgisayarında JDK 21, Node/Maven ve WiX 3.14.1 gerekir):
+
+```powershell
+.\scripts\build-windows-installer.ps1 -JdkPath "C:\Java\jdk-21.0.13" -WixPath "C:\Tools\wix314" -Version "0.1.1"
+```
+
+Betik testleri çalıştırır, `target/windows-installer` altında ayrı JAR üretir ve yalnız izin verilen uygulama dosyalarıyla paket oluşturur. Canlı DB ve yedekler girdi olarak kullanılmaz. Çıktı `releases/SprintBoard-Windows-<sürüm>/` altındadır; EXE, başlangıç notu ve SHA-256 dosyası bulunur. Mevcut sürüm klasörü üzerine yazılmaz. Sonraki dağıtımda sürümü artırın; ekipler yedek alıp uygulamayı durdurduktan sonra yeni kurulum dosyasını aynı Windows hesabıyla çalıştırmalıdır.
+
+Üretim sonunda yazdırılan manifest yoluyla izole kurulum testi çalıştırılabilir:
+
+```powershell
+.\scripts\test-windows-installer.ps1 -BuildManifest "tmp\windows-installer-<id>\build-manifest.json"
+.\scripts\test-windows-https.ps1 -BuildManifest "tmp\windows-installer-<id>\build-manifest.json" -JdkPath "C:\Java\jdk-21.0.13"
+```
+
+Test mevcut EXE kurulumunu değiştirmeyi reddeder; geçici klasörde boş kurulum, ilk admin, veri koruma, yedek, kaldırma ve yeniden kurmayı sınar. `-AppImageOnly` yalnız paket içindeki uygulamayı sınar, Windows kurulumunu doğrulamaz. Paket kod imzası içermediğinden Windows yayıncı uyarısı gösterebilir.
+
+Güvenlik dalı Java 21.0.13+, Spring Boot 4.1.2, H2 2.5.252 ve güncel Angular 20 yamalarını kullanır. Jackson 2 uyumluluk modülü JSON yedek/API biçimini korur. H2 sürümü, 2.4.240'taki bağlantılar arası CHECK hatası nedeniyle ayrıca sabitlenmiştir. npm `glob`/`minimatch` override'ları derleme araçlarındaki bilinen açıkları kapatır; üst paketler aynı yamaları içerdiğinde kaldırılabilir.
+
+Mevcut veriyle runtime yükseltme kontrolü için `scripts/test-database-runtime-upgrade.ps1` kullanılır. Betik kapalı DB'yi yalnız okuyarak geçici klasöre kopyalar; eski/yeni H2 sürümlerinde tüm tablo satırlarının özetlerini karşılaştırır. Asıl veritabanını açmaz veya güncellemez. Test servisinde Slack, Jira ve otomatik yedek işçileri kapatılır. Dosya canlıysa kopyalamayı reddeder. Çalışan servisi kendiliğinden durdurmaz.
+
+Paketleme OSV'de gerçek JAR içeriğini ve npm audit ile **derleme araçları dahil** bağımlılıkları tarar. Bulgu veya tarama hatası üretimi durdurur; `-SkipBuild` bu güvenlik kontrolünü atlamaz. Çıktıda `DEPENDENCIES.cdx.json` ve `SECURITY-CHECKS.json` bulunur. Bu kontrol penetrasyon testi veya tüm dosyaların şifreli olduğu anlamına gelmez. EXE imzası ürün sahibi kararıyla ertelenmiştir; kontrollü pilot kullanım içindir. Ağdan kullanımda HTTPS zorunludur: [Windows güvenlik ve HTTPS kılavuzu](distribution/windows/WINDOWS_SECURITY.md).
+
 ## Çalışan sistemi açma
 
 Java 21 gerekir. Proje kökündeki `start-sprintboard.cmd` dosyasını çalıştırın. Servis zaten açıksa yalnız tarayıcı açılır. Başlatıcı mevcut DB dosyasını kontrol eder; dosya yoksa yanlışlıkla boş veya eski verilerle başlatmaz.

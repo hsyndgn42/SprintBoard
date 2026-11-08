@@ -16,7 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 @SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:slackot;DB_CLOSE_DELAY=-1","sprintboard.slack.resolve-names=false","sprintboard.slack.bot-token=","sprintboard.slack.app-token="})
 @WithMockUser(username="admin",roles="ADMIN")
-@org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+@org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 class SlackOvertimeTest {
  @Autowired org.springframework.test.web.servlet.MockMvc mvc;
  @Autowired SlackOvertimeService service;@Autowired JdbcTemplate db;@Autowired BackupService backup;@Autowired ObjectMapper mapper;@Autowired WorkspaceService workspace;

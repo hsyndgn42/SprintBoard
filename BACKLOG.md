@@ -1,11 +1,13 @@
 # SprintBoard ürün backlogu
 
-Güncelleme: 22 Ekim 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındadır; V2 planı yoktur. Bu dosya uygulamanın geliştirme backlogudur, ekip işlerinin tutulduğu Backlog ekranı değildir.
+Güncelleme: 9 Kasım 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındadır; V2 planı yoktur. Bu dosya uygulamanın geliştirme backlogudur, ekip işlerinin tutulduğu Backlog ekranı değildir.
 
 ## Tamamlanan kapsam
 
 ### Ürün
 
+- [x] Diğer ekipler için Java 21 dahil boş Windows EXE kurulumu; ayrı kalıcı veri klasörü, ilk admin oluşturma, güvenli durdurma ve kurulum doğrulama betiği.
+- [x] Windows dağıtım güvenliği: güncel Java/uygulama bağımlılıkları, otomatik güvenlik taraması ve bileşen listesi; ağ erişiminde HTTPS, ayrı veri klasörü ve mevcut veriyle uyumluluk doğrulaması.
 - [x] Roadmap, proje ve feature set bağlantıları; backlog, tekrar eden işler ve iş geçmişi.
 - [x] Backlog wiki paylaşımı: ayarlanabilir Confluence sayfa ID’si, filtrelenmiş tüm kayıtları önizleme, tür bazlı tablolar ve aynı sayfayı sürüm kontrolüyle güncelleme.
 - [x] Sprint planlama, kişi atamaları, efor matrisi, kapasite ve sabit kapanış kaydı.
@@ -53,6 +55,7 @@ Güncelleme: 22 Ekim 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındad
 | --- | --- | --- |
 | P1 | Geçmiş izin ve mesai mutabakatı | Kalan tür ve ara bakiye farkları ürün sahibiyle teyit edilir; kayıtlar tahminle değiştirilmez. |
 | P1 | Önceki veritabanı değişiminin kök nedeni | Eski DB dosyasının canlıya geçiş nedeni kesinleştirilir. Sabit DB yolu, doğrulanmış yedek ve güncellemede veri karşılaştırması sürdürülür. |
+| Ertelendi | Windows yayıncı imzası | Ürün sahibi kararıyla şimdilik imzasız pilot paket. Kurumsal kod imzalama sertifikası/hizmeti temin edilince EXE imzalanır; Windows yayıncı uyarısı o zamana kadar kalır. |
 | Sürekli | Kullanıcı kabulü ve defect fix | Bildirilen hatalar yeniden üretilir, düzeltilir ve regresyon testiyle kapatılır. |
 
 ## Ölçülüp ertelenen maddeler

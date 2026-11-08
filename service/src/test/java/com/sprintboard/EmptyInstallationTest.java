@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +35,9 @@ class EmptyInstallationTest {
     assertEquals(0,workspace.sprints().size());
     assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM product_setting WHERE setting_key='workspace_initialized'",Integer.class));
     assertEquals("",slack.status().get("teamId"));
+    assertEquals("SprintBoard",workspace.settings().get("teamName"));
+    for(String table:new String[]{"jira_config","confluence_config","slack_config"})
+      assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM "+table,Integer.class),"No copied integration configuration: "+table);
     assertEquals("",slack.status().get("channelId"));
     assertEquals("STOPPED",slack.status().get("state"));
     assertEquals("",db.queryForObject("SELECT channel_id FROM slack_digest_config WHERE id=1",String.class));
