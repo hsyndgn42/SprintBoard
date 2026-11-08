@@ -1,10 +1,12 @@
 import {overtimeSectionHtml,trendSvg,defectSeries} from './operational-trends.model';
+import {REPORT_EXPORT_DESIGN} from './report-export-design';
 import {reserveHtml} from './defect-reserve-html';
 import type {ReportExport} from './report-export.model';
 import {memberContexts,capacitySourceLabel} from './member-context.model';
 import {trendSource} from './capacity-trend.model';
 import {taskCategoryLabel,taskSubtypeLabel} from '../task-taxonomy';
 import {deliveryReportHtml} from './delivery-report-html';
+import {futureWorkloadReading,forecastPeriodLabel} from './future-workload.model';
 
 const h=(value:unknown)=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const n=(value:number|null|undefined)=>value==null?'—':new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(Number.isFinite(value)?value:0);
@@ -44,6 +46,7 @@ export function reportTabHtml(input:ReportExport,createdAt=new Date().toISOStrin
    notice+=' BAU dahil, Leave hariç kişi atamalarıdır. Çok kişili iş her kişi için bir kez sayılır.';
    body=kpis([['Ekip üyesi',rows.length],['İş ataması',total],['Planlanan efor',n(sum(rows,r=>r.effortHours))+' sa'],['Done oranı',rate(done,total)]]);
    body+=section('İş hacmi ve sonuç dağılımı',stacks(rows.map(r=>({label:r.memberName,values:[r.done,r.undone,r.other],note:n(r.effortHours)+' sa · '+r.supportTaskCount+' X destek'})),['Done','Undone','Diğer'],'iş'));
+   body+=section('Kişi bazında planlanan efor',stacks(rows.map(r=>({label:r.memberName,values:[r.effortHours],note:r.taskCount+' iş ataması'})),['Planlanan efor'],'sa'));
    body+=section('Kişi özeti',table(['Kişi','Atama / X destek','Planlanan efor','Done / Undone / Diğer',size?'Size dağılımı':'Story Point'],rows.map(r=>[r.memberName,r.taskCount+' / '+r.supportTaskCount,n(r.effortHours)+' sa',r.done+' / '+r.undone+' / '+r.other,estimates(r,size,r.taskCount)])));
    break;
   }
@@ -59,10 +62,12 @@ export function reportTabHtml(input:ReportExport,createdAt=new Date().toISOStrin
    break;
   }
   case 'context':{
-   title='Kapasite, izin ve X destek';const rows=memberContexts(input.rows);
+   title='Kapasite, izin ve X destek';const rows=memberContexts(input.rows,input.members);
    notice='Kişi bazlı izin günü, kapasite ve X destek bilgisi içerir. Paylaşmadan önce alıcıları kontrol edin. İzin günleri ve X atamaları saat toplamına eklenmez. Eksik kapasitede birleşik oran üretilmez.';
    body=kpis([['Kişi',rows.length],['Kayıtlı izin',n(sum(rows,r=>r.leaveDays))+' gün'],['X destek',sum(rows,r=>r.supportTasks)+' atama'],['Planlanan efor',n(sum(rows,r=>r.effortHours))+' sa']]);
-   body+=section('Kapasite ve katkı haritası',pairs(rows.map(r=>({label:r.name,capacity:r.known?r.availableHours:null,planned:r.effortHours,note:r.known+'/'+r.total+' kapasite kaydı · '+n(r.leaveDays)+' gün izin · '+r.supportTasks+' X · Plan/kapasite '+(r.load===null?'—':n(r.load)+'%')}))));
+   body+=section('Kapasite ve katkı haritası',pairs(rows.map(r=>({label:r.name,capacity:r.total>0&&r.known===r.total?r.availableHours:null,planned:r.effortHours,note:r.known+'/'+r.total+' kapasite kaydı · '+n(r.leaveDays)+' gün izin · '+r.supportTasks+' X · Plan/kapasite '+(r.load===null?'—':n(r.load)+'%')}))));
+   body+='<div class="split">'+section('Kişi bazında izin',stacks(rows.map(r=>({label:r.name,values:[r.leaveDays],note:r.total?r.total+' sprint':'Dönem kaydı yok'})),['Kayıtlı izin'],'gün'))
+    +section('X destek katkısı',stacks(rows.map(r=>({label:r.name,values:[r.supportTasks],note:'Saat tahmini olmayan atama'})),['X destek'],'atama'))+'</div>';
    body+=section('Sprint bazlı katılım',rows.map(m=>`<article class="period"><h3>${h(m.name)}</h3>${table(['Sprint / kaynak','Ayrılan gün','İzin / çalışılmayan gün','Net kapasite / plan','Planlı mesai / X'],m.periods.map(p=>[p.sprintName+' · '+capacitySourceLabel(p.capacitySource),n(p.allocatedDays),n(p.leaveDays)+' / '+n(p.nonWorkingDays),n(p.availableHours)+' / '+n(p.effortHours)+' sa',n(p.overtimeHours)+' sa / '+p.supportTaskCount]))}</article>`).join(''),'Kapanış kaydı olmayan dönemler güncel takvim ve izinlerle yeniden hesaplanır; kesin tarihsel kapasite değildir. Support kapasitesi ekip kapasitesine eklenmez.');
    break;
   }
@@ -75,13 +80,29 @@ export function reportTabHtml(input:ReportExport,createdAt=new Date().toISOStrin
    body+=section('Roadmap özeti',table(['Roadmap / referans','Tür','İş / Done / Undone / Açık','Atanan efor','Mesai (ayrı)','Havuz iş / tahmin','X / Atamasız'],rows.map(r=>[r.title+' · '+(r.referenceId||'—'),({PROJECT:'Proje',FEATURE_SET:'Feature set',GENERAL:'Genel'} as Record<string,string>)[r.kind]||'Belirtilmemiş',r.taskCount+' / '+r.done+' / '+r.undone+' / '+r.open,n(r.assignedHours)+' sa',n(r.overtimeHours||0)+' sa',r.poolCount+' / '+n(r.poolEstimatedHours)+' sa',r.supportAssignmentCount+' / '+r.unassignedTaskCount])));
    break;
   }
+  case 'future':{
+   title='Gelecek iş yükü';const report=input.data,v=futureWorkloadReading(report);
+   notice='Havuz ve planlanan sprintlerdeki açık işler · Çekirdek ekip · BAU hariç';
+   body='<div class="future-summary">'+kpis([['Bekleyen iş yükü',n(v.core)+' sa'],['İşlere ayrılabilir kapasite',n(v.capacity)+' sa'],['Toplam iş / kapasite',v.load===null?'—':n(v.load)+'%']])+'</div>';
+   body+='<p class="note">'+n(v.planned)+' sa sprintlere planlandı · '+n(v.pool)+' sa havuzda. Kapasiteden izin, tatil ve BAU düşülmüştür.</p>';
+   body+='<div class="notice"><strong>'+h(v.headline)+'</strong><br>'+h(v.detail)+'</div>';
+   if(v.unknown)body+='<p class="caution">'+v.unknown+' işin saat tahmini eksik. Yük yalnız bilinen saatleri gösterir; gerçek ihtiyaç daha yüksek olabilir.</p>';
+   if(v.outsideHours)body+='<p class="note">Toplam yükün '+n(v.outsideHours)+' sa kısmı seçili tarihlerin dışındaki sprintlere planlanmış.</p>';
+   body+='<div class="split">'+section('İş yükünün dağılımı',stacks(v.categories.map(c=>({label:taskCategoryLabel(c.category),values:[c.planned,c.pool],note:c.count+' iş'+(c.unknown?' · '+c.unknown+' tahmin eksik':'')})),['Sprintlere planlanan','Havuzda bekleyen'],'sa'));
+   body+=section('Ekibin hangi alanı dolu?','<div class="future-loads">'+v.roles.filter(r=>r.demand||r.capacity).map(r=>`<article class="future-load"><div class="future-line"><strong>${h(r.label)}</strong><b>${r.capacity?n(100*r.demand/r.capacity)+'%':'Kapasite yok'}</b></div><div class="future-track" role="img" aria-label="${h(r.label)}: ${n(r.demand)} saat iş / ${n(r.capacity)} saat kapasite"><span style="width:${r.demand>0?(r.capacity?Math.min(100,100*r.demand/r.capacity):100):0}%;background:${r.demand>r.capacity?'#bd6557':'#526fb4'}"></span></div><p class="note">${n(r.demand)} sa iş / ${n(r.capacity)} sa kapasite${r.demand>r.capacity?' · '+n(r.demand-r.capacity)+' sa fazla':''}</p></article>`).join('')+'</div>','Kişilerin uzmanlığına göre yük / kapasite')+'</div>';
+   body+=section('Sprintlere göre tahmini doluluk','<div class="legend"><span><i style="background:#526fb4"></i>Sprintteki plan</span><span><i style="background:#40a396"></i>Havuzdan alınabilir</span><span><i style="background:#e9eef4"></i>Boş kapasite</span></div><div class="future-loads">'+v.periods.map((p,index)=>{const scale=Math.max(p.capacityHours,p.planned+p.fromPool)||1;return `<article class="future-load"><div class="future-line"><strong>${h(forecastPeriodLabel(p,index))}</strong><b>${p.scenarioRate===null?'—':n(p.scenarioRate)+'%'}</b></div><p class="note">${h(p.start)} – ${h(p.end)}${p.scenario?' · Tahmini tarihler':''} · ${n(p.planned+p.fromPool)} / ${n(p.capacityHours)} sa</p><div class="future-track" role="img" aria-label="${n(p.planned)} saat plan, ${n(p.fromPool)} saat havuz, ${n(p.capacityHours)} saat kapasite"><span style="width:${100*p.planned/scale}%;background:#526fb4"></span><span class="future-pool" style="width:${100*p.fromPool/scale}%"></span>${p.planned+p.fromPool>p.capacityHours&&p.capacityHours>0?'<i class="future-limit" style="left:'+100*p.capacityHours/scale+'%"></i>':''}</div><p class="note">${n(p.planned)} sa plan + ${n(p.fromPool)} sa havuz${p.over?' · Uzmanlık aşımı: '+n(p.over)+' sa':''}</p></article>`;}).join('')+'</div>','Sprintteki plana, havuzdan uygun uzmanlıkla alınabilecek saatler eklenir. Havuz dağılımı bir tahmindir.');
+   body+='<details><summary>Kapasite nasıl hesaplandı?</summary><p class="note">Çekirdek ekip kapasitesi − tatil − izin + kapasiteye dahil planlı mesai − BAU.</p>'+table(['Dönem','Ekip kapasitesi','Tatil','İzin','Planlı mesai','BAU','Kalan'],report.periods.map((p,index)=>[forecastPeriodLabel(p,index),n(p.nominalHours)+' sa','−'+n(p.offHours)+' sa','−'+n(p.leaveHours)+' sa','+'+n(p.overtimeHours)+' sa','−'+n(p.bauHours)+' sa',n(p.capacityHours)+' sa']));
+   if(v.support||v.reserve)body+='<p class="note">Dış Support: '+n(v.support)+' sa · BAU rezervinden karşılanan defectler: '+n(v.reserve)+' sa. Çekirdek yüküne tekrar eklenmez.</p>';
+   body+='</details><details><summary>Hesaplama notları</summary>'+report.warnings.map(w=>'<p class="note">'+h(w)+'</p>').join('')+'<p class="note">Henüz sprint yoksa dönem uzunluğu '+report.weeks+' hafta, varsayılan BAU kişi başına '+n(report.bauDays)+' gün. Kayıtlı sprintlerin kendi tarihleri ve BAU planı kullanılır. Bekleyen izin talepleri kapasiteyi düşürmez.</p><p class="note">Aktif sprint, Done/Undone ve BAU işleri iş yüküne dahil değildir. Saatli atama varsa atamalar, yoksa saat tahmini esas alınır. Size / Story Point saate çevrilmez. Tam çekirdek ekip kapasitesi, katılım tarihleri ve çalışma düzeni kullanılır.</p><p class="note">Havuz yalnız uygun uzmanlığın boş kapasitesine dağıtılır. İş bağımlılıkları ve kişiye özel iş dağılımı bu tahmine dahil değildir; sprint oluşturmaz veya iş taşımaz.</p></details>';
+   break;
+  }
   case 'capacity':{
    title='Ekip kapasitesi ve toplam plan';const rows=input.rows;
    notice+=' Tamamlanan sprintlerde kayıtlı kişilerle sınırlıdır. Kapasite yalnız çekirdek ekiptir; Support/Architect plana katılır, kapasiteye katılmaz. Eksik kapasite sıfır varsayılmaz. Kapasite üstü planlama hata değildir.';
    const core=sum(rows,r=>r.corePlanned),support=sum(rows,r=>r.supportPlanned),planned=sum(rows,r=>r.planned);
    body=kpis([['Sprint',rows.length],['Bilinen çekirdek kapasite',n(sum(rows,r=>r.capacity))+' sa'],['Çekirdek planı',n(core)+' sa'],['Support planı',n(support)+' sa']]);
    body+=`<div class="equation"><div>Çekirdek planı<strong>${n(core)} sa</strong></div><b>+</b><div>Support planı<strong>${n(support)} sa</strong></div><b>=</b><div>Toplam plan<strong>${n(planned)} sa</strong></div></div>`;
-   body+=section('Çekirdek planı / kapasite',pairs(rows.map(r=>({label:r.name,capacity:r.known||r.people&&!r.unknown?r.capacity:null,planned:r.corePlanned,note:trendSource(r)+' · '+r.known+' bilinen / '+r.unknown+' eksik kapasite · Oran '+(r.coreRatio===null?'—':n(r.coreRatio)+'%')}))));
+   body+=section('Çekirdek planı / kapasite',pairs(rows.map(r=>({label:r.name,capacity:r.known&&!r.unknown?r.capacity:null,planned:r.corePlanned,note:trendSource(r)+' · '+r.known+' bilinen / '+r.unknown+' eksik kapasite · Oran '+(r.coreRatio===null?'—':n(r.coreRatio)+'%')}))));
    body+=section('Toplam planın dağılımı',stacks(rows.map(r=>({label:r.name,values:[r.corePlanned,r.supportPlanned],note:r.people?'':'Bu kapsamda katılım kaydı yok'})),['Çekirdek','Support'],'sa'));
    body+=section('Sprint özeti',table(['Sprint / kaynak','Bilinen kapasite','Çekirdek / Support planı','Toplam plan','Çekirdek oranı','Kişisel aşım / boşluk'],rows.map(r=>[r.name+' · '+trendSource(r),r.known||r.people&&!r.unknown?n(r.capacity)+' sa':'—',n(r.corePlanned)+' / '+n(r.supportPlanned)+' sa',r.people?n(r.planned)+' sa':'—',r.coreRatio===null?'—':n(r.coreRatio)+'%',r.known?n(r.over)+' / '+n(r.free)+' sa':'—'])),'İzin ve çalışılmayan günler net kapasiteye yansır. BAU plana dahildir; Leave ve X saat toplamaz. Kişisel boşluk başka kişinin kapasite üstü planını silmez.');
    break;
@@ -99,5 +120,19 @@ export function reportTabHtml(input:ReportExport,createdAt=new Date().toISOStrin
   }
  }
  const date=new Date(createdAt),time=Number.isNaN(date.getTime())?createdAt:new Intl.DateTimeFormat('tr-TR',{dateStyle:'long',timeStyle:'short',timeZone:'Europe/Istanbul'}).format(date);
- return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>${h(title)} · SprintBoard</title><style>${css}</style></head><body><main data-report="${input.kind}"><header><span class="eyebrow">SPRINTBOARD / RAPOR</span><h1>${h(title)}</h1><p>Oluşturulma: ${h(time)} · İstanbul saati</p><p class="scope">${h(input.scope)}</p></header><div class="content"><p class="notice">${h(notice)}</p>${body}</div><footer>Yalnız seçili rapor ve filtre kapsamı · Salt okunur, çevrimdışı HTML.<br>Uygulamaya bağlanmaz; kendiliğinden güncellenmez. Hesaplar, erişim bilgileri ve serbest notlar dahil değildir. Tarayıcıdan Yazdır → PDF kullanabilirsiniz.</footer></main></body></html>`;
+ return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>${h(title)} · SprintBoard</title><style>${css}${REPORT_EXPORT_DESIGN}${FUTURE_EXPORT_CSS}</style></head><body><main data-report="${input.kind}"><header><span class="eyebrow">SPRINTBOARD / RAPOR</span><h1>${h(title)}</h1><p>Oluşturulma: ${h(time)} · İstanbul saati</p><p class="scope">${h(input.scope)}</p></header><div class="content"><p class="notice">${h(notice)}</p>${body}</div><footer>Yalnız seçili rapor ve filtre kapsamı · Salt okunur, çevrimdışı HTML.<br>Uygulamaya bağlanmaz; kendiliğinden güncellenmez. Hesaplar, erişim bilgileri ve serbest notlar dahil değildir. Tarayıcıdan Yazdır → PDF kullanabilirsiniz.</footer></main></body></html>`;
 }
+
+const FUTURE_EXPORT_CSS=`
+[data-report="future"] .future-summary .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+[data-report="future"] .future-loads{display:grid;gap:20px;margin-top:20px}
+[data-report="future"] .future-load{break-inside:avoid}
+[data-report="future"] .future-line{display:flex;justify-content:space-between;align-items:baseline;gap:14px;font-size:12px}
+[data-report="future"] .future-line b{font-variant-numeric:tabular-nums}
+[data-report="future"] .future-track{position:relative;display:flex;height:16px;background:#e9eef4;border-radius:5px;overflow:hidden;margin:8px 0}
+[data-report="future"] .future-track>span{flex:none;display:block;height:100%}
+[data-report="future"] .future-track>.future-pool{background:repeating-linear-gradient(135deg,#40a396,#40a396 5px,#65b8ad 5px,#65b8ad 8px)}
+[data-report="future"] .future-limit{position:absolute;top:0;bottom:0;border-left:2px solid #a73d34}
+[data-report="future"] .future-load p{margin:4px 0;font-size:11px}
+@media(max-width:600px){[data-report="future"] .future-summary .kpis{grid-template-columns:1fr}}
+`;

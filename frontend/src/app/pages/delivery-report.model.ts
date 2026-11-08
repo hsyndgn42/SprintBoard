@@ -21,7 +21,7 @@ const tr=new Intl.NumberFormat('tr-TR',{maximumFractionDigits:1});
 export const num=(value:number)=>tr.format(value);
 export const items=(count:number)=>num(count)+' iş';
 export const percent=(value:number|null)=>value==null?'—':'%'+num(value);
-export const stamp=(at:Date)=>new Intl.DateTimeFormat('tr-TR',{dateStyle:'long',timeStyle:'short'}).format(at);
+export const stamp=(at:Date)=>new Intl.DateTimeFormat('tr-TR',{dateStyle:'long',timeStyle:'short',timeZone:'Europe/Istanbul'}).format(at);
 
 /**
  * Turkish locative suffix, so findings read as sentences instead of as data dumps.

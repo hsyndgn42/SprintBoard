@@ -23,7 +23,7 @@ class JiraSettingsTest {
  @BeforeEach void setup(){
   var ds=new DriverManagerDataSource("jdbc:h2:mem:jira-"+UUID.randomUUID()+";DB_CLOSE_DELAY=-1","sa","");
   Flyway.configure().dataSource(ds).load().migrate();
-  db=new JdbcTemplate(ds);
+  db=new DatabaseConfiguration().jdbcTemplate(ds);
   configs=new JiraConfigStore(db,new JiraSecretVault("",folder.resolve("key").toString()));
   transport=mock(JiraTransport.class);
   settings=new JiraSettingsService(configs,transport,db,mapper,clock);

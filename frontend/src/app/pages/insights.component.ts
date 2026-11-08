@@ -1,4 +1,5 @@
 import {OvertimeTrendComponent} from './overtime-trend.component';
+import {FutureWorkloadComponent} from './future-workload.component';
 import { ListPagerComponent } from '../list-pager.component';
 import {SlackSettingsComponent} from './slack-settings.component';
 import {JiraSettingsComponent} from './jira-settings.component';
@@ -24,18 +25,11 @@ import { AccountsComponent } from './accounts.component';
 import { ApiService, BauTemplate, CalendarDay, MemberReportRow, ProductSettings, ReportRow, TaskCategory, TaskSubtype, TeamMember, WorkTypeReportRow, formatDate } from '../api.service';
 import { SbToastService } from '../shared/sb-toast';
 
-/** Keeps the bar chart readable by default; the operator can open it up to the full filtered list. */
-const CHART_MEMBER_LIMIT = 8;
+import {activeMemberSummaries,MemberReportSummary} from './member-report.model';
+import {MemberBarsComponent} from './member-bars.component';
 import { SbStateComponent } from '../shared/sb-state.component';
-import { SbDonutComponent, SbPairComponent, SbStackComponent, Series, Point, Slice, Dumbbell, Segment } from './report-charts';
+import { SbDonutComponent, SbStackComponent, Slice, Segment } from './report-charts';
 import { TASK_CATEGORIES, TASK_CATEGORY_COLORS, taskCategoryLabel, taskSubtypeLabel } from '../task-taxonomy';
-
-interface MemberReportSummary {
-  supportTaskCount:number;
-  memberId: string; memberName: string; title: string; teamRole: string; engagement: string;
-  taskCount: number; effortHours: number; done: number; undone: number; other: number;
-  sizeXSmall: number; sizeSmall: number; sizeMedium: number; sizeLarge: number; sizeXLarge: number; pointedTasks: number; storyPointsTotal: number;
-}
 
 interface WorkTypeSummary {
   taskCategory: TaskCategory; taskCount: number; effortHours: number; done: number; undone: number; color: string;
@@ -47,15 +41,26 @@ interface WorkSubtypeSummary {
 
 @Component({
   standalone: true,
-  imports: [OvertimeTrendComponent, ScopeReportComponent, ScopeFigureComponent,ReportHtmlExportComponent, RouterLink, FormsModule, DefectReportComponent, MemberContextComponent, RoadmapReportComponent, CapacityTrendComponent, SbStateComponent, SbDonutComponent, SbPairComponent, SbStackComponent],
+  imports: [FutureWorkloadComponent, OvertimeTrendComponent, ScopeReportComponent, ScopeFigureComponent,ReportHtmlExportComponent, RouterLink, FormsModule, DefectReportComponent, MemberContextComponent, RoadmapReportComponent, CapacityTrendComponent, SbStateComponent, SbDonutComponent, SbStackComponent, MemberBarsComponent],
   host: {'class':'reports-page'},
   templateUrl: './reports.component.html',
   styleUrls: ['./reports.component.css','./report-design.css'],
 })
 export class ReportsComponent implements OnInit {
-  readonly chartMemberLimit = CHART_MEMBER_LIMIT;
   overtimeReady=signal(false);scopeReady=signal(false);
-  readonly tabs=[{"id":"scope","label":"Acil işler / kapsam"},{"id":"delivery","label":"Sprint teslimatı"},{"id":"members","label":"Kişi dağılımı"},{"id":"context","label":"Katılım bağlamı"},{"id":"types","label":"İş tipleri"},{"id":"roadmap","label":"Roadmap eforu"},{"id":"capacity","label":"Kapasite trendi"},{"id":"defects","label":"Defect"},{"id":"overtime","label":"Mesai"}];
+  futureReady=signal(false);
+  readonly tabs=[
+ {id:'delivery',label:'Sprint teslimatı',hint:'Sonuç ve teslimat trendi',index:'01'},
+ {id:'capacity',label:'Kapasite ve plan',hint:'Çekirdek ekip ve support',index:'02'},
+ {id:'future',label:'Gelecek iş yükü',hint:'Havuz, gelecek plan ve teslimat kapasitesi',index:'10'},
+ {id:'roadmap',label:'Roadmap eforu',hint:'Proje bazında dağılım',index:'03'},
+ {id:'types',label:'İş tipleri',hint:'DEV, TEST, BAU ve diğerleri',index:'04'},
+ {id:'defects',label:'Defect analizi',hint:'Test, prod ve çözüm durumu',index:'05'},
+ {id:'scope',label:'Kapsam değişimi',hint:'Eklenen ve çıkarılan işler',index:'06'},
+ {id:'overtime',label:'Mesai',hint:'Plan, gerçekleşen ve izin',index:'07'},
+ {id:'members',label:'Kişi dağılımı',hint:'Atamalar ve teslim edilenler',index:'08'},
+ {id:'context',label:'Katılım ve izin',hint:'Kişi kapasitesi ve X destek',index:'09'}
+ ];
   activeTab='delivery';
   selectTab(id:string){this.activeTab=id;this.cdr.detectChanges();}
   tabKey(event:KeyboardEvent){
@@ -64,7 +69,9 @@ export class ReportsComponent implements OnInit {
     const current=this.tabs.findIndex(t=>t.id===this.activeTab);
     const next=event.key==='Home'?0:event.key==='End'?this.tabs.length-1:(current+(event.key==='ArrowRight'?1:-1)+this.tabs.length)%this.tabs.length;
     this.selectTab(this.tabs[next].id);
-    (event.currentTarget as HTMLElement).querySelector<HTMLElement>('[aria-selected="true"]')?.focus();
+    const selected=(event.currentTarget as HTMLElement).querySelector<HTMLElement>('[aria-selected="true"]');
+    selected?.focus({preventScroll:true});
+    selected?.scrollIntoView({block:'nearest',inline:'nearest'});
   }
   trendReady=signal(false);
   roadmapReady=signal(false);
@@ -78,17 +85,20 @@ export class ReportsComponent implements OnInit {
     switch(this.activeTab){
       case 'delivery': return 'Tüm tamamlanan sprintler (' + this.rows.length + ')';
       case 'members': return this.memberScope;
+      case 'context': return this.contextScope;
       case 'types': return this.typePeriod;
       default: return 'Bölüm kendi filtre kapsamını kullanır';
     }
   }  get memberSortLabel(){return ({tasks:'İş sayısı',effort:'Efor',delivery:'Done oranı',name:'İsim'} as Record<string,string>)[this.memberSort];}
-  get memberScope(){return this.memberPeriod+' · '+(this.memberQuery||'Tüm kişiler')+' · Sıralama: '+this.memberSortLabel;}
-  exportCsv(kind:'sprints'|'members'|'types'){if(this.loading||this.error)return;const text=kind==='members'?memberReportCsv(this.memberSummary,this.settings,this.memberPeriod):kind==='types'?workTypeReportCsv(this.filteredWorkTypeRows):sprintReportCsv(this.rows,this.settings);const file='sprintboard-'+kind+'.csv';downloadText(text,'text/csv;charset=utf-8',file);this.toast.success(file+' indirildi.');}
+  get contextScope(){return this.memberPeriod+' · Aktif ekip üyeleri'+(this.memberQuery?' · '+this.memberQuery:'');}
+  get memberScope(){return this.contextScope+' · Sıralama: '+this.memberSortLabel;}
+  exportCsv(kind:'sprints'|'members'|'types'){if(this.loading||this.error)return;const text=kind==='members'?memberReportCsv(this.memberSummary,this.settings,this.memberScope):kind==='types'?workTypeReportCsv(this.filteredWorkTypeRows):sprintReportCsv(this.rows,this.settings);const file='sprintboard-'+kind+'.csv';downloadText(text,'text/csv;charset=utf-8',file);this.toast.success(file+' indirildi.');}
   private toast = inject(SbToastService);
   private api = inject(ApiService);
   private cdr = inject(ChangeDetectorRef);
   rows: ReportRow[] = [];
   memberRows: MemberReportRow[] = [];
+  reportTeam: TeamMember[] = [];
   workTypeRows: WorkTypeReportRow[] = [];
   settings: ProductSettings = { estimationMode: 'SIZE_AND_HOURS', hoursPerDay: 8 };
   selectedSprint = '';
@@ -134,12 +144,17 @@ export class ReportsComponent implements OnInit {
 
 
 
-  get memberMoves(): Dumbbell[] { return this.chartMembers.map(m=>({key:m.memberId,label:m.memberName,
-    from:m.taskCount,to:m.done,
-    caption:m.memberName+': '+m.taskCount+' iş, '+this.nf(m.effortHours)+' sa, '+m.done+' Done, '+m.undone+' Undone'})); }
+  get memberResults(){return this.memberSummary.map(m=>({key:m.memberId,label:m.memberName,note:m.taskCount?this.nf(m.effortHours)+' sa plan · '+m.supportTaskCount+' X destek':'Bu dönemde atama yok',segments:[
+    {label:'Done',value:m.done,fill:'#1f8a70'},{label:'Undone',value:m.undone,fill:'#c95e57'},{label:'Diğer',value:m.other,fill:'#5e83bd'}]}));}
+  get memberEffortBars(){return this.memberSummary.map(m=>({key:m.memberId,label:m.memberName,note:m.taskCount+' iş ataması',segments:[{label:'Planlanan efor',value:m.effortHours,fill:'#526fb4'}]}));}
+  get memberResultSlices():Slice[]{const rows=this.memberSummary;return [
+    {label:'Done',value:rows.reduce((s,m)=>s+m.done,0),fill:'#1f8a70'},
+    {label:'Undone',value:rows.reduce((s,m)=>s+m.undone,0),fill:'#c95e57'},
+    {label:'Diğer',value:rows.reduce((s,m)=>s+m.other,0),fill:'#5e83bd'}];}
   get memberVerdict(): string {
     const people=this.memberSummary;
-    if(!people.length)return 'Seçili kapsamda atama kaydı yok.';
+    if(!people.length)return 'Seçili kapsamda aktif ekip üyesi yok.';
+    if(!this.memberTaskTotal)return people.length+' aktif ekip üyesinin seçili dönemde atama kaydı yok.';
     const busiest=[...people].sort((a,b)=>b.taskCount-a.taskCount)[0];
     const average=people.length?this.memberTaskTotal/people.length:0;
     let text=people.length+' kişiye '+this.memberTaskTotal+' iş ve <b>'+this.nf(this.memberEffortTotal)+' saat</b> plan düştü; Done oranı <b>%'+this.memberDoneRate+'</b>.';
@@ -169,33 +184,17 @@ export class ReportsComponent implements OnInit {
     if(top&&effort>0)text+=' Eforun en büyük payı '+this.esc(this.categoryLabel(top.taskCategory))+' (%'+Math.round(top.effortHours*100/effort)+').';
     const bau=rows.find(r=>r.taskCategory==='BAU'),defect=rows.find(r=>r.taskCategory==='DEFECT');
     const unplanned=(bau?.effortHours||0)+(defect?.effortHours||0);
-    if(unplanned>0&&effort>0)text+=' BAU ve defect birlikte eforun <b'+(unplanned/effort>0.3?' class="over"':'')+'>%'+Math.round(unplanned*100/effort)+'</b>\u2019ini alıyor.';
+    if(unplanned>0&&effort>0)text+=' BAU ve defect birlikte eforun <b'+''+'>%'+Math.round(unplanned*100/effort)+'</b>\u2019ini alıyor.';
     text+=' Done oranı %'+this.taxonomyDoneRate+'.';
     return text;
   }
 
-  get memberSummary(): MemberReportSummary[] {
-    const summaries = new Map<string, MemberReportSummary>();
-    for (const row of this.memberRows) {
-      if (this.selectedSprint && row.sprintId !== this.selectedSprint) continue;
-      const current = summaries.get(row.memberId) || { memberId: row.memberId, memberName: row.memberName, title: row.title, teamRole: row.teamRole, engagement: row.engagement, supportTaskCount:0, taskCount: 0, effortHours: 0, done: 0, undone: 0, other: 0, sizeXSmall: 0, sizeSmall: 0, sizeMedium: 0, sizeLarge: 0, sizeXLarge: 0, pointedTasks: 0, storyPointsTotal: 0 };
-      for (const key of ['supportTaskCount','taskCount', 'effortHours', 'done', 'undone', 'other', 'sizeXSmall', 'sizeSmall', 'sizeMedium', 'sizeLarge', 'sizeXLarge', 'pointedTasks', 'storyPointsTotal'] as const) current[key] += row[key];
-      summaries.set(row.memberId, current);
-    }
-    const query = this.memberQuery.trim().toLocaleLowerCase('tr-TR');
-    const result = [...summaries.values()].filter(row => !query || `${row.memberName} ${row.title} ${row.teamRole} ${row.engagement}`.toLocaleLowerCase('tr-TR').includes(query));
-    return result.sort((a, b) => this.memberSort === 'name' ? a.memberName.localeCompare(b.memberName, 'tr') : this.memberSort === 'effort' ? b.effortHours - a.effortHours : this.memberSort === 'delivery' ? this.deliveryRate(b) - this.deliveryRate(a) : b.taskCount - a.taskCount);
-  }
+  get memberSummary():MemberReportSummary[]{return activeMemberSummaries(this.memberRows,this.reportTeam,this.selectedSprint,this.memberQuery,this.memberSort);}
+  get contextMembers(){return this.memberSummary.map(m=>({id:m.memberId,name:m.memberName}));}
   get contextRows():MemberReportRow[]{const ids=new Set(this.memberSummary.map(m=>m.memberId));return this.memberRows.filter(r=>(!this.selectedSprint||r.sprintId===this.selectedSprint)&&ids.has(r.memberId));}
   get memberTaskTotal(): number { return this.memberSummary.reduce((sum, row) => sum + row.taskCount, 0); }
   get memberEffortTotal(): number { return this.memberSummary.reduce((sum, row) => sum + row.effortHours, 0); }
   get memberDoneRate(): number { const done = this.memberSummary.reduce((sum, row) => sum + row.done, 0); const total = this.memberSummary.reduce((sum, row) => sum + row.taskCount, 0); return total ? Math.round(done * 100 / total) : 0; }
-  /** The chart follows the table's own ordering: re-sorting it here silently ignored the operator's choice and
-   *  could hide a currently active person behind people who merely carry more history. */
-  showAllChartMembers = false;
-  get chartMembers(): MemberReportSummary[] { return this.showAllChartMembers ? this.memberSummary : this.memberSummary.slice(0, CHART_MEMBER_LIMIT); }
-  get hiddenChartMembers(): number { return Math.max(0, this.memberSummary.length - this.chartMembers.length); }
-  toggleChartMembers(): void { this.showAllChartMembers = !this.showAllChartMembers; this.cdr.detectChanges(); }
   get filteredWorkTypeRows(): WorkTypeReportRow[] { return this.workTypeRows.filter(row => !this.selectedTypeSprint || row.sprintId === this.selectedTypeSprint); }
   get typeSprintOptions(): { id: string; name: string; status: string; number: number }[] {
     const sprints = new Map<string, { id: string; name: string; status: string; number: number }>();
@@ -261,20 +260,20 @@ export class ReportsComponent implements OnInit {
     this.loading = true;
     this.error = '';
     this.cdr.detectChanges();
-    try { [this.rows, this.memberRows, this.workTypeRows, this.settings] = await Promise.all([this.api.get<ReportRow[]>('/reports'), this.api.get<MemberReportRow[]>('/reports/members'), this.api.get<WorkTypeReportRow[]>('/reports/work-types'), this.api.get<ProductSettings>('/settings')]); } catch (error) { this.error = String(error); } finally { this.loading=false;this.cdr.detectChanges(); }
+    try { [this.rows, this.memberRows, this.workTypeRows, this.settings, this.reportTeam] = await Promise.all([this.api.get<ReportRow[]>('/reports'), this.api.get<MemberReportRow[]>('/reports/members'), this.api.get<WorkTypeReportRow[]>('/reports/work-types'), this.api.get<ProductSettings>('/settings'), this.api.get<TeamMember[]>('/team')]); } catch (error) { this.error = String(error); } finally { this.loading=false;this.cdr.detectChanges(); }
   }
   chartX(index: number): number { return this.chartRows.length <= 1 ? 370 : 50 + index * 640 / (this.chartRows.length - 1); }
   chartY(rate: number | null): number { return 196 - Math.max(0, Math.min(100, rate ?? 0)) * 1.6; }
   sizeSegment(row: ReportRow, value: number): number { const total = row.sizeXSmall + row.sizeSmall + row.sizeMedium + row.sizeLarge + row.sizeXLarge; return total ? value * 100 / total : 0; }
   pointVolume(row: ReportRow): number { const max = Math.max(...this.recentChartRows.map(item => item.storyPointsTotal), 1); return row.storyPointsTotal * 100 / max; }
-  memberVolume(member: MemberReportSummary): number { const max = Math.max(...this.chartMembers.map(item => item.taskCount), 1); return Math.max(2, member.taskCount * 100 / max); }
+  memberVolume(member: MemberReportSummary): number { const max = Math.max(...this.memberSummary.map(item => item.taskCount), 1); return Math.max(2, member.taskCount * 100 / max); }
   memberResult(member: MemberReportSummary, value: number): number { return member.taskCount ? value * 100 / member.taskCount : 0; }
   deliveryRate(row: { done: number; taskCount: number }): number { return row.taskCount ? Math.round(row.done * 100 / row.taskCount) : 0; }
   sizeText(row: { sizeXSmall: number; sizeSmall: number; sizeMedium: number; sizeLarge: number; sizeXLarge: number }): string { return `X-Small ${row.sizeXSmall}, Small ${row.sizeSmall}, Medium ${row.sizeMedium}, Large ${row.sizeLarge}, X-Large ${row.sizeXLarge}`; }
   initials(name: string): string { return name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toLocaleUpperCase('tr-TR'); }
   roleLabel(value: string): string { return ({ DEVELOPER: 'Developer', TESTER: 'Tester', DESIGNER: 'Designer', ARCHITECT: 'Architect', ANALYST: 'Analyst' } as Record<string, string>)[value] || value; }
   engagementLabel(value: string): string { return value === 'SUPPORT' ? 'Support' : value === 'FORMER' ? 'Eski ekip' : 'Çekirdek ekip'; }
-  print(): void { if(!this.loading&&!this.error&&this.defectReady()&&this.roadmapReady()&&this.trendReady()&&this.scopeReady()&&this.overtimeReady())window.print(); }
+  print(): void { if(!this.loading&&!this.error&&this.defectReady()&&this.roadmapReady()&&this.trendReady()&&this.scopeReady()&&this.overtimeReady()&&this.futureReady())window.print(); }
 }
 
 const SETTINGS_TABS = ['team', 'delivery', 'integrations', 'admin'] as const;
@@ -341,7 +340,7 @@ type SettingsTab = typeof SETTINGS_TABS[number];
     </section>
     <section class="settings-section"><div class="settings-section-head"><h3>Jira entegrasyonu</h3><small>Sunucu, proje ve defect sorgusu</small></div>@defer (on idle) { <app-jira-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Jira</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
     </section>
-    <section class="settings-section"><div class="settings-section-head"><h3>Confluence (wiki)</h3><small>Sprint planını wiki sayfasına gönderir</small></div>@defer (on idle) { <app-confluence-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Confluence</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
+    <section class="settings-section"><div class="settings-section-head"><h3>Confluence (wiki)</h3><small>Sprint planı ve Backlog yayınlama</small></div>@defer (on idle) { <app-confluence-settings /> } @placeholder { <section class="card card-pad" style="margin:18px 0"><h2>Confluence</h2><p>Entegrasyon ayarları yükleniyor…</p></section> }
     </section>
     </section> }
     @if (tab==='admin') { <section class="settings-group danger-zone" id="settings-admin" tabindex="-1" aria-labelledby="settings-admin-heading">

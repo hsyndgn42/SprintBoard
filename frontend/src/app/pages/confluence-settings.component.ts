@@ -2,7 +2,7 @@ import {Component,ChangeDetectorRef,inject,OnInit,OnDestroy} from '@angular/core
 import {FormsModule} from '@angular/forms';
 import {ApiService} from '../api.service';
 
-interface ConfluenceStatus {baseUrl:string;spaceKey:string;parentPageId:string;enabled:boolean;version:number;patConfigured:boolean}
+interface ConfluenceStatus {baseUrl:string;spaceKey:string;parentPageId:string;backlogPageId:string;enabled:boolean;version:number;patConfigured:boolean}
 interface ConfluenceTestResult {connected:boolean;user:string;space?:string;spaceReachable?:boolean;spaceError?:string}
 
 @Component({
@@ -11,18 +11,22 @@ interface ConfluenceTestResult {connected:boolean;user:string;space?:string;spac
  imports:[FormsModule],
  template:`
  <section class="card card-pad" style="margin:18px 0">
-  <div class="section-head"><div><span class="eyebrow">CONFLUENCE</span><h2>Sprint planını wikiye gönder</h2></div>
+  <div class="section-head"><div><span class="eyebrow">CONFLUENCE</span><h2>Wiki yayınlama</h2></div>
    @if(status){<span class="status" [class.done]="status.enabled">{{ status.enabled ? 'Açık' : 'Kapalı' }}</span>}</div>
-  <p class="data-note">Planlanan sprint, seçtiğiniz alandaki bir Confluence sayfasına yazılır. Aynı sprint tekrar gönderildiğinde yeni sayfa açılmaz, var olan sayfa güncellenir. İzin kayıtları ve kişisel ayrıntılar gönderilmez.</p>
+  <p class="data-note">Sprint planları ve Backlog aynı bağlantıyı kullanır. İzin kayıtları ve kişisel izin bilgileri paylaşılmaz.</p>
 
   <div class="form-grid two">
    <label class="field">Confluence adresi<input name="confluenceUrl" [(ngModel)]="baseUrl" placeholder="https://wiki.sirket.local" autocomplete="off"></label>
    <label class="field">Alan (space) anahtarı<input name="confluenceSpace" [(ngModel)]="spaceKey" placeholder="VIBE" autocomplete="off"></label>
-   <label class="field">Üst sayfa kimliği<input name="confluenceParent" [(ngModel)]="parentPageId" placeholder="Boş bırakılırsa alanın kökü" autocomplete="off"><small>Sayfa adresindeki pageId değeri. Planlar bu sayfanın altında toplanır.</small></label>
    <label class="field">Kişisel erişim tokenı<input name="confluencePat" type="password" [(ngModel)]="pat" [placeholder]="status?.patConfigured ? 'Kayıtlı · değiştirmek için yeni token girin' : 'Confluence kişisel erişim tokenı'" autocomplete="off"><small>Token tarayıcıya geri gönderilmez.</small></label>
   </div>
+  <h3>Hedef sayfalar</h3>
+  <div class="form-grid two">
+   <label class="field">Sprint planları · Üst sayfa ID<input name="confluenceParent" [(ngModel)]="parentPageId" placeholder="Boş bırakılırsa alanın kökü" inputmode="numeric" autocomplete="off"><small>Her sprint için bu sayfanın altında bir plan sayfası oluşturulur; tekrar gönderimde güncellenir.</small></label>
+   <label class="field">Backlog · Sayfa ID<input name="confluenceBacklog" [(ngModel)]="backlogPageId" placeholder="Örn. 123456789" inputmode="numeric" autocomplete="off"><small>Wiki’de Backlog için ayrı bir sayfa açıp adresindeki pageId değerini girin. Gönderim bu sayfanın içeriğini yeniler, başlığını korur.</small></label>
+  </div>
 
-  <div class="choice-list"><label><input type="checkbox" name="confluenceEnabled" [(ngModel)]="enabled"><span><strong>Entegrasyonu aç</strong><small>Kapalıyken sprint detayındaki "Wikiye gönder" düğmesi çalışmaz.</small></span></label></div>
+  <div class="choice-list"><label><input type="checkbox" name="confluenceEnabled" [(ngModel)]="enabled"><span><strong>Entegrasyonu aç</strong><small>Sprint detayından ve Backlog sayfasından wikiye gönderimi etkinleştirir.</small></span></label></div>
 
   <div class="page-actions">
    <button class="btn primary" [disabled]="busy" (click)="save()">Kaydet</button>
@@ -34,25 +38,25 @@ interface ConfluenceTestResult {connected:boolean;user:string;space?:string;spac
   @if(error){<p class="notice warn" role="alert">{{ error }}</p>}
   @if(testResult){<p class="data-note">Bağlanan kullanıcı: <strong>{{ testResult.user }}</strong>@if(testResult.space){ · Alan: <strong>{{ testResult.space }}</strong>}@if(testResult.spaceReachable===false){ · {{ testResult.spaceError }}}</p>}
 
-  @if(confirmForget){<div class="modal-layer"><div class="modal"><header><h2>Confluence tokenı silinsin mi?</h2><p>Token silinince entegrasyon kapanır ve sprint planları wikiye gönderilemez.</p></header>
+  @if(confirmForget){<div class="modal-layer"><div class="modal"><header><h2>Confluence tokenı silinsin mi?</h2><p>Token silinince sprint planları ve Backlog wikiye gönderilemez.</p></header>
    <footer><button type="button" class="btn" (click)="setForget(false)">Vazgeç</button><button type="button" class="btn danger" [disabled]="busy" (click)="forget()">Tokenı sil</button></footer></div></div>}
  </section>`,
 })
 export class ConfluenceSettingsComponent implements OnInit,OnDestroy {
  private api=inject(ApiService);private cdr=inject(ChangeDetectorRef);private destroyed=false;private version=0;
  status:ConfluenceStatus|null=null;
- baseUrl='';spaceKey='';parentPageId='';enabled=false;pat='';
+ baseUrl='';spaceKey='';parentPageId='';backlogPageId='';enabled=false;pat='';
  busy=false;error='';message='';confirmForget=false;testResult:ConfluenceTestResult|null=null;
 
  async ngOnInit(){await this.load();}
  ngOnDestroy(){this.destroyed=true;this.pat='';}
  private refresh(){if(!this.destroyed)this.cdr.detectChanges();}
- private apply(s:ConfluenceStatus){this.status=s;this.baseUrl=s.baseUrl;this.spaceKey=s.spaceKey;this.parentPageId=s.parentPageId;this.enabled=s.enabled;this.version=s.version;}
+ private apply(s:ConfluenceStatus){this.status=s;this.baseUrl=s.baseUrl;this.spaceKey=s.spaceKey;this.parentPageId=s.parentPageId;this.backlogPageId=s.backlogPageId||'';this.enabled=s.enabled;this.version=s.version;}
 
  async load(){if(this.busy)return;try{this.apply(await this.api.get<ConfluenceStatus>('/admin/confluence'));}catch{this.error='Confluence ayarları alınamadı.';}finally{this.refresh();}}
 
  async save(){
-  const data={baseUrl:this.baseUrl,spaceKey:this.spaceKey,parentPageId:this.parentPageId,enabled:this.enabled,version:this.version,pat:this.pat};
+  const data={baseUrl:this.baseUrl,spaceKey:this.spaceKey,parentPageId:this.parentPageId,backlogPageId:this.backlogPageId,enabled:this.enabled,version:this.version,pat:this.pat};
   this.pat='';
   await this.run(()=>this.api.put<ConfluenceStatus>('/admin/confluence',data),'Confluence ayarları kaydedildi.');
  }

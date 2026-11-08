@@ -128,7 +128,7 @@ public class ConfluencePageService {
  }
 
  /** Four numbers that decide whether the plan is sound, in the review export's strip. */
- private static String kpis(List<String[]> cells){
+ static String kpis(List<String[]> cells){
   var out=new StringBuilder("<table style=\"width: 100%;\"><colgroup>");
   for(int i=0;i<cells.size();i++)out.append("<col style=\"width: ").append(100/cells.size()).append("%;\" />");
   out.append("</colgroup><tbody><tr>");
@@ -209,18 +209,18 @@ public class ConfluencePageService {
   return jiraBase==null||jiraBase.isBlank()?h(key):"<a href=\""+h(jiraBase+"/browse/"+key)+"\">"+h(key)+"</a>";
  }
 
- private static String heading(String text){
+ static String heading(String text){
   return "<p style=\"margin: 32px 0 12px; padding-bottom: 8px; border-bottom: 2px solid "+GREEN+"; font-family: Georgia, serif; font-size: 20px; color: "+INK+";\"><strong>"+h(text)+"</strong></p>";
  }
  /** A second, quieter level so a reader can tell a work type from a page section. */
- private static String subheading(String text,String note){
+ static String subheading(String text,String note){
   return "<p style=\"margin: 24px 0 6px; font-size: 14px; color: "+INK+";\"><strong>"+h(text)
    +"</strong><span style=\"color: "+MUTED+"; font-weight: normal;\">&#160;&#160;"+h(note)+"</span></p>";
  }
- private static String note(String text){
+ static String note(String text){
   return "<p style=\"margin: 20px 0; padding: 12px 16px; border-left: 3px solid "+GREEN+"; background-color: #f0f4f0; font-size: 12px; color: "+MUTED+";\">"+h(text)+"</p>";
  }
- private static String footer(Instant now){
+ static String footer(Instant now){
   String time=DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneId.of("Europe/Istanbul")).format(now);
   return "<p style=\"margin: 32px 0 0; padding-top: 16px; border-top: 1px solid "+LINE+"; font-size: 11px; color: "+MUTED+";\">SprintBoard "
    +h(time)+"'de yazdı. Sayfa her gönderimde yenilenir, izin kayıtları paylaşılmaz.</p>";
@@ -232,7 +232,7 @@ public class ConfluencePageService {
   if(!text.matches("\\d{4}-\\d{2}-\\d{2}"))return text;
   return LocalDate.parse(text).format(DateTimeFormatter.ofPattern("d MMMM yyyy",Locale.forLanguageTag("tr-TR")));
  }
- private static String lozenge(String colour,String title){
+ static String lozenge(String colour,String title){
   return "<ac:structured-macro ac:name=\"status\">"+param("colour",colour)+param("title",title)+"</ac:structured-macro>";
  }
  private static String param(String name,String value){

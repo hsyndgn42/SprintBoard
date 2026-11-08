@@ -32,13 +32,13 @@ import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,SCOPE_COLORS,
 @if(loading){<p class="rpt-empty" role="status">Kapsam geçmişi yükleniyor…</p>}
 @else if(error){<p class="notice warn" role="alert">{{error}} <button class="btn small" (click)="load()">Tekrar dene</button></p>}
 @else{
-<dl class="scope-head">
+<details class="rpt-note-fold"><summary>Dönem ve veri kapsamı · {{report.sprintRange}}</summary><dl class="scope-head">
  @if(team()){<div><dt>Ekip</dt><dd>{{team()}}</dd></div>}
  <div><dt>Sprint aralığı</dt><dd>{{report.sprintRange}}</dd></div>
  <div><dt>Efor türü</dt><dd>{{report.effortBasis}}</dd></div>
  <div><dt>Kapsam</dt><dd>{{filterLabel}}</dd></div>
  <div><dt>Oluşturulma</dt><dd>{{generated}}</dd></div>
-</dl>
+</dl></details>
 
 <div class="rpt-filters">
  <label class="field">Sprint
@@ -53,29 +53,22 @@ import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,SCOPE_COLORS,
  <p class="rpt-empty">Bu kapsamda kapsam değişimi takibi yapılan sprint yok; karşılaştırma ve dönem toplamı üretilemiyor.</p>
 }@else{
 
-<h3 class="rpt-sub">Dönem Özeti</h3>
 <dl class="rpt-kpis">
- <div><dt>Takipli sprint</dt><dd>{{measured}}<small>sprint</small></dd></div>
- <div><dt>Sonradan eklenen</dt><dd [class.over]="report.addedItems>0">{{report.addedItems}}<small>iş</small></dd></div>
- <div><dt>Eklenen efor</dt><dd [class.over]="report.addedHours>0">{{fmt(report.addedHours)}}<small>sa</small></dd></div>
- <div><dt>Backlog’a dönen</dt><dd>{{report.removedItems}}<small>iş</small></dd></div>
-</dl>
-<dl class="rpt-kpis">
- <div><dt>Çıkarılan efor</dt><dd>{{fmt(report.removedHours)}}<small>sa</small></dd></div>
- <div><dt>Acil / plansız iş</dt><dd [class.over]="report.urgentCount>0">{{report.urgentCount}}<small>iş</small></dd></div>
- <div><dt>Acil iş eforu</dt><dd>{{fmt(report.urgentHours)}}<small>sa</small></dd></div>
- <div><dt>Acil iş tamamlanma</dt><dd>{{report.urgentCompletion==null?'—':'%'+report.urgentCompletion}}<small>{{report.urgentDone}}/{{report.urgentCount}}</small></dd></div>
+<div><dt>Takipli sprint</dt><dd>{{measured}}<small>{{report.fullCount}} tam · {{report.partialCount}} kısmi tarihçe</small></dd></div>
+<div><dt>Sonradan eklenen</dt><dd>{{report.addedItems}}<small>iş · {{fmt(report.addedHours)}} sa</small></dd></div>
+<div><dt>Backlog’a dönen</dt><dd>{{report.removedItems}}<small>iş · {{fmt(report.removedHours)}} sa</small></dd></div>
+<div><dt>Acil iş tamamlanma</dt><dd>{{report.urgentCompletion==null?'—':'%'+report.urgentCompletion}}<small>{{report.urgentDone}} / {{report.urgentCount}} iş · {{fmt(report.urgentHours)}} sa</small></dd></div>
 </dl>
 <p class="scope-caution">{{totalsNote}}</p>
 
-<h3 class="rpt-sub">Grafiksel Analiz</h3>
+
 <div class="scope-charts">
- <div>
+ <div class="rpt-chart-card">
   <h4>Acil iş durumu</h4>
   <div class="rpt-figure"><sb-scope-figure [figure]="urgentChart" /></div>
   @if(report.statusShares.length){<div class="rpt-key">@for(s of report.statusShares;track s.key){<span><i [style.background]="s.fill"></i>{{s.label}} · {{s.count}}</span>}</div>}
  </div>
- <div>
+ <div class="rpt-chart-card">
   <h4>Sprint kapsam hareketi</h4>
   <div class="rpt-figure"><sb-scope-figure [figure]="movementChart" /></div>
   <div class="rpt-key"><span><i [style.background]="color.added"></i>Sonradan eklenen</span><span><i [style.background]="color.removed"></i>Backlog’a dönen</span></div>
@@ -83,11 +76,11 @@ import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,SCOPE_COLORS,
 </div>
 
 @if(report.findings.length){
-<h3 class="rpt-sub">Öne Çıkan Bulgular</h3>
-<ul class="scope-findings">@for(f of report.findings;track f){<li>{{f}}</li>}</ul>
+<details class="rpt-note-fold"><summary>Özet değerlendirme</summary>
+<ul class="scope-findings">@for(f of report.findings;track f){<li>{{f}}</li>}</ul></details>
 }
 
-<h3 class="rpt-sub">Takipli Sprint Karşılaştırması</h3>
+<div class="rpt-folds"><details><summary><span>Sprint karşılaştırma tablosu</span><small>{{measured}} sprint</small></summary><div class="fold-body">
 <div class="table-wrap" tabindex="0" role="region" aria-label="Takipli sprint karşılaştırması">
  <table class="scope-table">
   <caption class="sr-only">Takipli sprintlerin başlangıç kapsamı, kapsam hareketleri, mutabakat farkı ve acil iş durumu.</caption>
@@ -112,9 +105,8 @@ import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,SCOPE_COLORS,
  </table>
 </div>
 
-<h3 class="rpt-sub">Takipli Sprint Detayları</h3>
-@for(s of report.tracked;track s.id){
-<section class="scope-sprint" [attr.aria-labelledby]="'scope-sprint-'+s.id">
+</div></details></div><h3 class="rpt-sub">Sprint bazlı kapsam geçmişi</h3>@for(s of report.tracked;track s.id){
+<div class="rpt-folds"><details><summary><span>{{s.name}} · Kapsam geçmişi</span><small>+{{s.addedItems}} / −{{s.removedItems}} iş</small></summary><div class="fold-body"><section class="scope-sprint" [attr.aria-labelledby]="'scope-sprint-'+s.id">
  <h4 [id]="'scope-sprint-'+s.id">{{s.name}}</h4>
  <p class="scope-meta">
   <span class="badge" [class.mute]="s.status==='completed'" [class.info]="s.status!=='completed'">{{statusOf(s)}}</span>
@@ -176,7 +168,7 @@ import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,SCOPE_COLORS,
    </tbody>
   </table>
  </div>
-</section>
+</section></div></details></div>
 }
 }
 
@@ -199,7 +191,7 @@ h4{margin:0 0 6px;font-size:14px;color:var(--ink)}
 .scope-head dd{margin:3px 0 0;font-size:13.5px;color:var(--ink);overflow-wrap:anywhere}
 .scope-caution{margin:14px 0 0;padding:10px 13px;background:var(--field);border-left:3px solid #8a98a4;font-size:12.5px;line-height:1.6;color:#48596a;max-width:78ch}
 .scope-flagged{margin:12px 0 0;padding:9px 12px;background:#f3f0f9;border-left:3px solid var(--support);font-size:12.5px;line-height:1.6;color:#413765;max-width:78ch}
-.scope-charts{display:grid;grid-template-columns:minmax(0,238px) minmax(0,1fr);gap:34px;align-items:start}
+.scope-charts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:18px;align-items:start}
 .scope-findings{margin:12px 0 0;padding-left:18px;font-size:13.5px;line-height:1.8;color:var(--ink);max-width:80ch}
 .scope-sprint{padding:22px 0 6px;border-top:1px solid var(--rule)}
 .scope-sprint:first-of-type{border-top:0}

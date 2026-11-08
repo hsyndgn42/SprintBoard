@@ -122,7 +122,7 @@ export class SbDonutComponent{
  fmt=num;
  get total(){return sum(this.slices);}
  /** Percentages are rounded once here so the ring, the labels and the legend never disagree. */
- get arcs(){const vis=this.slices.filter(s=>s.value>0).sort((a,b)=>b.value-a.value),total=Math.max(1,this.total);
+ get arcs(){const vis=this.slices.filter(s=>s.value>0).sort((a,b)=>b.value-a.value),total=this.total||1;
   let angle=-Math.PI/2;
   return vis.map(slice=>{
    const span=2*Math.PI*slice.value/total,start=angle,end=angle+span;angle=end;
@@ -141,7 +141,7 @@ export class SbDonutComponent{
 /** Shares inside a group: every row is the whole, the segments are how it splits. */
 @Component({selector:'sb-stack',standalone:true,template:`
 <div class="stack">@for(r of rows;track r.key){<div class="stack-row"><div class="stack-head"><strong>{{r.label}}</strong><span>{{fmt(total(r))}} {{unit}}</span></div>
- <div class="stack-bar">@for(s of visible(r);track s.label){<span [style.background]="s.fill" [style.width.%]="100*s.value/total(r)" [attr.title]="s.label+': '+fmt(s.value)+' '+unit+' (%'+pct(r,s)+')'">@if(pct(r,s)>=9){<b>%{{pct(r,s)}}</b>}</span>}</div>
+ <div class="stack-bar">@for(s of visible(r);track s.label){<span [style.background]="s.fill" [style.width.%]="100*s.value/(total(r)||1)" [attr.title]="s.label+': '+fmt(s.value)+' '+unit+' (%'+pct(r,s)+')'">@if(pct(r,s)>=9){<b>%{{pct(r,s)}}</b>}</span>}</div>
  <ul class="stack-key">@for(s of visible(r);track s.label){<li><i [style.background]="s.fill"></i>{{s.label}} <b>{{fmt(s.value)}}</b></li>}</ul>
 </div>}</div>`,styles:[BASE+`
 .stack{display:grid;gap:22px}
@@ -158,9 +158,9 @@ export class SbDonutComponent{
 export class SbStackComponent{
  @Input() rows:{key:string;label:string;segments:Segment[]}[]=[];@Input() unit='iş';
  fmt=num;
- total(r:{segments:Segment[]}){return Math.max(1,sum(r.segments));}
+ total(r:{segments:Segment[]}){return sum(r.segments);}
  visible(r:{segments:Segment[]}){return r.segments.filter(s=>s.value>0);}
- pct(r:{segments:Segment[]},s:Segment){return Math.round(s.value*100/this.total(r));}
+ pct(r:{segments:Segment[]},s:Segment){return Math.round(s.value*100/(this.total(r)||1));}
 }
 
 /* ----------------------------------------------------------------- bullet */

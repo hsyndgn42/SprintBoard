@@ -150,6 +150,19 @@ Kapsam ve kabul ölçütü, göreli tahmin veya bağımlılık eksiklikleri haz�
 
 Yalnız havuzdaki ve başka kayıtların bağlı olmadığı işlerde silme kullanılabilir. **Evet, işi sil** kalıcı silmedir; geri dönüş için yedek gerekir. Sprintten çıkarma ile aynı işlem değildir. Geçmişi veya bağımlılıkları olan işler sistem tarafından korunur.
 
+### Backlog’u wikiye gönderme
+
+1. Wiki’de Backlog için ayrı bir Confluence sayfası oluşturun. Sayfa adresindeki **pageId** değerini alın.
+2. Admin olarak **Ayarlar → Entegrasyonlar → Confluence → Wiki yayınlama** bölümünü açın. Mevcut sprint planı bağlantısının adres, alan ve token bilgileri ortak kullanılır; kayıtlı tokenı tekrar girmeyin.
+3. **Backlog · Sayfa ID** alanına kimliği yazın, entegrasyonu açıp kaydedin. Hedef sayfa aynı Confluence alanında bulunmalı; sprint üst sayfası veya bir sprintin plan sayfası olmamalıdır. Token sahibinin hedef sayfayı görüntüleme ve düzenleme yetkisi gerekir.
+4. Backlog’da paylaşmak istediğiniz görünümü ve filtreleri seçin. Örneğin **Yalnız havuz**, **Havuz + planlanan sprint** veya belirli bir Roadmap.
+5. **Wikiye gönder** düğmesine basın. Önizlemede hedef sayfa başlığını, kapsamı, iş sayılarını ve tabloyu kontrol edin. Ekrandaki sayfa numarasından bağımsız olarak **filtrelere uyan tüm kayıtlar** gönderilir.
+6. **Wiki sayfasını güncelle** düğmesine basın. Hedef sayfanın mevcut içeriği bu görünümle değiştirilir; başlığı korunur. Her gönderim aynı sayfanın yeni sürümünü oluşturur.
+
+Wiki çıktısında havuz/planlanan/aktif iş sayıları ve iş türlerine göre tablolar bulunur. Tablolarda iş adı, türü, roadmap, öncelik, durum/sprint, kayıtlı tahmin ve varsa Jira PBI bağlantısı gösterilir. Tahminler gerçekleşen çalışma süresi değildir. İzin işleri, kişisel izin bilgileri, kabul ölçütleri ve iç notlar gönderilmez.
+
+Önizlemeden sonra seçilen işler, bağlantı ayarları veya wiki sayfası değişirse gönderim durur; önizlemeyi yenileyin. Önizleme 15 dakika geçerlidir. Gönderim sonucu belirsiz bir bağlantı hatasında tekrar göndermeden önce wiki sayfasını kontrol edin. Gönderim manueldir; Backlog’daki sonraki değişiklikler kendiliğinden wikiye aktarılmaz.
+
 <a id="sprint-olusturma-ve-baslatma"></a>
 ## Sprint oluşturma ve başlatma
 
@@ -339,10 +352,26 @@ Her kartın altında o metriğin formülü, birimi ve kapsamı yazar.
 | İş tipleri | DEV, DESIGN, ANALYZE, TEST, BAU ve alt türler. |
 | Roadmap eforu | Proje/feature set başına görev planı ve ayrı mesai kolonu. |
 | Kapasite trendi | Çekirdek kapasite, çekirdek plan ve ayrı Support planı. |
+| Gelecek iş yükü | Havuz ve planlanan işlerin, BAU sonrası gelecek kapasiteyle karşılaştırılması. |
 | Defect | TEST/PROD kırılımı, açık/çözülen işler ve trend. |
 | Mesai | Kişi ve sprint bazlı mesai, kullanılan mesai izni ve plan/gerçekleşen trendi. |
 
 Kişi raporunu tek başına performans sıralaması olarak okumayın; izin, rol, iş büyüklüğü ve destek katkısı farklıdır. Kişisel izin/mesai ve fotoğraf içeren çıktıları yalnız uygun kitleyle paylaşın.
+
+### Gelecek iş yükünü okumak
+
+1. **Raporlar → Gelecek iş yükü** sekmesini açın. **Bakılacak dönem** alanından 3, 6 veya 12 dönem seçin.
+2. Üstteki üç değeri birlikte okuyun: **Bekleyen iş yükü**, **İşlere ayrılabilir kapasite** ve **Toplam iş / kapasite**. Altındaki kısa sonuç, işlerin kapasiteye sığıp sığmadığını açıklar.
+3. **İş yükünün dağılımı**, DEV/Design/Test gibi iş tiplerindeki saatleri; **Ekibin hangi alanı dolu?**, kişilerin uzmanlığına göre yük ve kapasiteyi gösterir. Toplam kapasite yeterliyken belirli bir uzmanlıkta kapasite yetmeyebilir.
+4. **Sprintlere göre tahmini doluluk** bölümünde mavi alan kayıtlı sprint planıdır. Taralı turkuaz alan, havuzdan uygun uzmanlıkla alınabilecek saatlerdir. Henüz sprint oluşturulmamışsa satırda **Tahmini tarihler** yazar. Bu dağılım görev atamaz ve sprint oluşturmaz.
+
+**Hesap ayarları** kapalı gelir. Başlangıç tarihini, henüz sprint yokken kullanılacak dönem uzunluğunu ve kişi başı BAU gününü burada değiştirebilirsiniz. Ardından sağ üstte **Hesapla** düğmesine basın. Kayıtlı sprintlerin kendi tarihleri ve BAU planı önceliklidir.
+
+**İşlere ayrılabilir kapasite** = çekirdek ekip kapasitesi − çalışılmayan günler − kayıtlı izinler + kapasiteye dahil planlı mesai − BAU. Dökümü **Kapasite nasıl hesaplandı?** bölümünden açabilirsiniz. Tam katılım, çalışma düzeni ve odak oranı kullanılır. Bekleyen izin talepleri henüz düşülmez; Support ve Architect kapasitesi eklenmez.
+
+**Bekleyen iş yükü**, havuzdaki ve planlanan sprintlerdeki açık teslimat işleridir. Aktif sprint, Done/Undone ve BAU işleri hariçtir. Atama varsa atanmış saatler, yoksa saat tahmini kullanılır. Size / Story Point saate çevrilmez. Dış Support ve Defect Support rezervindeki saatler tekrar çekirdek yüküne eklenmez.
+
+Tahmini eksik işler ve seçili tarihlerin dışına planlanan saatler ayrıca belirtilir. Bilinen yükün kapasiteye sığması, tahmini eksik işlerin de sığacağı anlamına gelmez. İşlerin ayrıntısı Backlog sayfasından yönetilir; bu rapor ve **HTML indir** çıktısı yalnız özet ve grafikleri içerir.
 
 <a id="sprint-kapatma-ve-tekrar-eden-isler"></a>
 ## Sprint kapatma ve tekrar eden işler

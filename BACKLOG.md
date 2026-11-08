@@ -7,12 +7,14 @@ Güncelleme: 22 Ekim 2026. Mevcut sürüm bakım ve hata düzeltme aşamasındad
 ### Ürün
 
 - [x] Roadmap, proje ve feature set bağlantıları; backlog, tekrar eden işler ve iş geçmişi.
+- [x] Backlog wiki paylaşımı: ayarlanabilir Confluence sayfa ID’si, filtrelenmiş tüm kayıtları önizleme, tür bazlı tablolar ve aynı sayfayı sürüm kontrolüyle güncelleme.
 - [x] Sprint planlama, kişi atamaları, efor matrisi, kapasite ve sabit kapanış kaydı.
 - [x] Pano, engeller, sprint günlüğü, acil işler ve backlog’a geri gönderme.
 - [x] BAU, Defect Support rezervi, TEST ve PROD defect takibi.
 - [x] Takım, fotoğraflar, kullanıcı eşleştirmesi ve admin yetkileri.
 - [x] İzin ve mesai onayları; planlı ve plansız mesai, hakediş kullanımı.
 - [x] Review, rapor sekmeleri, grafikler ve HTML çıktıları.
+- [x] Gelecek iş yükü: havuz ve planlanan işler, BAU/izin/tatil sonrası çekirdek kapasitesi, uzmanlık bazlı doluluk, sade sonuç özeti ve iş listesi içermeyen HTML çıktısı.
 - [x] Slack defect, mesai ve backlog iş isteği alımı; admin onayı, alındı tiki ve yapılandırılabilir iş isteği şablonu; günlük ve manuel sprint özeti paylaşımı.
 - [x] Slack kesinti sonrası geçmiş mesaj kurtarma, tarih aralığıyla manuel tarama ve kalıcı mesaj kimliğiyle çift kayıt önleme.
 - [x] Haftalık Slack kişi bazlı mesai/hakediş raporu; Pazartesi 09:00, ayarlardan yönetim, önizleme ve manuel gönderim.

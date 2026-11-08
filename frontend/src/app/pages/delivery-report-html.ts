@@ -1,4 +1,5 @@
 import type {DeliveryReport,DeliverySprint} from './delivery-report.model';
+import {REPORT_EXPORT_DESIGN} from './report-export-design';
 import {DELIVERY_COLORS,DELIVERY_METHODOLOGY,RATE_NOTE,SIZE_NOTE,
  buildDeliveryReport,intakeFigure,items,num,percent,sizeFigure,stamp,trendFigure} from './delivery-report.model';
 import {REPORT_HTML_CSS,figureHtml} from './scope-report-html';
@@ -66,8 +67,8 @@ export function deliveryReportHtml(rows:ReportRow[],settings:ProductSettings,gen
  return `<!doctype html><html lang="tr"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sprint Teslimatı</title><style>${REPORT_HTML_CSS}${extra}</style></head><body>
-<main>
+<title>Sprint Teslimatı</title><style>${REPORT_HTML_CSS}${extra}${REPORT_EXPORT_DESIGN}</style></head><body>
+<main data-report="delivery">
  <header class="report-head delivery-head">
   <h1>Sprint Teslimatı</h1>
   <p class="note">${h('Tamamlanan sprintlerde alınan iş ile teslim edilen iş. '+RATE_NOTE)}</p>
@@ -76,7 +77,7 @@ export function deliveryReportHtml(rows:ReportRow[],settings:ProductSettings,gen
    <div><dt>Kapsam</dt><dd>${h(scope)}</dd></div>
    <div><dt>Sprint</dt><dd>${h(report.sprintCount+' tamamlanan')}</dd></div>
    <div><dt>Dönem</dt><dd>${h(period)}</dd></div>
-   <div><dt>Oluşturulma</dt><dd>${h(stamp(generatedAt))}</dd></div>
+   <div><dt>Oluşturulma</dt><dd>${h(stamp(generatedAt))} · İstanbul saati</dd></div>
   </dl>
  </header>
 
@@ -87,8 +88,6 @@ export function deliveryReportHtml(rows:ReportRow[],settings:ProductSettings,gen
    ${metric('Teslim edilen iş',num(report.totalDone),'iş','BAU hariç Done')}
    ${metric('Undone',num(report.totalUndone),'iş','Sprint kapanırken tamamlanmamış')}
    ${metric('Teslimat oranı',percent(report.overallRate),'','İş adedi ağırlıklı')}
-   ${metric('Son tamamlanan',report.latest?percent(report.latest.rate):'—','',report.latest?report.latest.name:'Tamamlanan sprint yok')}
-   ${metric('En düşük oran',report.worst?percent(report.worst.rate):'—','',report.worst?report.worst.name:'Karşılaştırma için tek sprint')}
   </dl>
   <p class="strip"><span>Ortalama alınan iş: <b>${h(report.averageIntake==null?'—':num(report.averageIntake))}</b></span>`
   +`<span>Ortalama teslim: <b>${h(report.averageDone==null?'—':num(report.averageDone))}</b></span>`

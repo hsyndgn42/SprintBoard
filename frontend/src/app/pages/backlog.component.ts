@@ -1,4 +1,5 @@
 import {WorkItemActionComponent} from './work-item-action.component';
+import {BacklogWikiComponent} from './backlog-wiki.component';
 import {BacklogHistoryComponent} from './backlog-history.component';
 import {SlackInboxComponent} from './slack-inbox.component';
 import {SlackBacklogInboxComponent} from './slack-backlog-inbox.component';
@@ -23,10 +24,10 @@ import { readFilters, writeFilters } from '../shared/filter-memory';
 
 @Component({
   standalone: true,
-  imports: [WorkItemActionComponent,SlackInboxComponent,SlackBacklogInboxComponent,FoldDirective, BacklogHistoryComponent, ModalAccessibilityDirective, FormsModule, RouterLink, SprintAddDialogComponent, BacklogRepeatDialogComponent, DefectFieldsComponent, SbStateComponent, SbRowActionsComponent],
+  imports: [BacklogWikiComponent,WorkItemActionComponent,SlackInboxComponent,SlackBacklogInboxComponent,FoldDirective, BacklogHistoryComponent, ModalAccessibilityDirective, FormsModule, RouterLink, SprintAddDialogComponent, BacklogRepeatDialogComponent, DefectFieldsComponent, SbStateComponent, SbRowActionsComponent],
   template: `
     <div class="page-head"><div><span class="eyebrow">İŞ HAVUZU</span><h1>Backlog</h1><p>İş havuzunu ve sprintlerdeki işleri tek yerden yönetin.</p></div>
-      @if (auth.isAdmin()) { <div class="page-actions"><button class="btn primary" (click)="openCreate()">+ Yeni iş</button></div> }</div>
+      @if (auth.isAdmin()) { <div class="page-actions"><app-backlog-wiki [items]="visible" [scope]="wikiScope" [disabled]="!wikiDataReady" /><button class="btn primary" (click)="openCreate()">+ Yeni iş</button></div> }</div>
     @if(auth.isAdmin()){@defer(on idle){<app-slack-backlog-inbox (changed)="load()" (openItem)="openSlackItem($event)" /><details appFold class="card card-pad" style="margin-bottom:18px"><summary class="section-head"><div><span class="eyebrow">SLACK · DEFECT</span><h2>Defect bildirimleri</h2></div></summary><app-slack-inbox (changed)="load()" (openItem)="openSlackItem($event)" /></details>}}
     <section class="ui-toolbar backlog-toolbar" aria-label="Backlog filtreleri"><div class="ui-toolbar-head"><h2>İşleri filtrele</h2><button type="button" class="btn small" (click)="clearFilters()">Filtreleri temizle</button></div><div class="form-grid backlog-filters">
       <label class="field">Ara<input type="search" [(ngModel)]="query" (ngModelChange)="resetPage()" placeholder="İş adı veya dış referans"></label>
@@ -88,6 +89,8 @@ export class BacklogComponent implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   settings: ProductSettings = { estimationMode: 'SIZE_AND_HOURS', hoursPerDay: 8 };
   items: BacklogItem[] = [];
+  wikiDataReady=false;
+  get wikiScope():string {return [...(this.filter==='open' ? [this.views.find(v=>v.value==='open')!.label] : []),...this.activeFilterChips()].join(' · ');}
   roadmap: RoadmapItem[] = [];
   activeId: string | null = null;
   sprintTargetCount = 0;
@@ -251,8 +254,9 @@ export class BacklogComponent implements OnInit, OnDestroy {
       const [items, roadmap, overview, settings, members, sprints] = await Promise.all([this.api.get<BacklogItem[]>('/backlog'), this.api.get<RoadmapItem[]>('/roadmap'), this.api.get<Overview>('/overview'), this.api.get<ProductSettings>('/settings'), this.api.get<TeamMember[]>('/team'), this.api.get<SprintSummary[]>('/sprints')]);
       this.members=members; this.items = items; this.roadmap = roadmap; this.activeId = overview.activeSprint?.id || null; this.settings = settings;
       this.sprintTargetCount = addTargets(sprints).length;
+      this.wikiDataReady=true;
       this.page = Math.min(this.page, this.totalPages);
-    } catch (error) { this.error = String(error); }
+    } catch (error) { this.wikiDataReady=false;this.error = String(error); }
     finally { this.cdr.detectChanges(); }
   }
   /** Only the key prefix is needed, so a failed Jira settings read must not break the backlog view. */

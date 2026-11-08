@@ -19,15 +19,16 @@ public class ConfluenceSettingsService {
   var c=configs.load();
   var status=new LinkedHashMap<String,Object>();
   status.put("baseUrl",c.baseUrl());status.put("spaceKey",c.spaceKey());status.put("parentPageId",c.parentPageId());
+  status.put("backlogPageId",c.backlogPageId());
   status.put("enabled",c.enabled());status.put("version",c.version());status.put("patConfigured",c.patConfigured());
   return status;
  }
 
  public Map<String,Object> save(Map<String,Object> input){
-  var next=new ConfluenceConfigStore.Config(text(input,"baseUrl"),text(input,"spaceKey"),text(input,"parentPageId"),flag(input,"enabled"),number(input,"version"),false);
+  var next=new ConfluenceConfigStore.Config(text(input,"baseUrl"),text(input,"spaceKey"),text(input,"parentPageId"),flag(input,"enabled"),number(input,"version"),false,input.containsKey("backlogPageId")?text(input,"backlogPageId"):configs.load().backlogPageId());
   String pat=text(input,"pat");
   int version=configs.save(next,pat);
-  audit("settings-saved",Map.of("enabled",next.enabled(),"spaceKey",next.spaceKey(),"tokenReplaced",!pat.isEmpty()));
+  audit("settings-saved",Map.of("enabled",next.enabled(),"spaceKey",next.spaceKey(),"backlogPageId",next.backlogPageId(),"tokenReplaced",!pat.isEmpty()));
   var status=status();status.put("version",version);return status;
  }
 

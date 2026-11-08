@@ -1,5 +1,5 @@
 import {DefectTrendBucket,defectTrend} from './operational-trends.model';
-import {SbLinesComponent,SbDonutComponent,Series,Point,Slice} from './report-charts';
+import {SbLinesComponent,SbRankedComponent,Series,Point,Slice} from './report-charts';
 import {DefectReservesComponent} from './defect-reserve.component';
 import type {DefectReserveSummary} from '../api.service';
 import { ReportHtmlExportComponent } from './report-html-export.component';
@@ -15,7 +15,7 @@ import { emptyDefect,defectLabel,severityOptions,environmentOptions } from '../d
  * The columns answer the first, the four rankings answer the second, and the defect
  * titles stay folded because they are private to the people working them.
  */
-@Component({selector:'app-defect-report',standalone:true,imports:[SbLinesComponent,SbDonutComponent,DefectReservesComponent,ReportHtmlExportComponent,FormsModule,RouterLink],template:`
+@Component({selector:'app-defect-report',standalone:true,imports:[SbLinesComponent,SbRankedComponent,DefectReservesComponent,ReportHtmlExportComponent,FormsModule,RouterLink],template:`
 <section class="card card-pad defect-report">
 
 <div class="rpt-head"><h2>Defect analizi</h2><div class="rpt-actions"><app-report-html-export [disabled]="loading||!!error" [report]="{kind:'defects',trend:trend,reserves:visibleReserves,rows:exportRows,charts:exportCharts,counts:{done:count('status','done'),open:filtered.length-count('status','done')-count('status','undone'),undone:count('status','undone')},scope:filterDescription}" /></div></div>
@@ -41,13 +41,15 @@ import { emptyDefect,defectLabel,severityOptions,environmentOptions } from '../d
 
 @if(scope==='pool'){<p class="rpt-aside">Backlog havuzundaki işler henüz bir sprinte bağlı değil, bu yüzden sprint trendi gösterilmiyor.</p>}
 @else{
+<section class="rpt-chart-card wide">
 <h3 class="rpt-sub">Sprint bazlı açılan defect</h3>
 <div class="rpt-figure"><sb-lines [series]="trendSeries" [points]="trendPoints" unit="defect" label="Sprint bazlı açılan defect sayısı; Test ve Prod kırılımıyla" /></div>
 <div class="rpt-key"><span><i style="background:#15202b"></i>Toplam açılan</span><span><i style="background:#1f6f78"></i>Test defect</span><span><i style="background:#c0362c"></i>Prod defect</span></div>
+</section>
 }
 
 <h3 class="rpt-sub">Defectler nerede yoğunlaşıyor</h3>
-<div class="rpt-grid">@for(chart of charts;track chart.key){<section><h4>{{chart.title}}</h4><sb-donut [slices]="slices(chart.key,chart.options,chart.palette)" unit="defect" [label]="chart.title" /></section>}</div>
+<div class="rpt-chart-grid">@for(chart of charts;track chart.key){<section class="rpt-chart-card"><h4>{{chart.title}}</h4><div class="rpt-figure"><sb-ranked [rows]="breakdownRows(chart.key,chart.options,chart.palette)" unit="defect" [label]="chart.title" /></div></section>}</div>
 
 <div class="rpt-folds">
 @if(visibleReserves.length){<details><summary><span>Defect rezervi</span><small>{{visibleReserves.length}} sprint</small></summary><div class="fold-body"><app-defect-reserves [rows]="visibleReserves" /><p>Rezerv özeti seçili sprint kapsamını gösterir; tür, önem ve ortam filtreleri yalnız defect sonuçlarına uygulanır.</p></div></details>}
@@ -97,7 +99,8 @@ export class DefectReportComponent implements OnInit {
   count(key:string,value:string){return this.filtered.filter(i=>(key==='subtype'?i.taskSubtype:key==='status'?(i.taskStatus||i.state):(this.detail(i) as unknown as Record<string,unknown>)[key])===value).length;}
   bars(key:string,options:{value:string;label:string}[]){return options.map(o=>({...o,count:this.count(key,o.value),percent:this.filtered.length?100*this.count(key,o.value)/this.filtered.length:0}));}
   /** Empty buckets are dropped so a chart never shows a slice the team has no example of. */
-  slices(key:string,options:{value:string;label:string}[],palette:string[]):Slice[]{
+  breakdownRows(key:string,options:{value:string;label:string}[],palette:string[]){return this.slices(key,options,palette).map(r=>({key:r.label,label:r.label,segments:[{label:r.label,value:r.value,fill:r.fill}]}));}
+ slices(key:string,options:{value:string;label:string}[],palette:string[]):Slice[]{
    return this.bars(key,options).filter(b=>b.count>0).sort((a,b)=>b.count-a.count)
     .map((b,i)=>({label:b.label,value:b.count,fill:palette[Math.min(i,palette.length-1)]}));}
   sprintName(id:string|null){return this.sprints.find(s=>s.id===id)?.name||'Backlog havuzu';}

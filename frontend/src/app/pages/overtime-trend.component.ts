@@ -35,17 +35,19 @@ import {OvertimeTrendRow,overtimeTrend,round} from './operational-trends.model';
 <div><dt>Mesaiden izin</dt><dd>{{sum('usedDays')}}<small>gün</small></dd></div>
 </dl>
 
+<section class="rpt-chart-card wide">
 <h3 class="rpt-sub">Gerçekleşen mesai ve plan</h3>
 <div class="rpt-figure"><sb-columns [columns]="columns" unit="sa" markerLabel="planlanan" label="Sprint bazlı gerçekleşen mesainin plana göre kırılımı ve planlanan mesai çizgisi" /></div>
 <div class="rpt-key"><span><i style="background:#1f6f78"></i>Plana bağlı</span><span><i style="background:#c0362c"></i>Plan aşımı</span><span><i style="background:#6b5ca5"></i>Plansız</span><span><i style="background:#b9c4cb"></i>Sınıflandırılmamış</span><span><i class="rule"></i>Planlanan mesai</span></div>
 
-@if(usedAny){
-<h3 class="rpt-sub">Mesainin karşılığı izne dönüyor mu</h3>
+</section>
+@if(usedAny){<section class="rpt-chart-card">
+<h3 class="rpt-sub">Mesaiden kullanılan izin · gün</h3>
 <div class="rpt-figure"><sb-lines [series]="leaveSeries" [points]="leavePoints" unit="gün" label="Sprint bazlı mesaiden izin kullanımı" /></div>
-@if(unmatched){<p class="rpt-aside">İzin günleriyle eşleştirilmemiş {{unmatched}} saatlik tarihsel kullanım/düzeltme var; gün toplamına çevrilmedi.</p>}}
+@if(unmatched){<p class="rpt-aside">İzin günleriyle eşleştirilmemiş {{unmatched}} saatlik tarihsel kullanım/düzeltme var; gün toplamına çevrilmedi.</p>}</section>}
 
 <div class="rpt-folds">
-@if(!sprintId){<details><summary><span>Sprint sprint rakamlar</span><small>{{visible.length}} sprint</small></summary><div class="fold-body"><div class="table-wrap"><table>
+@if(!sprintId){<details><summary><span>Sprint bazlı mesai dökümü</span><small>{{visible.length}} sprint</small></summary><div class="fold-body"><div class="table-wrap"><table>
 <thead><tr><th scope="col">Sprint</th><th scope="col">Gerçekleşen</th><th scope="col">Planlanan</th><th scope="col">Plana bağlı</th><th scope="col">Kalan plan</th><th scope="col">Aşan</th><th scope="col">Plansız</th><th scope="col">Sınıflanmamış</th><th scope="col">İzin</th></tr></thead>
 <tbody>@for(r of visible;track r.id){<tr><td>{{r.name}}{{r.status==='active'?' · aktif':''}}</td><td>{{r.earned}} sa</td><td>{{r.planned}} sa</td><td>{{r.matched||0}} sa</td><td>{{r.remaining||0}} sa</td><td>{{r.excess||0}} sa</td><td>{{r.unplanned||0}} sa</td><td>{{r.unclassified||0}} sa</td><td>{{r.usedDays}} gün</td></tr>}</tbody></table></div></div></details>}
 

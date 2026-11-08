@@ -1,4 +1,5 @@
 import type {Figure,ScopeReport,SprintScope,Mark} from './scope-report.model';
+import {REPORT_EXPORT_DESIGN} from './report-export-design';
 import {METHODOLOGY,EFFORT_NOTE,RECONCILIATION_NOTE,TOTALS_NOTE,SCOPE_COLORS,
  buildScopeReport,hours,items,movementFigure,num,shortDate,
  sprintStatusLabel,stamp,trackingLabel,urgentFigure,waterfallFigure} from './scope-report.model';
@@ -237,7 +238,7 @@ export function scopeReportHtml(sprints:Sprint[],generatedAt=new Date(),teamName
  return `<!doctype html><html lang="tr"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Acil İşler ve Kapsam Değişimi</title><style>${REPORT_HTML_CSS}</style></head><body>
+<title>Acil İşler ve Kapsam Değişimi</title><style>${REPORT_HTML_CSS}${REPORT_EXPORT_DESIGN}</style></head><body>
 <main>
  <header class="report-head">
   <h1>Acil İşler ve Kapsam Değişimi</h1>
@@ -257,9 +258,7 @@ export function scopeReportHtml(sprints:Sprint[],generatedAt=new Date(),teamName
    ${metric('Takipli sprint',String(measured),'sprint',report.totalSprints+' sprint incelendi')}
    ${metric('Sonradan eklenen iş',String(report.addedItems),'iş',num(report.addedHours)+' sa planlanan efor')}
    ${metric('Backlog’a dönen iş',String(report.removedItems),'iş',num(report.removedHours)+' sa planlanan efor')}
-   ${metric('Acil / plansız iş',String(report.urgentCount),'iş',num(report.urgentHours)+' sa planlanan efor')}
-   ${metric('Tamamlanan acil iş',report.urgentDone+' / '+report.urgentCount,'iş','')}
-   ${metric('Acil iş tamamlanma',report.urgentCompletion==null?'—':'%'+report.urgentCompletion,'','Done durumundaki acil işler')}
+   ${metric('Acil iş tamamlanma',report.urgentCompletion==null?'—':'%'+report.urgentCompletion,'',report.urgentDone+' / '+report.urgentCount+' iş Done · '+num(report.urgentHours)+' sa planlanan efor')}
   </dl>
   <p class="caution">${h(TOTALS_NOTE)}</p>
  </section>

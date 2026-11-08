@@ -1,5 +1,5 @@
 import { ReportHtmlExportComponent } from './report-html-export.component';
-import { SbColumnsComponent,SbDivergeComponent,Column,Diverge } from './report-charts';
+import { SbBulletComponent,SbStackComponent,SbDivergeComponent,Column,Diverge } from './report-charts';
 import { Component,Input,Output,EventEmitter,OnChanges,AfterViewInit,ChangeDetectorRef,inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { MemberReportRow,ReportRow } from '../api.service';
@@ -12,7 +12,7 @@ import { csv,downloadText } from './share-export';
  * Overload and idle capacity are drawn on opposite sides of a zero line because they are
  * counted per person and can both be true in the same sprint.
  */
-@Component({selector:'app-capacity-trend',standalone:true,imports:[ReportHtmlExportComponent,FormsModule,SbColumnsComponent,SbDivergeComponent],template:`
+@Component({selector:'app-capacity-trend',standalone:true,imports:[ReportHtmlExportComponent,FormsModule,SbBulletComponent,SbStackComponent,SbDivergeComponent],template:`
 <section class="card card-pad capacity-trend">
 
 <div class="rpt-head"><h2>Kapasite ve plan</h2><div class="rpt-actions"><app-report-html-export [report]="{kind:'capacity',rows:rows,scope:scope}" /><button class="btn" (click)="exportCsv()" [disabled]="!rows.length">CSV indir</button></div></div>
@@ -34,18 +34,23 @@ import { csv,downloadText } from './share-export';
 <div><dt>Support planı</dt><dd>{{fmt(total('supportPlanned'))}}<small>sa</small></dd></div>
 </dl>
 
-<h3 class="rpt-sub">Sprint planı ve kapasite</h3>
+<section class="rpt-chart-card wide">
+<h3 class="rpt-sub">Çekirdek planı / net kapasite</h3>
 <div class="rpt-figure">
-<sb-columns [columns]="columns" unit="sa" markerLabel="kapasite" [label]="chartLabel" />
+<sb-bullet [rows]="coreBars" unit="sa" valueLabel="Çekirdek plan" targetLabel="Kapasite" label="Çekirdek ekibin planlanan saatleri ve net kapasitesi" />
 </div>
-<div class="rpt-key"><span><i class="f-measure"></i>Çekirdek planı</span><span><i class="f-support"></i>Support planı</span><span><i class="rule"></i>O sprintin kapasitesi</span></div>
+<div class="rpt-key"><span><i class="f-measure"></i>Çekirdek planı</span><span><i class="f-over"></i>Kapasite üstü plan</span><span><i class="rule"></i>O sprintin kapasitesi</span></div>
 
+</section>
+<section class="rpt-chart-card wide">
 <h3 class="rpt-sub">Kapasite aşımı ve boşta kalan kapasite</h3>
 <div class="rpt-figure gaps">
 <sb-diverge [rows]="gaps" label="Sıfır çizgisinin üstünde kişisel kapasite aşımı, altında atanmamış kapasite" upLabel="aşım (sa)" downLabel="boşta (sa)" />
 </div>
 
-<div class="rpt-folds">
+</section>
+<section class="rpt-chart-card"><h3 class="rpt-sub">Toplam planın bileşimi</h3><p class="rpt-aside">Support saatleri toplam planda yer alır; çekirdek kapasiteyi artırmaz.</p><sb-stack [rows]="planMix" unit="sa" /></section>
+<div class="rpt-folds"><details><summary><span>Sprint bazlı kapasite ve plan</span><small>{{rows.length}} sprint</small></summary><div class="fold-body"><div class="table-wrap"><table><thead><tr><th scope="col">Sprint</th><th scope="col">Çekirdek kapasite</th><th scope="col">Çekirdek plan</th><th scope="col">Support plan</th><th scope="col">Toplam plan</th></tr></thead><tbody>@for(r of rows;track r.id){<tr><td>{{r.name}}</td><td>{{r.known&&!r.unknown?fmt(r.capacity)+' sa':'—'}}</td><td>{{fmt(r.corePlanned)}} sa</td><td>{{fmt(r.supportPlanned)}} sa</td><td>{{fmt(r.planned)}} sa</td></tr>}</tbody></table></div></div></details>
 <details><summary><span>Nasıl hesaplanıyor?</span></summary><div class="fold-body">
 <p>Kapasite yalnız çekirdek ekibindir. Support ve Architect kapasiteye eklenmez ama saatli atamaları toplam plana girer, bu yüzden ayrı renkte gösterilir.</p>
 <p>Aşım ve boşluk her kişi için ayrı hesaplanıp toplanır. Ekip toplamını karşılaştırmak birinin boşluğunu diğerinin açığıyla götürürdü; bu rapor onu yapmaz.</p>
@@ -90,6 +95,8 @@ export class CapacityTrendComponent implements OnChanges,AfterViewInit{
  private esc(value:string){return value.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));}
 
  get chartLabel(){return 'Sprintlere göre çekirdek ve Support planı, her sprintin kendi kapasite çizgisiyle';}
+ get coreBars(){return this.rows.map(r=>({key:r.id,label:r.name,value:r.corePlanned,target:r.known&&!r.unknown?r.capacity:null,caption:this.caption(r)}));}
+ get planMix(){return this.columns.map(r=>({key:r.key,label:r.caption?.split(':')[0]||r.label,segments:r.segments}));}
  get columns():Column[]{return this.rows.map(r=>({key:r.id,label:'S'+r.number,caption:this.caption(r),empty:r.people?undefined:'kayıt yok',
   marker:r.known&&!r.unknown?r.capacity:null,
   segments:[{label:'Çekirdek planı',value:r.corePlanned,fill:'#1f6f78'},{label:'Support planı',value:r.supportPlanned,fill:'#6b5ca5'}]}));}

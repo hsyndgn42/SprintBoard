@@ -1,0 +1,33 @@
+:host{display:block;min-width:0}
+.rpt-head .eyebrow{margin-bottom:5px;font-size:10px}
+.forecast-toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:22px 0 12px;flex-wrap:wrap}
+.forecast-toolbar .field{display:flex;align-items:center;gap:12px;margin:0;font-size:12px;font-weight:600;color:var(--slate)}
+.forecast-toolbar select{min-height:40px;padding:9px 32px 9px 12px;border:1px solid #cdd9e6;border-radius:8px;background:white;color:var(--ink);font:inherit}
+.forecast-toolbar>span{text-align:right;font-size:12px;color:var(--ink);font-variant-numeric:tabular-nums}
+.forecast-toolbar small{display:block;color:var(--slate);font-size:10px;margin-top:4px}
+.forecast-settings{padding:0;margin:0 0 18px;border:0;font-size:12px;color:var(--slate)}
+.forecast-settings summary{display:list-item;cursor:pointer;list-style:revert;padding:4px 0;width:fit-content;min-height:0;font-size:12px;font-weight:550}
+.forecast-settings summary::after{display:none}.forecast-settings .rpt-aside{margin-bottom:14px}
+.forecast-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+.forecast-kpis dd>span{font-size:15px;letter-spacing:0;font-weight:500;color:var(--slate)}
+.forecast-reading{padding:18px 20px;border:1px solid #cddfec;border-radius:12px;background:#f1f6fb;color:#274963}
+.forecast-reading strong{font-size:15px;font-weight:650}.forecast-reading p{margin:6px 0 0;font-size:12px;line-height:1.65;color:#5b748a}
+.forecast-reading.attention{background:#fff8ef;border-color:#efdbbb;color:#835820}.forecast-reading.attention p{color:#86663e}
+.forecast-alert{font-size:12px;color:#865b29;background:#fff8eb;padding:11px 14px;border-radius:8px;line-height:1.65;margin:12px 0}
+.rpt-chart-grid{align-items:stretch}.rpt-chart-card{margin:0}app-member-bars{margin:24px 0}
+.role-loads{display:grid;gap:20px;margin:24px 0 4px}.load-heading{display:flex;justify-content:space-between;align-items:baseline;gap:14px;font-size:12px;color:var(--ink)}
+.load-heading strong{font-weight:600}.load-heading b{font-size:13px;font-variant-numeric:tabular-nums}
+.load-track{position:relative;display:flex;height:12px;background:#e9eef4;border-radius:5px;margin:8px 0;overflow:hidden}
+.load-track>span{display:block;flex:none;height:100%;background:#526fb4}.load-track>span.excess{background:#bd6557}
+.load-caption{display:flex;justify-content:space-between;gap:6px 14px;flex-wrap:wrap;font-size:10px;color:var(--slate);font-variant-numeric:tabular-nums;line-height:1.5}
+.forecast-periods{margin-top:20px}.period-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.period-heading>span{font-size:11px;color:var(--slate)}
+.forecast-periods .rpt-key{margin:18px 0 0}.pool-key,.load-track>span.pool{background:repeating-linear-gradient(135deg,#40a396,#40a396 5px,#65b8ad 5px,#65b8ad 8px)}
+.period-loads{display:grid;margin-top:10px}.period-load{display:grid;grid-template-columns:minmax(140px,1fr) minmax(0,3fr);gap:28px;padding:20px 0;border-bottom:1px solid var(--rule);align-items:center}
+.period-load:last-child{border-bottom:0;padding-bottom:0}.period-name strong{display:block;font-size:13px;color:var(--ink)}
+.period-name span{display:block;font-size:10px;color:var(--slate);margin-top:5px;font-variant-numeric:tabular-nums}.period-name small{display:inline-block;font-size:9px;color:#6b7d91;margin-top:5px;padding:2px 6px;background:#f1f4f8;border-radius:4px}
+.period-track{height:16px}.capacity-limit{position:absolute;top:0;bottom:0;border-left:2px solid #a73d34;z-index:1}
+td:not(:first-child),th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}.rpt-folds table{min-width:640px}.rpt-folds td:first-child{font-weight:600}
+:is(select,summary):focus-visible{outline:3px solid #b7d5f5;outline-offset:3px}
+@container(max-width:650px){.forecast-kpis{grid-template-columns:1fr}.period-load{grid-template-columns:1fr;gap:12px}.period-name span,.period-name small{display:inline-block;margin-right:8px}.forecast-toolbar>span{text-align:left}}
+@media(max-width:650px){.forecast-kpis{grid-template-columns:1fr}.period-load{grid-template-columns:1fr;gap:12px}.forecast-toolbar>span{text-align:left}.forecast-toolbar .field{flex-wrap:wrap}}
+@media print{.forecast-settings,.forecast-toolbar .field{display:none}.forecast-toolbar{justify-content:flex-end}.forecast-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.forecast-periods{break-inside:auto}.period-load,.role-load,.forecast-reading{break-inside:avoid}.rpt-folds table{min-width:0}}

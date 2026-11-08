@@ -40,21 +40,24 @@ interface RoadmapEffort extends RoadmapItem {
 <div><dt>Gerçekleşen mesai</dt><dd>{{fmt(total('overtimeHours'))}}<small>sa · plana ek</small></dd></div>
 </dl>
 
-<h3 class="rpt-sub">Öne Çıkan Bulgular</h3>
-<ul class="rpt-findings">@for(f of findings;track f){<li>{{f}}</li>}</ul>
+<details class="rpt-note-fold"><summary>Özet değerlendirme</summary><ul class="rpt-findings">@for(f of findings;track f){<li>{{f}}</li>}</ul></details>
 
+<div class="rpt-chart-grid"><section class="rpt-chart-card ">
 <h3 class="rpt-sub">Efor hangi Roadmap öğelerine dağıldı</h3>
 <div class="rpt-figure"><sb-donut [slices]="effortSlices" unit="sa" label="Roadmap öğelerinin planlanan efor payı" /></div>
 
+</section>
+<section class="rpt-chart-card ">
 <h3 class="rpt-sub">Planın ne kadarı Done oldu</h3>
 <p class="rpt-aside">Her satırda üstteki çubuk atanan planlanan eforu, alttaki Done olan eforu gösterir. En çok efor atanan {{landed.length}} öğe listelenir.</p>
 <div class="rpt-figure"><sb-pair [rows]="landed" unit="sa" label="Roadmap başına atanan efor ve Done olan efor" fromLabel="Atanan" toLabel="Done" /></div>
 <div class="rpt-key"><span><i style="background:#93a7b8"></i>Atanan efor (sa)</span><span><i style="background:#1f6f78"></i>Done olan efor (sa)</span></div>
 
-@if(total('overtimeHours')>0){
+</section>
+</div>@if(total('overtimeHours')>0){<section class="rpt-chart-card">
 <h3 class="rpt-sub">Bu eforun üstüne yazılan mesai</h3>
 <div class="rpt-figure"><sb-donut [slices]="overtimeSlices" unit="sa" label="Roadmap bazlı gerçekleşen mesai dağılımı" /></div>
-<p class="rpt-aside">Mesai planlanan efora eklenmez; kayıt anındaki Roadmap bağlantısına yazılır.</p>}
+<p class="rpt-aside">Mesai planlanan efora eklenmez; kayıt anındaki Roadmap bağlantısına yazılır.</p></section>}
 
 <div class="rpt-folds">
 <details><summary><span>Roadmap rakamları</span><small>{{visible.length}} öğe</small></summary><div class="fold-body"><div class="table-wrap"><table>
@@ -95,8 +98,7 @@ export class RoadmapReportComponent implements OnInit {
   get landed():Dumbbell[]{return this.visible.filter(r=>r.assignedHours>0).slice(0,10).map(r=>({key:r.id,label:r.title,
     from:r.assignedHours,to:r.doneHours,
     caption:r.title+': '+this.fmt(r.assignedHours)+' sa atanan, '+this.fmt(r.doneHours)+' sa Done (%'+this.fmt(Math.round(r.doneHours/r.assignedHours*1000)/10)+'), '+this.fmt(r.undoneHours)+' sa Undone, '+this.fmt(r.openHours)+' sa açık'}));}
-  get overtimeSlices():Slice[]{return this.visible.filter(r=>r.overtimeHours>0).sort((a,b)=>b.overtimeHours-a.overtimeHours).slice(0,8)
-    .map((r,i)=>({label:r.title,value:r.overtimeHours,fill:this.wheel[i],note:this.kindLabel(r.kind)}));}
+  get overtimeSlices():Slice[]{const rows=this.visible.filter(r=>r.overtimeHours>0).sort((a,b)=>b.overtimeHours-a.overtimeHours);const head=rows.slice(0,7).map((r,i)=>({label:r.title,value:r.overtimeHours,fill:this.wheel[i],note:this.kindLabel(r.kind)}));const rest=rows.slice(7).reduce((v,r)=>v+r.overtimeHours,0);return rest>0?[...head,{label:'Diğer '+(rows.length-7)+' öğe',value:rest,fill:'#9aa7b1',note:'Kalan Roadmap öğeleri'}]:head;}
   get doneShare(){const t=this.total('assignedHours');return t>0?Math.round(this.total('doneHours')/t*1000)/10:null;}
 
   /** Findings are plain sentences built from the same totals the cards show, so the report

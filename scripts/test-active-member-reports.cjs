@@ -1,0 +1,47 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('../frontend/node_modules/typescript');
+require.extensions['.ts']=(module,file)=>module._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,file);
+const {activeMemberSummaries}=require('../frontend/src/app/pages/member-report.model.ts');
+const {memberContexts}=require('../frontend/src/app/pages/member-context.model.ts');
+const {reportTabHtml}=require('../frontend/src/app/pages/report-tab-html.ts');
+const team=Array.from({length:12},(_,i)=>({id:'m'+i,name:i===0?'İsa Güler':'Üye '+i,active:1,title:'',teamRole:'DEVELOPER',engagement:'CORE'}));
+team.push({id:'inactive',name:'Pasif kişi',active:0,title:'',teamRole:'DESIGNER',engagement:'CORE'});
+const row=(memberId,sprintId,hours,extra={})=>({memberId,sprintId,memberName:'Eski isim',sprintName:sprintId,sprintNumber:sprintId==='s1'?1:2,
+ taskCount:1,done:1,undone:0,other:0,effortHours:hours,supportTaskCount:0,sizeSmall:1,sizeXSmall:0,sizeMedium:0,sizeLarge:0,sizeXLarge:0,pointedTasks:0,storyPointsTotal:0,
+ availableHours:8,capacitySource:'RECALCULATED',allocatedDays:1,leaveDays:0,nonWorkingDays:0,overtimeHours:0,...extra});
+const rows=[...team.slice(0,11).map(m=>row(m.id,'s1',4)),row('m0','s2',3,{leaveDays:0.5}),row('inactive','s1',500),row('deleted','s1',900)];
+const before=JSON.stringify({team,rows});
+const all=activeMemberSummaries(rows,team);
+assert.equal(all.length,12); // No top-eight limit; the unassigned twelfth active person is retained.
+assert.equal(all.some(m=>m.memberId==='inactive'||m.memberId==='deleted'),false);
+assert.equal(all.find(m=>m.memberId==='m0').memberName,'İsa Güler');
+assert.equal(all.find(m=>m.memberId==='m0').effortHours,7);
+assert.equal(all.find(m=>m.memberId==='m11').taskCount,0);
+assert.equal(all.reduce((n,m)=>n+m.effortHours,0),47);
+const period=activeMemberSummaries(rows,team,'s2');
+assert.equal(period.length,12);
+assert.equal(period.reduce((n,m)=>n+m.taskCount,0),1);
+assert.equal(activeMemberSummaries(rows,team,'','isa')[0].memberName,'İsa Güler');
+assert.equal(activeMemberSummaries(rows,team,'','olmayan').length,0);
+assert.equal(activeMemberSummaries(rows,team,'','','effort')[0].effortHours,7);
+assert.equal(activeMemberSummaries(rows,[]).length,0);
+const roster=all.map(m=>({id:m.memberId,name:m.memberName}));
+const contexts=memberContexts(rows,roster);
+assert.equal(contexts.length,12);
+const noHistory=contexts.find(m=>m.id==='m11');
+assert.equal(noHistory.total,0);assert.equal(noHistory.known,0);assert.equal(noHistory.load,null);
+assert.equal(contexts.find(m=>m.id==='m0').leaveDays,0.5);
+const partial=memberContexts([row('m0','s1',4),row('m0','s2',3,{availableHours:null})],[roster.find(m=>m.id==='m0')])[0];
+assert.equal(partial.known,1);assert.equal(partial.load,null);
+const scope='Aktif ekip üyeleri';
+const settings={estimationMode:'SIZE_AND_HOURS',hoursPerDay:8};
+const membersHtml=reportTabHtml({kind:'members',rows:all,settings,scope});
+assert(membersHtml.includes('Üye 11'));assert(!membersHtml.includes('Pasif kişi'));
+assert(membersHtml.includes('Kişi bazında planlanan efor'));
+const contextHtml=reportTabHtml({kind:'context',rows:[],members:roster,scope});
+assert(contextHtml.includes('Üye 11'));assert(contextHtml.includes('Dönem kaydı yok'));
+assert(contextHtml.includes('Kişi bazında izin'));assert(contextHtml.includes('X destek katkısı'));
+assert(!/NaN|Infinity/.test(contextHtml));
+const hostile=reportTabHtml({kind:'context',rows:[],members:[{id:'x',name:'<script>alert(1)</script>'}],scope});
+assert(!hostile.includes('<script>'));assert(hostile.includes('&lt;script&gt;'));
+assert.equal(JSON.stringify({team,rows}),before);
+console.log('Active member reports PASS: 12 active members, no-history members, inactive exclusion, period/search/sort, capacity gaps, consistent safe HTML and immutable data.');
